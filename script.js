@@ -56,25 +56,31 @@ function supabaseHeaders(prefer = "") {
 async function getPropertyUuid(databaseName) {
   const url = `${data.supabase.url}/rest/v1/properties?select=id&name=eq.${encodeURIComponent(databaseName)}&limit=1`;
   const response = await fetch(url, { headers: supabaseHeaders() });
+
   if (!response.ok) {
     const details = await response.text();
     throw new Error(`Could not find the property record. ${details}`);
   }
+
   const records = await response.json();
+
   if (!records.length) {
     throw new Error(`No Supabase property matches "${databaseName}".`);
   }
+
   return records[0].id;
 }
 
 async function submitReservation(property, formData) {
   const arrival = formData.get("arrival");
   const departure = formData.get("departure");
+
   if (new Date(departure) <= new Date(arrival)) {
     throw new Error("Departure must be after arrival.");
   }
 
   const propertyId = await getPropertyUuid(property.databaseName);
+
   const payload = {
     property_id: propertyId,
     guest_name: formData.get("name").trim(),
@@ -91,7 +97,7 @@ async function submitReservation(property, formData) {
 
   const response = await fetch(`${data.supabase.url}/rest/v1/reservations`, {
     method: "POST",
-    headers: supabaseHeaders("return=representation"),
+    headers: supabaseHeaders("return=minimal"),
     body: JSON.stringify(payload)
   });
 
@@ -100,7 +106,7 @@ async function submitReservation(property, formData) {
     throw new Error(`The request could not be saved. ${details}`);
   }
 
-  return response.json();
+  return true;
 }
 
 function renderProperty() {
@@ -124,12 +130,16 @@ function renderProperty() {
   document.querySelector("[data-property-summary]").textContent = property.summary;
   document.querySelector("[data-property-description]").textContent = property.description;
   document.querySelector("[data-rates-note]").textContent = property.ratesNote;
+
   document.querySelector("[data-facts]").innerHTML = `
     <span class="fact">${property.bedrooms} bedroom${property.bedrooms === 1 ? "" : "s"}</span>
     <span class="fact">${property.bathrooms} bathroom${property.bathrooms === 1 ? "" : "s"}</span>
     <span class="fact">Sleeps ${property.sleeps}</span>
     <span class="fact">${property.location}</span>`;
-  document.querySelector("[data-amenities]").innerHTML = property.amenities.map(item => `<li>${item}</li>`).join("");
+
+  document.querySelector("[data-amenities]").innerHTML =
+    property.amenities.map(item => `<li>${item}</li>`).join("");
+
   document.querySelector("[data-owner-name]").textContent = owner.name;
 
   const form = document.querySelector("[data-booking-form]");
@@ -153,6 +163,7 @@ function renderProperty() {
 
   form.addEventListener("submit", async event => {
     event.preventDefault();
+
     result.className = "booking-result";
     result.textContent = "";
     submitButton.disabled = true;
@@ -161,8 +172,11 @@ function renderProperty() {
     try {
       const formData = new FormData(form);
       await submitReservation(property, formData);
+
       result.className = "booking-result success";
-      result.innerHTML = `<strong>Your dates have been received.</strong><br>Your request is pending until Janis confirms the dates, lease, and payment details.`;
+      result.innerHTML =
+        `<strong>Your dates have been received.</strong><br>Your request is pending until Janis confirms the dates, lease, and payment details.`;
+
       form.reset();
       dogNamesField.style.display = "none";
     } catch (error) {
