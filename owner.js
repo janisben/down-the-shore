@@ -12,6 +12,8 @@ let calendarDate =
 
 let currentReservations = [];
 let currentProperties = [];
+let currentCleanings = [];
+
 
 const loginView =
   document.getElementById("loginView");
@@ -60,6 +62,12 @@ const calendarNext =
 
 const calendarToday =
   document.getElementById("calendarToday");
+
+const cleaningList =
+  document.getElementById("cleaningList");
+
+const cleaningMessage =
+  document.getElementById("cleaningMessage");
 
 
 const headers = (extra = {}) => ({
@@ -228,6 +236,56 @@ async function loadReservations() {
 }
 
 
+async function loadCleanings() {
+  const cleanings =
+    await fetchTable(
+      "cleaning_assignments",
+      "?select=*&order=checkout_date.asc"
+    );
+
+  const propertyMap =
+    Object.fromEntries(
+      currentProperties.map(
+        property => [
+          property.id,
+          property.name
+        ]
+      )
+    );
+
+  const reservationMap =
+    Object.fromEntries(
+      currentReservations.map(
+        reservation => [
+          reservation.id,
+          reservation
+        ]
+      )
+    );
+
+  currentCleanings =
+    cleanings.map(
+      cleaning => ({
+        ...cleaning,
+
+        property_name:
+          propertyMap[
+            cleaning.property_id
+          ] ||
+          "Property",
+
+        reservation:
+          reservationMap[
+            cleaning.reservation_id
+          ] ||
+          null
+      })
+    );
+
+  return currentCleanings;
+}
+
+
 async function updateReservation(
   id,
   changes
@@ -285,6 +343,39 @@ async function createReservation(
 }
 
 
+async function updateCleaning(
+  id,
+  changes
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/cleaning_assignments?id=eq.${id}`,
+      {
+        method: "PATCH",
+
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+
+        body:
+          JSON.stringify({
+            ...changes,
+            updated_at:
+              new Date().toISOString()
+          })
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
 async function addPayment(
   id,
   amount,
@@ -308,10 +399,13 @@ async function addPayment(
         body:
           JSON.stringify({
             reservation_id: id,
+
             amount:
               Number(amount),
+
             payment_method:
               method,
+
             received_at:
               now
           })
@@ -416,22 +510,6 @@ function isoDate(date) {
 }
 
 
-function addDays(
-  date,
-  amount
-) {
-  const copy =
-    new Date(date);
-
-  copy.setDate(
-    copy.getDate() +
-    amount
-  );
-
-  return copy;
-}
-
-
 function reservationCalendarStatus(
   reservation
 ) {
@@ -496,11 +574,6 @@ function reservationTouchesDate(
     parseDate(
       dateString
     );
-
-  /*
-    Departure day is open for
-    the next guest's arrival.
-  */
 
   return (
     date >= arrival &&
@@ -680,47 +753,13 @@ function renderPropertyCalendar(
         class="owner-calendar-grid"
       >
 
-        <div
-          class="owner-calendar-weekday"
-        >
-          Sun
-        </div>
-
-        <div
-          class="owner-calendar-weekday"
-        >
-          Mon
-        </div>
-
-        <div
-          class="owner-calendar-weekday"
-        >
-          Tue
-        </div>
-
-        <div
-          class="owner-calendar-weekday"
-        >
-          Wed
-        </div>
-
-        <div
-          class="owner-calendar-weekday"
-        >
-          Thu
-        </div>
-
-        <div
-          class="owner-calendar-weekday"
-        >
-          Fri
-        </div>
-
-        <div
-          class="owner-calendar-weekday"
-        >
-          Sat
-        </div>
+        <div class="owner-calendar-weekday">Sun</div>
+        <div class="owner-calendar-weekday">Mon</div>
+        <div class="owner-calendar-weekday">Tue</div>
+        <div class="owner-calendar-weekday">Wed</div>
+        <div class="owner-calendar-weekday">Thu</div>
+        <div class="owner-calendar-weekday">Fri</div>
+        <div class="owner-calendar-weekday">Sat</div>
 
         ${cells}
 
@@ -732,12 +771,6 @@ function renderPropertyCalendar(
 
 
 function renderOwnerCalendar() {
-  if (
-    !ownerCalendar
-  ) {
-    return;
-  }
-
   const monthTitle =
     calendarDate
       .toLocaleDateString(
@@ -771,6 +804,206 @@ function renderOwnerCalendar() {
         .join("")
     }
   `;
+}
+
+
+function cleaningCard(cleaning) {
+  const reservation =
+    cleaning.reservation;
+
+  const guestName =
+    reservation?.guest_name ||
+    "Guest";
+
+  const status =
+    cleaning.status ||
+    "waiting";
+
+  const canEdit =
+    status !== "cancelled" &&
+    status !== "completed";
+
+  return `
+    <article
+      class="cleaning-card ${status}"
+      data-cleaning-id="${cleaning.id}"
+    >
+
+      <h3>
+        ${cleaning.property_name}
+      </h3>
+
+      <div class="meta">
+        Checkout:
+        <strong>
+          ${formatDate(cleaning.checkout_date)}
+        </strong>
+
+        <br>
+
+        Guest:
+        ${guestName}
+      </div>
+
+      <span class="cleaning-status">
+        ${status.replaceAll("_", " ")}
+      </span>
+
+      ${
+        status === "waiting"
+          ? `
+            <div class="cleaning-warning">
+              Cleaner confirmation is still needed.
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        status === "confirmed"
+          ? `
+            <div class="notice">
+              Cleaner confirmed
+              ${
+                cleaning.confirmed_at
+                  ? ` · ${new Date(cleaning.confirmed_at).toLocaleString()}`
+                  : ""
+              }
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        status === "completed"
+          ? `
+            <div class="notice">
+              Cleaning completed
+              ${
+                cleaning.completed_at
+                  ? ` · ${new Date(cleaning.completed_at).toLocaleString()}`
+                  : ""
+              }
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        cleaning.cleaner_name ||
+        cleaning.cleaner_email
+          ? `
+            <div
+              class="meta"
+              style="margin-top:10px;"
+            >
+              Cleaner:
+              ${cleaning.cleaner_name || ""}
+
+              ${
+                cleaning.cleaner_email
+                  ? `<br>${cleaning.cleaner_email}`
+                  : ""
+              }
+            </div>
+          `
+          : ""
+      }
+
+      ${
+        canEdit
+          ? `
+            <div
+              class="row"
+              style="
+                margin-top:12px;
+                align-items:end;
+              "
+            >
+
+              <label>
+                Cleaner name
+                <input
+                  type="text"
+                  value="${cleaning.cleaner_name || ""}"
+                  data-cleaner-name
+                >
+              </label>
+
+              <label>
+                Cleaner email
+                <input
+                  type="email"
+                  value="${cleaning.cleaner_email || ""}"
+                  data-cleaner-email
+                >
+              </label>
+
+              <button
+                type="button"
+                data-cleaning-action="save-cleaner"
+              >
+                Save cleaner
+              </button>
+
+              ${
+                status === "waiting"
+                  ? `
+                    <button
+                      type="button"
+                      data-cleaning-action="confirm"
+                    >
+                      Mark confirmed
+                    </button>
+                  `
+                  : ""
+              }
+
+              ${
+                status === "confirmed"
+                  ? `
+                    <button
+                      type="button"
+                      data-cleaning-action="complete"
+                    >
+                      Mark completed
+                    </button>
+                  `
+                  : ""
+              }
+
+            </div>
+          `
+          : ""
+      }
+
+    </article>
+  `;
+}
+
+
+function renderCleaningDashboard() {
+  const active =
+    currentCleanings.filter(
+      cleaning =>
+        cleaning.status !==
+        "cancelled"
+    );
+
+  if (!active.length) {
+    cleaningList.innerHTML = `
+      <div class="meta">
+        No active cleaning assignments.
+      </div>
+    `;
+
+    return;
+  }
+
+  cleaningList.innerHTML =
+    active
+      .map(cleaningCard)
+      .join("");
 }
 
 
@@ -960,9 +1193,7 @@ function reservationCard(r) {
 
                 <div
                   class="meta"
-                  style="
-                    margin-top:6px;
-                  "
+                  style="margin-top:6px;"
                 >
 
                   ${formatMoney(
@@ -1015,7 +1246,6 @@ function reservationCard(r) {
                   <select
                     data-method
                   >
-
                     <option value="zelle">
                       Zelle
                     </option>
@@ -1031,7 +1261,6 @@ function reservationCard(r) {
                     <option value="check">
                       Check
                     </option>
-
                   </select>
 
                   <button
@@ -1101,18 +1330,15 @@ function reservationCard(r) {
 
 async function refresh() {
   try {
-    portalMessage.className =
-      "";
+    portalMessage.className = "";
+    portalMessage.textContent = "";
 
-    portalMessage.textContent =
-      "";
-
-    const rows =
-      await loadReservations();
+    await loadReservations();
+    await loadCleanings();
 
     reservationList.innerHTML =
-      rows.length
-        ? rows
+      currentReservations.length
+        ? currentReservations
             .map(
               reservationCard
             )
@@ -1124,6 +1350,7 @@ async function refresh() {
         `;
 
     renderOwnerCalendar();
+    renderCleaningDashboard();
 
   } catch (err) {
     message(
@@ -1539,12 +1766,10 @@ reservationList.addEventListener(
 
 
         if (!confirmed) {
-
           button.disabled =
             false;
 
           return;
-
         }
 
 
@@ -1623,6 +1848,160 @@ reservationList.addEventListener(
 
       message(
         portalMessage,
+        err.message,
+        true
+      );
+
+
+    } finally {
+
+      button.disabled =
+        false;
+
+    }
+  }
+);
+
+
+cleaningList.addEventListener(
+  "click",
+  async event => {
+
+    const button =
+      event.target.closest(
+        "button[data-cleaning-action]"
+      );
+
+
+    if (!button) {
+      return;
+    }
+
+
+    const card =
+      button.closest(
+        "[data-cleaning-id]"
+      );
+
+
+    const id =
+      card.dataset.cleaningId;
+
+
+    const action =
+      button.dataset.cleaningAction;
+
+
+    try {
+
+      button.disabled =
+        true;
+
+
+      if (
+        action ===
+        "save-cleaner"
+      ) {
+
+        const cleanerName =
+          card
+            .querySelector(
+              "[data-cleaner-name]"
+            )
+            .value
+            .trim();
+
+
+        const cleanerEmail =
+          card
+            .querySelector(
+              "[data-cleaner-email]"
+            )
+            .value
+            .trim();
+
+
+        await updateCleaning(
+          id,
+          {
+            cleaner_name:
+              cleanerName ||
+              null,
+
+            cleaner_email:
+              cleanerEmail ||
+              null
+          }
+        );
+
+
+        message(
+          cleaningMessage,
+          "Cleaner information saved."
+        );
+
+      }
+
+
+      if (
+        action ===
+        "confirm"
+      ) {
+
+        await updateCleaning(
+          id,
+          {
+            status:
+              "confirmed",
+
+            confirmed_at:
+              new Date()
+                .toISOString()
+          }
+        );
+
+
+        message(
+          cleaningMessage,
+          "Cleaning confirmed."
+        );
+
+      }
+
+
+      if (
+        action ===
+        "complete"
+      ) {
+
+        await updateCleaning(
+          id,
+          {
+            status:
+              "completed",
+
+            completed_at:
+              new Date()
+                .toISOString()
+          }
+        );
+
+
+        message(
+          cleaningMessage,
+          "Cleaning marked completed."
+        );
+
+      }
+
+
+      await refresh();
+
+
+    } catch (err) {
+
+      message(
+        cleaningMessage,
         err.message,
         true
       );
