@@ -614,6 +614,24 @@ function calendarItemsForDay(
 }
 
 
+function cleanerIsConfirmed(
+  reservation
+) {
+  return currentCleanings.some(
+    cleaning =>
+      cleaning.reservation_id ===
+        reservation.id &&
+
+      (
+        cleaning.status ===
+          "confirmed" ||
+        cleaning.status ===
+          "completed"
+      )
+  );
+}
+
+
 function calendarItemLabel(
   reservation,
   status
@@ -641,6 +659,16 @@ function calendarItemLabel(
     "pending"
   ) {
     return `${name} · request`;
+  }
+
+  if (
+    status ===
+      "booked" &&
+    cleanerIsConfirmed(
+      reservation
+    )
+  ) {
+    return `${name} 🧹`;
   }
 
   return name;
