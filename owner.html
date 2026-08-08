@@ -68,7 +68,8 @@
     .actions button,
     .money button,
     .manual-form button,
-    #ownerCalendarSection button {
+    #ownerCalendarSection button,
+    #cleaningDashboardSection button {
       padding: 9px 12px;
       height: auto;
       min-height: 0;
@@ -149,7 +150,8 @@
       gap: 14px;
     }
 
-    #ownerCalendarSection {
+    #ownerCalendarSection,
+    #cleaningDashboardSection {
       margin-bottom: 30px;
     }
 
@@ -260,6 +262,52 @@
     .legend-chip.available {
       background: #faf8f4;
       border: 1px solid #ddd;
+    }
+
+    .cleaning-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .cleaning-card {
+      border: 1px solid #ddd;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .cleaning-card.waiting {
+      border-left: 5px solid #c9991f;
+    }
+
+    .cleaning-card.confirmed {
+      border-left: 5px solid #4c7a62;
+    }
+
+    .cleaning-card.completed {
+      border-left: 5px solid #777;
+    }
+
+    .cleaning-card.cancelled {
+      opacity: .65;
+    }
+
+    .cleaning-card h3 {
+      margin: 0 0 6px;
+    }
+
+    .cleaning-status {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 5px 8px;
+      font-size: 12px;
+      background: #f5f1e8;
+    }
+
+    .cleaning-warning {
+      margin-top: 10px;
+      padding: 9px 10px;
+      background: #fff4cf;
+      font-size: 13px;
     }
 
     [hidden] {
@@ -474,6 +522,20 @@
           <span class="legend-chip booked">Booked</span>
           <span class="legend-chip waitlisted">Waitlist</span>
         </div>
+
+      </section>
+
+      <section class="card" id="cleaningDashboardSection">
+
+        <div>
+          <div class="eyebrow">CLEANING</div>
+          <h2 style="margin:4px 0 16px;">
+            Cleaning dashboard
+          </h2>
+        </div>
+
+        <div id="cleaningMessage"></div>
+        <div id="cleaningList" class="cleaning-list"></div>
 
       </section>
 
