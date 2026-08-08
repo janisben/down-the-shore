@@ -13,6 +13,7 @@ let calendarDate =
 let currentReservations = [];
 let currentProperties = [];
 let currentCleanings = [];
+let currentRatePeriods = [];
 
 
 const loginView =
@@ -68,6 +69,21 @@ const cleaningList =
 
 const cleaningMessage =
   document.getElementById("cleaningMessage");
+
+const ratePeriodForm =
+  document.getElementById("ratePeriodForm");
+
+const ratePeriodMessage =
+  document.getElementById("ratePeriodMessage");
+
+const ratePeriodsList =
+  document.getElementById("ratePeriodsList");
+
+const rateProperty =
+  document.getElementById("rateProperty");
+
+const rateStayRule =
+  document.getElementById("rateStayRule");
 
 
 const headers = (extra = {}) => ({
@@ -170,7 +186,7 @@ async function loadProperties() {
   currentProperties =
     properties;
 
-  manualProperty.innerHTML =
+  const propertyOptions =
     `<option value="">
       Choose property
     </option>` +
@@ -184,6 +200,12 @@ async function loadProperties() {
         `
       )
       .join("");
+
+  manualProperty.innerHTML =
+    propertyOptions;
+
+  rateProperty.innerHTML =
+    propertyOptions;
 
   return properties;
 }
@@ -283,6 +305,121 @@ async function loadCleanings() {
     );
 
   return currentCleanings;
+}
+
+
+
+async function loadRatePeriods() {
+  const periods =
+    await fetchTable(
+      "rate_periods",
+      "?select=*&order=start_date.asc"
+    );
+
+  const propertyMap =
+    Object.fromEntries(
+      currentProperties.map(
+        property => [
+          property.id,
+          property.name
+        ]
+      )
+    );
+
+  currentRatePeriods =
+    periods.map(
+      period => ({
+        ...period,
+        property_name:
+          propertyMap[
+            period.property_id
+          ] ||
+          "Property"
+      })
+    );
+
+  return currentRatePeriods;
+}
+
+
+async function createRatePeriod(
+  data
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/rate_periods`,
+      {
+        method: "POST",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+        body:
+          JSON.stringify(data)
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
+async function updateRatePeriod(
+  id,
+  changes
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/rate_periods?id=eq.${id}`,
+      {
+        method: "PATCH",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+        body:
+          JSON.stringify({
+            ...changes,
+            updated_at:
+              new Date().toISOString()
+          })
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
+async function deleteRatePeriod(
+  id
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/rate_periods?id=eq.${id}`,
+      {
+        method: "DELETE",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          })
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
 }
 
 
@@ -1035,6 +1172,178 @@ function renderCleaningDashboard() {
 }
 
 
+
+function ratePeriodCard(period) {
+  return `
+    <article
+      class="rate-card"
+      data-rate-id="${period.id}"
+    >
+      <div class="rate-card-grid">
+
+        <label>
+          Property
+          <select data-rate-property>
+            ${
+              currentProperties
+                .map(
+                  property => `
+                    <option
+                      value="${property.id}"
+                      ${
+                        property.id ===
+                        period.property_id
+                          ? "selected"
+                          : ""
+                      }
+                    >
+                      ${property.name}
+                    </option>
+                  `
+                )
+                .join("")
+            }
+          </select>
+        </label>
+
+        <label>
+          Stay rule
+          <select data-rate-stay-rule>
+            <option
+              value="weekly"
+              ${
+                period.stay_rule ===
+                "weekly"
+                  ? "selected"
+                  : ""
+              }
+            >
+              Weekly only
+            </option>
+            <option
+              value="flexible"
+              ${
+                period.stay_rule ===
+                "flexible"
+                  ? "selected"
+                  : ""
+              }
+            >
+              Flexible / shorter stays
+            </option>
+          </select>
+        </label>
+
+        <label>
+          Start date
+          <input
+            type="date"
+            value="${period.start_date}"
+            data-rate-start
+          >
+        </label>
+
+        <label>
+          End date
+          <input
+            type="date"
+            value="${period.end_date}"
+            data-rate-end
+          >
+        </label>
+
+        <label>
+          Weekly price
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value="${period.weekly_price ?? ""}"
+            data-rate-weekly
+          >
+        </label>
+
+        <label>
+          Nightly price
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value="${period.nightly_price ?? ""}"
+            data-rate-nightly
+          >
+        </label>
+
+        <label>
+          Minimum nights
+          <input
+            type="number"
+            min="1"
+            value="${period.minimum_nights || 1}"
+            data-rate-minimum
+          >
+        </label>
+
+        <label class="rate-blocked-row">
+          <input
+            type="checkbox"
+            data-rate-blocked
+            ${period.blocked ? "checked" : ""}
+          >
+          Block these dates
+        </label>
+
+        <label class="full">
+          Notes
+          <textarea
+            rows="2"
+            data-rate-notes
+          >${period.notes || ""}</textarea>
+        </label>
+
+      </div>
+
+      <div
+        class="row"
+        style="margin-top:12px;"
+      >
+        <button
+          type="button"
+          data-rate-action="save"
+        >
+          Save changes
+        </button>
+
+        <button
+          type="button"
+          class="danger"
+          data-rate-action="delete"
+        >
+          Delete
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+
+function renderRatePeriods() {
+  if (!currentRatePeriods.length) {
+    ratePeriodsList.innerHTML = `
+      <div class="meta">
+        No rate periods yet. Add your first one above.
+      </div>
+    `;
+    return;
+  }
+
+  ratePeriodsList.innerHTML =
+    currentRatePeriods
+      .map(ratePeriodCard)
+      .join("");
+}
+
+
 function reservationCard(r) {
   const status =
     r.status ||
@@ -1363,6 +1672,7 @@ async function refresh() {
 
     await loadReservations();
     await loadCleanings();
+    await loadRatePeriods();
 
     reservationList.innerHTML =
       currentReservations.length
@@ -1379,6 +1689,7 @@ async function refresh() {
 
     renderOwnerCalendar();
     renderCleaningDashboard();
+    renderRatePeriods();
 
   } catch (err) {
     message(
@@ -2044,6 +2355,286 @@ cleaningList.addEventListener(
   }
 );
 
+
+
+rateStayRule.addEventListener(
+  "change",
+  () => {
+    const minimum =
+      ratePeriodForm.elements.minimum_nights;
+
+    if (
+      rateStayRule.value ===
+      "weekly"
+    ) {
+      minimum.value = "7";
+    } else if (
+      Number(minimum.value) === 7
+    ) {
+      minimum.value = "2";
+    }
+  }
+);
+
+
+ratePeriodForm.addEventListener(
+  "submit",
+  async event => {
+    event.preventDefault();
+
+    ratePeriodMessage.className = "";
+    ratePeriodMessage.textContent = "";
+
+    const form =
+      new FormData(
+        ratePeriodForm
+      );
+
+    const startDate =
+      form.get("start_date");
+
+    const endDate =
+      form.get("end_date");
+
+    if (
+      !startDate ||
+      !endDate ||
+      parseDate(endDate) <=
+        parseDate(startDate)
+    ) {
+      message(
+        ratePeriodMessage,
+        "End date must be after start date.",
+        true
+      );
+      return;
+    }
+
+    const weekly =
+      form.get("weekly_price");
+
+    const nightly =
+      form.get("nightly_price");
+
+    const blocked =
+      form.get("blocked") === "on";
+
+    if (
+      !blocked &&
+      !weekly &&
+      !nightly
+    ) {
+      message(
+        ratePeriodMessage,
+        "Enter a weekly or nightly price, or block the dates.",
+        true
+      );
+      return;
+    }
+
+    try {
+      await createRatePeriod({
+        property_id:
+          form.get("property_id"),
+        start_date:
+          startDate,
+        end_date:
+          endDate,
+        weekly_price:
+          weekly
+            ? Number(weekly)
+            : null,
+        nightly_price:
+          nightly
+            ? Number(nightly)
+            : null,
+        stay_rule:
+          form.get("stay_rule"),
+        minimum_nights:
+          Number(
+            form.get("minimum_nights") ||
+            1
+          ),
+        blocked,
+        notes:
+          form.get("notes") ||
+          null
+      });
+
+      message(
+        ratePeriodMessage,
+        "Rate period saved."
+      );
+
+      ratePeriodForm.reset();
+      ratePeriodForm.elements.minimum_nights.value =
+        "7";
+
+      await loadRatePeriods();
+      renderRatePeriods();
+
+    } catch (err) {
+      message(
+        ratePeriodMessage,
+        err.message,
+        true
+      );
+    }
+  }
+);
+
+
+ratePeriodsList.addEventListener(
+  "click",
+  async event => {
+    const button =
+      event.target.closest(
+        "button[data-rate-action]"
+      );
+
+    if (!button) {
+      return;
+    }
+
+    const card =
+      button.closest(
+        "[data-rate-id]"
+      );
+
+    const id =
+      card.dataset.rateId;
+
+    const action =
+      button.dataset.rateAction;
+
+    try {
+      button.disabled = true;
+
+      if (action === "delete") {
+        const confirmed =
+          window.confirm(
+            "Delete this rate period?"
+          );
+
+        if (!confirmed) {
+          button.disabled = false;
+          return;
+        }
+
+        await deleteRatePeriod(id);
+
+        message(
+          ratePeriodMessage,
+          "Rate period deleted."
+        );
+      }
+
+      if (action === "save") {
+        const startDate =
+          card.querySelector(
+            "[data-rate-start]"
+          ).value;
+
+        const endDate =
+          card.querySelector(
+            "[data-rate-end]"
+          ).value;
+
+        if (
+          !startDate ||
+          !endDate ||
+          parseDate(endDate) <=
+            parseDate(startDate)
+        ) {
+          throw new Error(
+            "End date must be after start date."
+          );
+        }
+
+        const weekly =
+          card.querySelector(
+            "[data-rate-weekly]"
+          ).value;
+
+        const nightly =
+          card.querySelector(
+            "[data-rate-nightly]"
+          ).value;
+
+        const blocked =
+          card.querySelector(
+            "[data-rate-blocked]"
+          ).checked;
+
+        if (
+          !blocked &&
+          !weekly &&
+          !nightly
+        ) {
+          throw new Error(
+            "Enter a weekly or nightly price, or block the dates."
+          );
+        }
+
+        await updateRatePeriod(
+          id,
+          {
+            property_id:
+              card.querySelector(
+                "[data-rate-property]"
+              ).value,
+            start_date:
+              startDate,
+            end_date:
+              endDate,
+            weekly_price:
+              weekly
+                ? Number(weekly)
+                : null,
+            nightly_price:
+              nightly
+                ? Number(nightly)
+                : null,
+            stay_rule:
+              card.querySelector(
+                "[data-rate-stay-rule]"
+              ).value,
+            minimum_nights:
+              Number(
+                card.querySelector(
+                  "[data-rate-minimum]"
+                ).value ||
+                1
+              ),
+            blocked,
+            notes:
+              card.querySelector(
+                "[data-rate-notes]"
+              ).value ||
+              null
+          }
+        );
+
+        message(
+          ratePeriodMessage,
+          "Rate period updated."
+        );
+      }
+
+      await loadRatePeriods();
+      renderRatePeriods();
+
+    } catch (err) {
+      message(
+        ratePeriodMessage,
+        err.message,
+        true
+      );
+    } finally {
+      button.disabled = false;
+    }
+  }
+);
 
 toggleBrokerageFields();
 
