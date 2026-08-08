@@ -629,6 +629,73 @@ function parseDate(value) {
 }
 
 
+function isSaturday(value) {
+  return (
+    parseDate(value).getDay() === 6
+  );
+}
+
+
+function nightsBetween(
+  startDate,
+  endDate
+) {
+  const millisecondsPerDay =
+    24 * 60 * 60 * 1000;
+
+  return Math.round(
+    (
+      parseDate(endDate) -
+      parseDate(startDate)
+    ) /
+    millisecondsPerDay
+  );
+}
+
+
+function validateRateDates(
+  stayRule,
+  startDate,
+  endDate
+) {
+  if (
+    !startDate ||
+    !endDate ||
+    parseDate(endDate) <=
+      parseDate(startDate)
+  ) {
+    throw new Error(
+      "End date must be after start date."
+    );
+  }
+
+  if (
+    stayRule ===
+    "weekly"
+  ) {
+    if (
+      !isSaturday(startDate) ||
+      !isSaturday(endDate)
+    ) {
+      throw new Error(
+        "Weekly-only periods must run Saturday to Saturday."
+      );
+    }
+
+    if (
+      nightsBetween(
+        startDate,
+        endDate
+      ) !== 7
+    ) {
+      throw new Error(
+        "Weekly-only periods must be exactly 7 nights."
+      );
+    }
+  }
+}
+
+
 function isoDate(date) {
   const year =
     date.getFullYear();
@@ -2396,15 +2463,19 @@ ratePeriodForm.addEventListener(
     const endDate =
       form.get("end_date");
 
-    if (
-      !startDate ||
-      !endDate ||
-      parseDate(endDate) <=
-        parseDate(startDate)
-    ) {
+    const stayRule =
+      form.get("stay_rule");
+
+    try {
+      validateRateDates(
+        stayRule,
+        startDate,
+        endDate
+      );
+    } catch (err) {
       message(
         ratePeriodMessage,
-        "End date must be after start date.",
+        err.message,
         true
       );
       return;
@@ -2449,7 +2520,7 @@ ratePeriodForm.addEventListener(
             ? Number(nightly)
             : null,
         stay_rule:
-          form.get("stay_rule"),
+          stayRule,
         minimum_nights:
           Number(
             form.get("minimum_nights") ||
@@ -2540,16 +2611,16 @@ ratePeriodsList.addEventListener(
             "[data-rate-end]"
           ).value;
 
-        if (
-          !startDate ||
-          !endDate ||
-          parseDate(endDate) <=
-            parseDate(startDate)
-        ) {
-          throw new Error(
-            "End date must be after start date."
-          );
-        }
+        const stayRule =
+          card.querySelector(
+            "[data-rate-stay-rule]"
+          ).value;
+
+        validateRateDates(
+          stayRule,
+          startDate,
+          endDate
+        );
 
         const weekly =
           card.querySelector(
@@ -2596,9 +2667,7 @@ ratePeriodsList.addEventListener(
                 ? Number(nightly)
                 : null,
             stay_rule:
-              card.querySelector(
-                "[data-rate-stay-rule]"
-              ).value,
+              stayRule,
             minimum_nights:
               Number(
                 card.querySelector(
