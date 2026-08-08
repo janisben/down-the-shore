@@ -1,14 +1,38 @@
 const cfg = window.SITE_DATA.supabase;
 
-let token = sessionStorage.getItem("dts_token") || "";
+let token =
+  sessionStorage.getItem("dts_token") || "";
 
-const loginView = document.getElementById("loginView");
-const portalView = document.getElementById("portalView");
-const loginForm = document.getElementById("loginForm");
-const loginMessage = document.getElementById("loginMessage");
-const portalMessage = document.getElementById("portalMessage");
-const reservationList = document.getElementById("reservationList");
-const logoutButton = document.getElementById("logoutButton");
+let calendarDate =
+  new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1
+  );
+
+let currentReservations = [];
+let currentProperties = [];
+
+const loginView =
+  document.getElementById("loginView");
+
+const portalView =
+  document.getElementById("portalView");
+
+const loginForm =
+  document.getElementById("loginForm");
+
+const loginMessage =
+  document.getElementById("loginMessage");
+
+const portalMessage =
+  document.getElementById("portalMessage");
+
+const reservationList =
+  document.getElementById("reservationList");
+
+const logoutButton =
+  document.getElementById("logoutButton");
 
 const manualReservationForm =
   document.getElementById("manualReservationForm");
@@ -25,6 +49,18 @@ const bookingSource =
 const brokerageFields =
   document.getElementById("brokerageFields");
 
+const ownerCalendar =
+  document.getElementById("ownerCalendar");
+
+const calendarPrev =
+  document.getElementById("calendarPrev");
+
+const calendarNext =
+  document.getElementById("calendarNext");
+
+const calendarToday =
+  document.getElementById("calendarToday");
+
 
 const headers = (extra = {}) => ({
   apikey: cfg.publishableKey,
@@ -34,40 +70,58 @@ const headers = (extra = {}) => ({
 });
 
 
-function message(el, text, isError = false) {
-  el.className = isError
-    ? "notice error"
-    : "notice";
+function message(
+  el,
+  text,
+  isError = false
+) {
+  el.className =
+    isError
+      ? "notice error"
+      : "notice";
 
   el.textContent = text;
 }
 
 
-async function login(email, password) {
-  const res = await fetch(
-    `${cfg.url}/auth/v1/token?grant_type=password`,
-    {
-      method: "POST",
-      headers: {
-        apikey: cfg.publishableKey,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email,
-        password
-      })
-    }
-  );
+async function login(
+  email,
+  password
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
 
-  const body = await res.json();
+        headers: {
+          apikey:
+            cfg.publishableKey,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            email,
+            password
+          })
+      }
+    );
+
+  const body =
+    await res.json();
 
   if (!res.ok) {
     throw new Error(
-      body.msg || "Could not sign in."
+      body.msg ||
+      "Could not sign in."
     );
   }
 
-  token = body.access_token;
+  token =
+    body.access_token;
 
   sessionStorage.setItem(
     "dts_token",
@@ -80,12 +134,13 @@ async function fetchTable(
   table,
   query = ""
 ) {
-  const res = await fetch(
-    `${cfg.url}/rest/v1/${table}${query}`,
-    {
-      headers: headers()
-    }
-  );
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/${table}${query}`,
+      {
+        headers: headers()
+      }
+    );
 
   if (!res.ok) {
     throw new Error(
@@ -98,21 +153,27 @@ async function fetchTable(
 
 
 async function loadProperties() {
-  const properties = await fetchTable(
-    "properties",
-    "?select=id,name&order=name"
-  );
+  const properties =
+    await fetchTable(
+      "properties",
+      "?select=id,name&order=name"
+    );
+
+  currentProperties =
+    properties;
 
   manualProperty.innerHTML =
     `<option value="">
       Choose property
     </option>` +
+
     properties
       .map(
-        p =>
-          `<option value="${p.id}">
-            ${p.name}
-          </option>`
+        property => `
+          <option value="${property.id}">
+            ${property.name}
+          </option>
+        `
       )
       .join("");
 
@@ -124,34 +185,46 @@ async function loadReservations() {
   const [
     reservations,
     properties
-  ] = await Promise.all([
-    fetchTable(
-      "reservations",
-      "?select=*&order=created_at.desc"
-    ),
+  ] =
+    await Promise.all([
+      fetchTable(
+        "reservations",
+        "?select=*&order=created_at.desc"
+      ),
 
-    fetchTable(
-      "properties",
-      "?select=id,name"
-    )
-  ]);
+      fetchTable(
+        "properties",
+        "?select=id,name"
+      )
+    ]);
+
+  currentProperties =
+    properties;
 
   const propertyMap =
     Object.fromEntries(
       properties.map(
-        p => [p.id, p.name]
+        property => [
+          property.id,
+          property.name
+        ]
       )
     );
 
-  return reservations.map(
-    r => ({
-      ...r,
+  currentReservations =
+    reservations.map(
+      reservation => ({
+        ...reservation,
 
-      property_name:
-        propertyMap[r.property_id] ||
-        "Property"
-    })
-  );
+        property_name:
+          propertyMap[
+            reservation.property_id
+          ] ||
+          "Property"
+      })
+    );
+
+  return currentReservations;
 }
 
 
@@ -159,18 +232,22 @@ async function updateReservation(
   id,
   changes
 ) {
-  const res = await fetch(
-    `${cfg.url}/rest/v1/reservations?id=eq.${id}`,
-    {
-      method: "PATCH",
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/reservations?id=eq.${id}`,
+      {
+        method: "PATCH",
 
-      headers: headers({
-        Prefer: "return=minimal"
-      }),
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
 
-      body: JSON.stringify(changes)
-    }
-  );
+        body:
+          JSON.stringify(changes)
+      }
+    );
 
   if (!res.ok) {
     throw new Error(
@@ -180,19 +257,25 @@ async function updateReservation(
 }
 
 
-async function createReservation(data) {
-  const res = await fetch(
-    `${cfg.url}/rest/v1/reservations`,
-    {
-      method: "POST",
+async function createReservation(
+  data
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/reservations`,
+      {
+        method: "POST",
 
-      headers: headers({
-        Prefer: "return=minimal"
-      }),
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
 
-      body: JSON.stringify(data)
-    }
-  );
+        body:
+          JSON.stringify(data)
+      }
+    );
 
   if (!res.ok) {
     throw new Error(
@@ -210,23 +293,30 @@ async function addPayment(
   const now =
     new Date().toISOString();
 
-  const res = await fetch(
-    `${cfg.url}/rest/v1/payments`,
-    {
-      method: "POST",
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/payments`,
+      {
+        method: "POST",
 
-      headers: headers({
-        Prefer: "return=minimal"
-      }),
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
 
-      body: JSON.stringify({
-        reservation_id: id,
-        amount: Number(amount),
-        payment_method: method,
-        received_at: now
-      })
-    }
-  );
+        body:
+          JSON.stringify({
+            reservation_id: id,
+            amount:
+              Number(amount),
+            payment_method:
+              method,
+            received_at:
+              now
+          })
+      }
+    );
 
   if (!res.ok) {
     throw new Error(
@@ -237,16 +327,23 @@ async function addPayment(
   await updateReservation(
     id,
     {
-      payment_status: "paid",
-      payment_method: method,
+      payment_status:
+        "paid",
+
+      payment_method:
+        method,
+
       amount_received:
         Number(amount),
 
-      payment_received_at: now,
+      payment_received_at:
+        now,
 
-      hold_expires_at: null,
+      hold_expires_at:
+        null,
 
-      status: "booked"
+      status:
+        "booked"
     }
   );
 }
@@ -284,44 +381,447 @@ function formatMoney(value) {
   ).toLocaleString(
     "en-US",
     {
-      style: "currency",
-      currency: "USD"
+      style:
+        "currency",
+
+      currency:
+        "USD"
     }
   );
 }
 
 
+function parseDate(value) {
+  return new Date(
+    `${value}T12:00:00`
+  );
+}
+
+
+function isoDate(date) {
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+
+function addDays(
+  date,
+  amount
+) {
+  const copy =
+    new Date(date);
+
+  copy.setDate(
+    copy.getDate() +
+    amount
+  );
+
+  return copy;
+}
+
+
+function reservationCalendarStatus(
+  reservation
+) {
+  if (
+    reservation.status ===
+    "pending_payment"
+  ) {
+    if (
+      reservation.hold_expires_at &&
+      new Date(
+        reservation.hold_expires_at
+      ) <= new Date()
+    ) {
+      return null;
+    }
+
+    return "pending_payment";
+  }
+
+  if (
+    reservation.status ===
+    "pending" ||
+    reservation.status ===
+    "requested"
+  ) {
+    return "pending";
+  }
+
+  if (
+    reservation.status ===
+    "booked"
+  ) {
+    return "booked";
+  }
+
+  if (
+    reservation.status ===
+    "waitlisted"
+  ) {
+    return "waitlisted";
+  }
+
+  return null;
+}
+
+
+function reservationTouchesDate(
+  reservation,
+  dateString
+) {
+  const arrival =
+    parseDate(
+      reservation.arrival_date
+    );
+
+  const departure =
+    parseDate(
+      reservation.departure_date
+    );
+
+  const date =
+    parseDate(
+      dateString
+    );
+
+  /*
+    Departure day is open for
+    the next guest's arrival.
+  */
+
+  return (
+    date >= arrival &&
+    date < departure
+  );
+}
+
+
+function calendarItemsForDay(
+  propertyId,
+  dateString
+) {
+  return currentReservations
+    .filter(
+      reservation =>
+        reservation.property_id ===
+          propertyId &&
+
+        reservationCalendarStatus(
+          reservation
+        ) &&
+
+        reservationTouchesDate(
+          reservation,
+          dateString
+        )
+    )
+    .map(
+      reservation => ({
+        reservation,
+
+        status:
+          reservationCalendarStatus(
+            reservation
+          )
+      })
+    );
+}
+
+
+function calendarItemLabel(
+  reservation,
+  status
+) {
+  const name =
+    reservation.guest_name ||
+    "Guest";
+
+  if (
+    status ===
+    "pending_payment"
+  ) {
+    return `${name} · hold`;
+  }
+
+  if (
+    status ===
+    "waitlisted"
+  ) {
+    return `${name} · waitlist`;
+  }
+
+  if (
+    status ===
+    "pending"
+  ) {
+    return `${name} · request`;
+  }
+
+  return name;
+}
+
+
+function renderPropertyCalendar(
+  property
+) {
+  const year =
+    calendarDate.getFullYear();
+
+  const month =
+    calendarDate.getMonth();
+
+  const firstDay =
+    new Date(
+      year,
+      month,
+      1
+    );
+
+  const daysInMonth =
+    new Date(
+      year,
+      month + 1,
+      0
+    ).getDate();
+
+  let cells = "";
+
+  for (
+    let blank = 0;
+    blank <
+      firstDay.getDay();
+    blank++
+  ) {
+    cells += `
+      <div
+        class="owner-calendar-day blank"
+      ></div>
+    `;
+  }
+
+  for (
+    let day = 1;
+    day <= daysInMonth;
+    day++
+  ) {
+    const date =
+      new Date(
+        year,
+        month,
+        day
+      );
+
+    const dateString =
+      isoDate(date);
+
+    const items =
+      calendarItemsForDay(
+        property.id,
+        dateString
+      );
+
+    const itemHtml =
+      items
+        .map(
+          item => `
+            <span
+              class="owner-calendar-item ${item.status}"
+              title="${item.reservation.guest_name || "Guest"} · ${formatDate(item.reservation.arrival_date)} – ${formatDate(item.reservation.departure_date)}"
+            >
+              ${calendarItemLabel(
+                item.reservation,
+                item.status
+              )}
+            </span>
+          `
+        )
+        .join("");
+
+    cells += `
+      <div
+        class="owner-calendar-day"
+      >
+
+        <div
+          class="owner-calendar-date"
+        >
+          ${day}
+        </div>
+
+        ${itemHtml}
+
+      </div>
+    `;
+  }
+
+  return `
+    <section
+      class="calendar-property"
+    >
+
+      <h3>
+        ${property.name}
+      </h3>
+
+      <div
+        class="owner-calendar-grid"
+      >
+
+        <div
+          class="owner-calendar-weekday"
+        >
+          Sun
+        </div>
+
+        <div
+          class="owner-calendar-weekday"
+        >
+          Mon
+        </div>
+
+        <div
+          class="owner-calendar-weekday"
+        >
+          Tue
+        </div>
+
+        <div
+          class="owner-calendar-weekday"
+        >
+          Wed
+        </div>
+
+        <div
+          class="owner-calendar-weekday"
+        >
+          Thu
+        </div>
+
+        <div
+          class="owner-calendar-weekday"
+        >
+          Fri
+        </div>
+
+        <div
+          class="owner-calendar-weekday"
+        >
+          Sat
+        </div>
+
+        ${cells}
+
+      </div>
+
+    </section>
+  `;
+}
+
+
+function renderOwnerCalendar() {
+  if (
+    !ownerCalendar
+  ) {
+    return;
+  }
+
+  const monthTitle =
+    calendarDate
+      .toLocaleDateString(
+        "en-US",
+        {
+          month:
+            "long",
+
+          year:
+            "numeric"
+        }
+      );
+
+  ownerCalendar.innerHTML = `
+    <h2
+      style="
+        text-align:center;
+        margin:0 0 22px;
+        font-family:Georgia,serif;
+        font-weight:400;
+      "
+    >
+      ${monthTitle}
+    </h2>
+
+    ${
+      currentProperties
+        .map(
+          renderPropertyCalendar
+        )
+        .join("")
+    }
+  `;
+}
+
+
 function reservationCard(r) {
   const status =
-    r.status || "pending";
+    r.status ||
+    "pending";
 
   const paymentStatus =
-    r.payment_status || "waiting";
+    r.payment_status ||
+    "waiting";
 
 
   const showAccept =
-    status === "pending" ||
-    status === "requested";
+    status ===
+      "pending" ||
+    status ===
+      "requested";
 
 
   const showDecline =
-    status === "pending" ||
-    status === "requested";
+    status ===
+      "pending" ||
+    status ===
+      "requested";
 
 
   const showCancel =
-    status === "pending_payment" ||
-    status === "booked";
+    status ===
+      "pending_payment" ||
+    status ===
+      "booked";
 
 
   const showPaymentForm =
-    paymentStatus !== "paid" &&
-    status !== "declined" &&
-    status !== "cancelled";
+    paymentStatus !==
+      "paid" &&
+
+    status !==
+      "declined" &&
+
+    status !==
+      "cancelled" &&
+
+    status !==
+      "waitlisted";
 
 
   const showPaymentSummary =
-    paymentStatus === "paid";
+    paymentStatus ===
+    "paid";
 
 
   return `
@@ -431,7 +931,9 @@ function reservationCard(r) {
 
 
         ${
-          r.hold_expires_at
+          r.hold_expires_at &&
+          status ===
+            "pending_payment"
             ? `
               <div class="meta hold">
 
@@ -458,7 +960,9 @@ function reservationCard(r) {
 
                 <div
                   class="meta"
-                  style="margin-top:6px;"
+                  style="
+                    margin-top:6px;
+                  "
                 >
 
                   ${formatMoney(
@@ -597,8 +1101,11 @@ function reservationCard(r) {
 
 async function refresh() {
   try {
-    portalMessage.className = "";
-    portalMessage.textContent = "";
+    portalMessage.className =
+      "";
+
+    portalMessage.textContent =
+      "";
 
     const rows =
       await loadReservations();
@@ -616,6 +1123,8 @@ async function refresh() {
           </div>
         `;
 
+    renderOwnerCalendar();
+
   } catch (err) {
     message(
       portalMessage,
@@ -631,23 +1140,28 @@ function toggleBrokerageFields() {
     bookingSource.value ===
     "brokerage"
   ) {
-    brokerageFields.classList.add(
-      "show"
-    );
+    brokerageFields
+      .classList
+      .add("show");
   } else {
-    brokerageFields.classList.remove(
-      "show"
-    );
+    brokerageFields
+      .classList
+      .remove("show");
   }
 }
 
 
 function showPortal() {
-  loginView.hidden = true;
-  portalView.hidden = false;
+  loginView.hidden =
+    true;
 
-  loadProperties();
-  refresh();
+  portalView.hidden =
+    false;
+
+  loadProperties()
+    .then(
+      () => refresh()
+    );
 }
 
 
@@ -658,8 +1172,11 @@ function signOut() {
     "dts_token"
   );
 
-  portalView.hidden = true;
-  loginView.hidden = false;
+  portalView.hidden =
+    true;
+
+  loginView.hidden =
+    false;
 }
 
 
@@ -670,7 +1187,9 @@ loginForm.addEventListener(
     event.preventDefault();
 
     const form =
-      new FormData(loginForm);
+      new FormData(
+        loginForm
+      );
 
     try {
       await login(
@@ -703,6 +1222,54 @@ bookingSource.addEventListener(
 );
 
 
+calendarPrev.addEventListener(
+  "click",
+  () => {
+    calendarDate =
+      new Date(
+        calendarDate.getFullYear(),
+        calendarDate.getMonth() - 1,
+        1
+      );
+
+    renderOwnerCalendar();
+  }
+);
+
+
+calendarNext.addEventListener(
+  "click",
+  () => {
+    calendarDate =
+      new Date(
+        calendarDate.getFullYear(),
+        calendarDate.getMonth() + 1,
+        1
+      );
+
+    renderOwnerCalendar();
+  }
+);
+
+
+calendarToday.addEventListener(
+  "click",
+  () => {
+    const today =
+      new Date();
+
+    calendarDate =
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1
+      );
+
+    renderOwnerCalendar();
+  }
+);
+
+
 manualReservationForm.addEventListener(
   "submit",
   async event => {
@@ -722,50 +1289,70 @@ manualReservationForm.addEventListener(
 
 
     const source =
-      form.get("booking_source");
+      form.get(
+        "booking_source"
+      );
 
 
     const amountDue =
-      form.get("amount_due");
+      form.get(
+        "amount_due"
+      );
 
 
     const paymentStatus =
-      form.get("payment_status");
+      form.get(
+        "payment_status"
+      );
 
 
     const reservation = {
 
       property_id:
-        form.get("property_id"),
+        form.get(
+          "property_id"
+        ),
 
       booking_source:
         source,
 
       guest_name:
-        form.get("guest_name"),
+        form.get(
+          "guest_name"
+        ),
 
       guest_email:
-        form.get("guest_email") ||
-        null,
+        form.get(
+          "guest_email"
+        ) || null,
 
       guest_phone:
-        form.get("guest_phone") ||
-        null,
+        form.get(
+          "guest_phone"
+        ) || null,
 
       adults:
         Number(
-          form.get("adults") || 1
+          form.get(
+            "adults"
+          ) || 1
         ),
 
       arrival_date:
-        form.get("arrival_date"),
+        form.get(
+          "arrival_date"
+        ),
 
       departure_date:
-        form.get("departure_date"),
+        form.get(
+          "departure_date"
+        ),
 
       amount_due:
         amountDue
-          ? Number(amountDue)
+          ? Number(
+              amountDue
+            )
           : null,
 
       payment_status:
@@ -775,28 +1362,32 @@ manualReservationForm.addEventListener(
         "booked",
 
       brokerage_name:
-        source === "brokerage"
+        source ===
+          "brokerage"
           ? form.get(
               "brokerage_name"
             ) || null
           : null,
 
       agent_name:
-        source === "brokerage"
+        source ===
+          "brokerage"
           ? form.get(
               "agent_name"
             ) || null
           : null,
 
       agent_phone:
-        source === "brokerage"
+        source ===
+          "brokerage"
           ? form.get(
               "agent_phone"
             ) || null
           : null,
 
       agent_email:
-        source === "brokerage"
+        source ===
+          "brokerage"
           ? form.get(
               "agent_email"
             ) || null
@@ -822,9 +1413,12 @@ manualReservationForm.addEventListener(
       );
 
 
-      manualReservationForm.reset();
+      manualReservationForm
+        .reset();
+
 
       toggleBrokerageFields();
+
 
       await refresh();
 
@@ -873,11 +1467,13 @@ reservationList.addEventListener(
 
     try {
 
-      button.disabled = true;
+      button.disabled =
+        true;
 
 
       if (
-        action === "accept"
+        action ===
+        "accept"
       ) {
 
         await updateReservation(
@@ -907,7 +1503,8 @@ reservationList.addEventListener(
 
 
       if (
-        action === "decline"
+        action ===
+        "decline"
       ) {
 
         await updateReservation(
@@ -931,7 +1528,8 @@ reservationList.addEventListener(
 
 
       if (
-        action === "cancel"
+        action ===
+        "cancel"
       ) {
 
         const confirmed =
@@ -964,26 +1562,31 @@ reservationList.addEventListener(
 
         message(
           portalMessage,
-          "Reservation cancelled. The dates can be made available again."
+          "Reservation cancelled. The dates are available again."
         );
 
       }
 
 
       if (
-        action === "paid"
+        action ===
+        "paid"
       ) {
 
         const amount =
-          card.querySelector(
-            "[data-amount]"
-          ).value;
+          card
+            .querySelector(
+              "[data-amount]"
+            )
+            .value;
 
 
         const method =
-          card.querySelector(
-            "[data-method]"
-          ).value;
+          card
+            .querySelector(
+              "[data-method]"
+            )
+            .value;
 
 
         if (
