@@ -132,6 +132,20 @@ function formatDate(value) {
   );
 }
 
+function formatMoney(value) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  return Number(value).toLocaleString(
+    "en-US",
+    {
+      style: "currency",
+      currency: "USD"
+    }
+  );
+}
+
 function reservationCard(r) {
   const status = r.status || "pending";
   const paymentStatus = r.payment_status || "waiting";
@@ -147,6 +161,14 @@ function reservationCard(r) {
   const showCancel =
     status === "pending_payment" ||
     status === "booked";
+
+  const showPaymentForm =
+    paymentStatus !== "paid" &&
+    status !== "declined" &&
+    status !== "cancelled";
+
+  const showPaymentSummary =
+    paymentStatus === "paid";
 
   return `
     <article class="card res" data-id="${r.id}">
@@ -179,30 +201,55 @@ function reservationCard(r) {
             : ""
         }
 
-        <div class="money">
-          <strong>Log payment</strong>
+        ${
+          showPaymentSummary
+            ? `
+              <div class="money">
+                <strong>Payment received</strong>
+                <div class="meta" style="margin-top:6px;">
+                  ${formatMoney(r.amount_received)}
+                  ${r.payment_method
+                    ? ` · ${r.payment_method.replaceAll("_", " ")}`
+                    : ""}
+                  ${r.payment_received_at
+                    ? `<br>${new Date(r.payment_received_at).toLocaleString()}`
+                    : ""}
+                </div>
+              </div>
+            `
+            : ""
+        }
 
-          <div class="row payment-row">
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Amount"
-              data-amount
-            >
+        ${
+          showPaymentForm
+            ? `
+              <div class="money">
+                <strong>Log payment</strong>
 
-            <select data-method>
-              <option value="zelle">Zelle</option>
-              <option value="venmo">Venmo</option>
-              <option value="credit_card">Credit card</option>
-              <option value="check">Check</option>
-            </select>
+                <div class="row payment-row">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Amount"
+                    data-amount
+                  >
 
-            <button data-action="paid">
-              Mark paid
-            </button>
-          </div>
-        </div>
+                  <select data-method>
+                    <option value="zelle">Zelle</option>
+                    <option value="venmo">Venmo</option>
+                    <option value="credit_card">Credit card</option>
+                    <option value="check">Check</option>
+                  </select>
+
+                  <button data-action="paid">
+                    Mark paid
+                  </button>
+                </div>
+              </div>
+            `
+            : ""
+        }
       </div>
 
       <div class="actions">
