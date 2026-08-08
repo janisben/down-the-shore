@@ -151,8 +151,69 @@
     }
 
     #ownerCalendarSection,
+    #ratesSection,
     #cleaningDashboardSection {
       margin-bottom: 30px;
+    }
+
+    #ratesSection button {
+      padding: 9px 12px;
+      height: auto;
+      min-height: 0;
+      width: auto;
+    }
+
+    .rates-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .rate-card {
+      border: 1px solid #ddd;
+      padding: 16px;
+      background: #faf8f4;
+    }
+
+    .rate-card-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .rate-card label,
+    .rates-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .rate-card input,
+    .rate-card select,
+    .rate-card textarea,
+    .rates-form input,
+    .rates-form select,
+    .rates-form textarea {
+      padding: 9px;
+      border: 1px solid #ccc;
+      font: inherit;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .rate-blocked-row {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center;
+      gap: 8px !important;
+      padding-bottom: 9px;
+    }
+
+    .rate-blocked-row input {
+      width: auto;
     }
 
     #ownerCalendar {
@@ -317,7 +378,8 @@
     @media (max-width: 700px) {
       .res,
       .form-grid,
-      .brokerage-fields.show {
+      .brokerage-fields.show,
+      .rate-card-grid {
         grid-template-columns: 1fr;
       }
 
@@ -485,6 +547,85 @@
         </form>
 
         <div id="manualReservationMessage"></div>
+      </section>
+
+
+      <section class="card" id="ratesSection">
+
+        <div>
+          <div class="eyebrow">RATES &amp; AVAILABILITY</div>
+          <h2 style="margin:4px 0 8px;">
+            Pricing and stay rules
+          </h2>
+          <div class="meta">
+            Set weekly prices, flexible shorter stays, minimum nights, or block dates.
+            Add a new period whenever you want to change pricing for specific dates.
+          </div>
+        </div>
+
+        <form id="ratePeriodForm" class="rates-form" style="margin-top:18px;">
+          <div class="form-grid">
+
+            <label>
+              Property
+              <select name="property_id" id="rateProperty" required>
+                <option value="">Choose property</option>
+              </select>
+            </label>
+
+            <label>
+              Stay rule
+              <select name="stay_rule" id="rateStayRule">
+                <option value="weekly">Weekly only</option>
+                <option value="flexible">Flexible / shorter stays</option>
+              </select>
+            </label>
+
+            <label>
+              Start date
+              <input type="date" name="start_date" required>
+            </label>
+
+            <label>
+              End date
+              <input type="date" name="end_date" required>
+            </label>
+
+            <label>
+              Weekly price
+              <input type="number" name="weekly_price" min="0" step="0.01" placeholder="Example: 2200">
+            </label>
+
+            <label>
+              Nightly price
+              <input type="number" name="nightly_price" min="0" step="0.01" placeholder="For flexible stays">
+            </label>
+
+            <label>
+              Minimum nights
+              <input type="number" name="minimum_nights" min="1" value="7">
+            </label>
+
+            <label class="rate-blocked-row">
+              <input type="checkbox" name="blocked">
+              Block these dates
+            </label>
+
+            <label class="full">
+              Notes
+              <textarea name="notes" rows="2" placeholder="Optional owner note"></textarea>
+            </label>
+
+          </div>
+
+          <div style="margin-top:14px;">
+            <button type="submit">Add rate period</button>
+          </div>
+        </form>
+
+        <div id="ratePeriodMessage"></div>
+        <div id="ratePeriodsList" class="rates-list"></div>
+
       </section>
 
       <section class="card" id="ownerCalendarSection">
