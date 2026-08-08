@@ -103,14 +103,9 @@ function renderHome() {
 
 function supabaseHeaders(prefer = "") {
   const headers = {
-    apikey:
-      data.supabase.publishableKey,
-
-    Authorization:
-      `Bearer ${data.supabase.publishableKey}`,
-
-    "Content-Type":
-      "application/json"
+    apikey: data.supabase.publishableKey,
+    Authorization: `Bearer ${data.supabase.publishableKey}`,
+    "Content-Type": "application/json"
   };
 
   if (prefer) {
@@ -128,13 +123,9 @@ async function getPropertyUuid(databaseName) {
     `&limit=1`;
 
   const response =
-    await fetch(
-      url,
-      {
-        headers:
-          supabaseHeaders()
-      }
-    );
+    await fetch(url, {
+      headers: supabaseHeaders()
+    });
 
   if (!response.ok) {
     throw new Error(
@@ -160,15 +151,10 @@ async function getAvailability(propertyId) {
       `${data.supabase.url}/rest/v1/rpc/get_property_availability`,
       {
         method: "POST",
-
-        headers:
-          supabaseHeaders(),
-
-        body:
-          JSON.stringify({
-            p_property_id:
-              propertyId
-          })
+        headers: supabaseHeaders(),
+        body: JSON.stringify({
+          p_property_id: propertyId
+        })
       }
     );
 
@@ -231,12 +217,6 @@ function dateInsideReservation(
     parseDate(
       reservation.departure_date
     );
-
-  /*
-    Departure day itself is NOT blocked.
-    This lets one guest check out
-    and another guest arrive the same day.
-  */
 
   return (
     date >= arrival &&
@@ -308,10 +288,7 @@ async function submitReservation(
   const departure =
     formData.get("departure");
 
-  if (
-    !arrival ||
-    !departure
-  ) {
+  if (!arrival || !departure) {
     throw new Error(
       "Choose your arrival and departure dates."
     );
@@ -348,8 +325,7 @@ async function submitReservation(
     );
 
   const payload = {
-    property_id:
-      propertyId,
+    property_id: propertyId,
 
     guest_name:
       formData
@@ -366,11 +342,8 @@ async function submitReservation(
         .get("phone")
         .trim() || null,
 
-    arrival_date:
-      arrival,
-
-    departure_date:
-      departure,
+    arrival_date: arrival,
+    departure_date: departure,
 
     adults:
       Number(
@@ -403,12 +376,10 @@ async function submitReservation(
       `${data.supabase.url}/rest/v1/reservations`,
       {
         method: "POST",
-
         headers:
           supabaseHeaders(
             "return=minimal"
           ),
-
         body:
           JSON.stringify(payload)
       }
@@ -436,9 +407,12 @@ function injectCalendarStyles() {
 
     .availability-wrap {
       margin: 0 0 28px;
-      padding: 20px;
+      padding: 18px;
       background: #fff;
       border: 1px solid rgba(36,35,31,.14);
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
     }
 
     .availability-heading {
@@ -472,8 +446,12 @@ function injectCalendarStyles() {
 
     .calendar-months {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 20px;
+    }
+
+    .calendar-months .calendar-month:nth-child(2) {
+      display: none;
     }
 
     .calendar-month h4 {
@@ -500,11 +478,13 @@ function injectCalendarStyles() {
 
     .calendar-day {
       aspect-ratio: 1;
+      min-width: 0;
       border: 1px solid transparent;
       background: #f7f4ef;
       cursor: pointer;
       font-size: 12px;
       position: relative;
+      padding: 0;
     }
 
     .calendar-day:hover {
@@ -543,9 +523,9 @@ function injectCalendarStyles() {
     .availability-legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
+      gap: 12px;
       margin-top: 16px;
-      font-size: 12px;
+      font-size: 11px;
       color: #716f68;
     }
 
@@ -559,6 +539,7 @@ function injectCalendarStyles() {
       width: 12px;
       height: 12px;
       border: 1px solid #ccc;
+      flex: 0 0 auto;
     }
 
     .legend-available {
@@ -585,12 +566,12 @@ function injectCalendarStyles() {
     }
 
     @media (max-width: 750px) {
-      .calendar-months {
-        grid-template-columns: 1fr;
+      .availability-wrap {
+        padding: 14px;
       }
 
-      .calendar-months .calendar-month:nth-child(2) {
-        display: none;
+      .availability-heading h3 {
+        font-size: 21px;
       }
     }
   `;
@@ -896,14 +877,6 @@ async function renderProperty() {
   form.elements.guests.max =
     String(property.sleeps);
 
-  /*
-    Keep the existing fields visible
-    so guests can clearly see
-    the selected dates,
-    but make the visual calendar
-    the main way dates are chosen.
-  */
-
   form.elements.arrival.readOnly =
     true;
 
@@ -980,7 +953,6 @@ async function renderProperty() {
 
       </div>
 
-
       <div class="calendar-months">
 
         ${renderMonth(
@@ -1003,7 +975,6 @@ async function renderProperty() {
 
       </div>
 
-
       <div class="availability-legend">
 
         <span class="legend-item">
@@ -1022,7 +993,6 @@ async function renderProperty() {
         </span>
 
       </div>
-
 
       <div
         class="calendar-message"
@@ -1115,16 +1085,6 @@ async function renderProperty() {
             ) {
               return;
             }
-
-            /*
-              First click = arrival.
-
-              Second click = departure.
-
-              If someone clicks an earlier
-              date for the second click,
-              we simply restart the selection.
-            */
 
             if (
               !selectedArrival ||
