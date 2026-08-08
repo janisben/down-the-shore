@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Confirm Cleaning | Down the Shore</title>
+
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    body {
+      background: #f7f4ef;
+    }
+
+    .wrap {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 28px;
+    }
+
+    .eyebrow {
+      letter-spacing: .18em;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .meta {
+      color: #716f68;
+      line-height: 1.6;
+      margin: 18px 0;
+    }
+
+    .notice {
+      padding: 14px;
+      margin-top: 18px;
+      background: #e4ede9;
+    }
+
+    .error {
+      background: #f4e3e1;
+      color: #7a2f2a;
+    }
+
+    button {
+      padding: 11px 16px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button[disabled] {
+      opacity: .6;
+      cursor: default;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="card">
+
+      <div class="eyebrow">
+        DOWN THE SHORE
+      </div>
+
+      <h1>
+        Cleaning confirmation
+      </h1>
+
+      <div id="loading">
+        Loading cleaning details…
+      </div>
+
+      <div id="assignment" hidden>
+
+        <div class="meta">
+
+          <div>
+            <strong>Property:</strong>
+            <span id="propertyName"></span>
+          </div>
+
+          <div>
+            <strong>Checkout date:</strong>
+            <span id="checkoutDate"></span>
+          </div>
+
+          <div id="cleanerRow" hidden>
+            <strong>Cleaner:</strong>
+            <span id="cleanerName"></span>
+          </div>
+
+        </div>
+
+        <button
+          type="button"
+          id="confirmButton"
+        >
+          Confirm cleaning
+        </button>
+
+      </div>
+
+      <div id="message"></div>
+
+    </div>
+
+  </div>
+
+  <script src="site-data.js"></script>
+
+  <script>
+    const cfg =
+      window.SITE_DATA.supabase;
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const token =
+      params.get("token");
+
+    const loading =
+      document.getElementById("loading");
+
+    const assignment =
+      document.getElementById("assignment");
+
+    const propertyName =
+      document.getElementById("propertyName");
+
+    const checkoutDate =
+      document.getElementById("checkoutDate");
+
+    const cleanerRow =
+      document.getElementById("cleanerRow");
+
+    const cleanerName =
+      document.getElementById("cleanerName");
+
+    const confirmButton =
+      document.getElementById("confirmButton");
+
+    const messageBox =
+      document.getElementById("message");
+
+
+    function headers() {
+      return {
+        apikey:
+          cfg.publishableKey,
+
+        Authorization:
+          `Bearer ${cfg.publishableKey}`,
+
+        "Content-Type":
+          "application/json"
+      };
+    }
+
+
+    function showMessage(
+      text,
+      isError = false
+    ) {
+      messageBox.className =
+        isError
+          ? "notice error"
+          : "notice";
+
+      messageBox.textContent =
+        text;
+    }
+
+
+    function formatDate(value) {
+      return new Date(
+        `${value}T12:00:00`
+      ).toLocaleDateString(
+        "en-US",
+        {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric"
+        }
+      );
+    }
+
+
+    async function loadAssignment() {
+      if (!token) {
+        loading.hidden = true;
+
+        showMessage(
+          "This cleaning confirmation link is invalid.",
+          true
+        );
+
+        return;
+      }
+
+
+      const response =
+        await fetch(
+          `${cfg.url}/rest/v1/rpc/get_cleaning_confirmation`,
+          {
+            method: "POST",
+
+            headers:
+              headers(),
+
+            body:
+              JSON.stringify({
+                p_token:
+                  token
+              })
+          }
+        );
+
+
+      if (!response.ok) {
+        loading.hidden = true;
+
+        showMessage(
+          "Could not load this cleaning assignment.",
+          true
+        );
+
+        return;
+      }
+
+
+      const rows =
+        await response.json();
+
+
+      if (!rows.length) {
+        loading.hidden = true;
+
+        showMessage(
+          "This cleaning confirmation link is invalid or no longer active.",
+          true
+        );
+
+        return;
+      }
+
+
+      const row =
+        rows[0];
+
+
+      loading.hidden =
+        true;
+
+      assignment.hidden =
+        false;
+
+
+      propertyName.textContent =
+        row.property_name;
+
+
+      checkoutDate.textContent =
+        formatDate(
+          row.checkout_date
+        );
+
+
+      if (row.cleaner_name) {
+        cleanerRow.hidden =
+          false;
+
+        cleanerName.textContent =
+          row.cleaner_name;
+      }
+
+
+      if (
+        row.status ===
+        "confirmed"
+      ) {
+        confirmButton.disabled =
+          true;
+
+        confirmButton.textContent =
+          "Already confirmed";
+
+        showMessage(
+          "This cleaning has already been confirmed."
+        );
+      }
+
+
+      if (
+        row.status ===
+        "completed"
+      ) {
+        confirmButton.disabled =
+          true;
+
+        confirmButton.textContent =
+          "Completed";
+
+        showMessage(
+          "This cleaning has already been completed."
+        );
+      }
+    }
+
+
+    confirmButton.addEventListener(
+      "click",
+      async () => {
+
+        confirmButton.disabled =
+          true;
+
+        confirmButton.textContent =
+          "Confirming…";
+
+
+        const response =
+          await fetch(
+            `${cfg.url}/rest/v1/rpc/confirm_cleaning`,
+            {
+              method: "POST",
+
+              headers:
+                headers(),
+
+              body:
+                JSON.stringify({
+                  p_token:
+                    token
+                })
+            }
+          );
+
+
+        if (!response.ok) {
+          confirmButton.disabled =
+            false;
+
+          confirmButton.textContent =
+            "Confirm cleaning";
+
+          showMessage(
+            "Could not confirm this cleaning. Please try again.",
+            true
+          );
+
+          return;
+        }
+
+
+        const rows =
+          await response.json();
+
+        const result =
+          rows[0];
+
+
+        if (!result.success) {
+          confirmButton.disabled =
+            false;
+
+          confirmButton.textContent =
+            "Confirm cleaning";
+
+          showMessage(
+            result.message,
+            true
+          );
+
+          return;
+        }
+
+
+        confirmButton.disabled =
+          true;
+
+        confirmButton.textContent =
+          "Confirmed";
+
+        showMessage(
+          result.message
+        );
+      }
+    );
+
+
+    loadAssignment();
+  </script>
+</body>
+</html>
