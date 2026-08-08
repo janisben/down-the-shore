@@ -1,4 +1,5 @@
 const cfg = window.SITE_DATA.supabase;
+
 let token = sessionStorage.getItem("dts_token") || "";
 
 const loginView = document.getElementById("loginView");
@@ -9,6 +10,22 @@ const portalMessage = document.getElementById("portalMessage");
 const reservationList = document.getElementById("reservationList");
 const logoutButton = document.getElementById("logoutButton");
 
+const manualReservationForm =
+  document.getElementById("manualReservationForm");
+
+const manualReservationMessage =
+  document.getElementById("manualReservationMessage");
+
+const manualProperty =
+  document.getElementById("manualProperty");
+
+const bookingSource =
+  document.getElementById("bookingSource");
+
+const brokerageFields =
+  document.getElementById("brokerageFields");
+
+
 const headers = (extra = {}) => ({
   apikey: cfg.publishableKey,
   Authorization: `Bearer ${token}`,
@@ -16,10 +33,15 @@ const headers = (extra = {}) => ({
   ...extra
 });
 
+
 function message(el, text, isError = false) {
-  el.className = isError ? "notice error" : "notice";
+  el.className = isError
+    ? "notice error"
+    : "notice";
+
   el.textContent = text;
 }
+
 
 async function login(email, password) {
   const res = await fetch(
@@ -30,72 +52,173 @@ async function login(email, password) {
         apikey: cfg.publishableKey,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({
+        email,
+        password
+      })
     }
   );
 
   const body = await res.json();
 
   if (!res.ok) {
-    throw new Error(body.msg || "Could not sign in.");
+    throw new Error(
+      body.msg || "Could not sign in."
+    );
   }
 
   token = body.access_token;
-  sessionStorage.setItem("dts_token", token);
+
+  sessionStorage.setItem(
+    "dts_token",
+    token
+  );
 }
 
-async function fetchTable(table, query = "") {
+
+async function fetchTable(
+  table,
+  query = ""
+) {
   const res = await fetch(
     `${cfg.url}/rest/v1/${table}${query}`,
-    { headers: headers() }
+    {
+      headers: headers()
+    }
   );
 
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(
+      await res.text()
+    );
   }
 
   return res.json();
 }
 
-async function loadReservations() {
-  const [reservations, properties] = await Promise.all([
-    fetchTable("reservations", "?select=*&order=created_at.desc"),
-    fetchTable("properties", "?select=id,name")
-  ]);
 
-  const propertyMap = Object.fromEntries(
-    properties.map(p => [p.id, p.name])
+async function loadProperties() {
+  const properties = await fetchTable(
+    "properties",
+    "?select=id,name&order=name"
   );
 
-  return reservations.map(r => ({
-    ...r,
-    property_name: propertyMap[r.property_id] || "Property"
-  }));
+  manualProperty.innerHTML =
+    `<option value="">
+      Choose property
+    </option>` +
+    properties
+      .map(
+        p =>
+          `<option value="${p.id}">
+            ${p.name}
+          </option>`
+      )
+      .join("");
+
+  return properties;
 }
 
-async function updateReservation(id, changes) {
+
+async function loadReservations() {
+  const [
+    reservations,
+    properties
+  ] = await Promise.all([
+    fetchTable(
+      "reservations",
+      "?select=*&order=created_at.desc"
+    ),
+
+    fetchTable(
+      "properties",
+      "?select=id,name"
+    )
+  ]);
+
+  const propertyMap =
+    Object.fromEntries(
+      properties.map(
+        p => [p.id, p.name]
+      )
+    );
+
+  return reservations.map(
+    r => ({
+      ...r,
+
+      property_name:
+        propertyMap[r.property_id] ||
+        "Property"
+    })
+  );
+}
+
+
+async function updateReservation(
+  id,
+  changes
+) {
   const res = await fetch(
     `${cfg.url}/rest/v1/reservations?id=eq.${id}`,
     {
       method: "PATCH",
-      headers: headers({ Prefer: "return=minimal" }),
+
+      headers: headers({
+        Prefer: "return=minimal"
+      }),
+
       body: JSON.stringify(changes)
     }
   );
 
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(
+      await res.text()
+    );
   }
 }
 
-async function addPayment(id, amount, method) {
-  const now = new Date().toISOString();
+
+async function createReservation(data) {
+  const res = await fetch(
+    `${cfg.url}/rest/v1/reservations`,
+    {
+      method: "POST",
+
+      headers: headers({
+        Prefer: "return=minimal"
+      }),
+
+      body: JSON.stringify(data)
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
+async function addPayment(
+  id,
+  amount,
+  method
+) {
+  const now =
+    new Date().toISOString();
 
   const res = await fetch(
     `${cfg.url}/rest/v1/payments`,
     {
       method: "POST",
-      headers: headers({ Prefer: "return=minimal" }),
+
+      headers: headers({
+        Prefer: "return=minimal"
+      }),
+
       body: JSON.stringify({
         reservation_id: id,
         amount: Number(amount),
@@ -106,23 +229,37 @@ async function addPayment(id, amount, method) {
   );
 
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(
+      await res.text()
+    );
   }
 
-  await updateReservation(id, {
-    payment_status: "paid",
-    payment_method: method,
-    amount_received: Number(amount),
-    payment_received_at: now,
-    hold_expires_at: null,
-    status: "booked"
-  });
+  await updateReservation(
+    id,
+    {
+      payment_status: "paid",
+      payment_method: method,
+      amount_received:
+        Number(amount),
+
+      payment_received_at: now,
+
+      hold_expires_at: null,
+
+      status: "booked"
+    }
+  );
 }
 
-function formatDate(value) {
-  if (!value) return "";
 
-  return new Date(`${value}T12:00:00`).toLocaleDateString(
+function formatDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(
+    `${value}T12:00:00`
+  ).toLocaleDateString(
     "en-US",
     {
       month: "short",
@@ -132,12 +269,19 @@ function formatDate(value) {
   );
 }
 
+
 function formatMoney(value) {
-  if (value === null || value === undefined || value === "") {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return "";
   }
 
-  return Number(value).toLocaleString(
+  return Number(
+    value
+  ).toLocaleString(
     "en-US",
     {
       style: "currency",
@@ -146,87 +290,216 @@ function formatMoney(value) {
   );
 }
 
+
 function reservationCard(r) {
-  const status = r.status || "pending";
-  const paymentStatus = r.payment_status || "waiting";
+  const status =
+    r.status || "pending";
+
+  const paymentStatus =
+    r.payment_status || "waiting";
+
 
   const showAccept =
     status === "pending" ||
     status === "requested";
 
+
   const showDecline =
     status === "pending" ||
     status === "requested";
 
+
   const showCancel =
     status === "pending_payment" ||
     status === "booked";
+
 
   const showPaymentForm =
     paymentStatus !== "paid" &&
     status !== "declined" &&
     status !== "cancelled";
 
+
   const showPaymentSummary =
     paymentStatus === "paid";
 
+
   return `
-    <article class="card res" data-id="${r.id}">
+    <article
+      class="card res"
+      data-id="${r.id}"
+    >
+
       <div>
-        <h2>${r.guest_name || "Guest"}</h2>
+
+        <h2>
+          ${r.guest_name || "Guest"}
+        </h2>
 
         <div class="meta">
-          <strong>${r.property_name}</strong><br>
-          ${formatDate(r.arrival_date)} – ${formatDate(r.departure_date)}<br>
+
+          <strong>
+            ${r.property_name}
+          </strong>
+
+          <br>
+
+          ${formatDate(
+            r.arrival_date
+          )}
+
+          –
+
+          ${formatDate(
+            r.departure_date
+          )}
+
+          <br>
+
           ${r.guest_email || ""}
-          ${r.guest_phone ? ` · ${r.guest_phone}` : ""}<br>
-          ${r.adults || 0} guest(s)
-          ${r.dogs ? ` · ${r.dogs} dog(s)` : ""}
+
+          ${
+            r.guest_phone
+              ? ` · ${r.guest_phone}`
+              : ""
+          }
+
+          <br>
+
+          ${r.adults || 0}
+          guest(s)
+
+          ${
+            r.dogs
+              ? ` · ${r.dogs} dog(s)`
+              : ""
+          }
+
+          ${
+            r.booking_source
+              ? `<br>Source: ${r.booking_source.replaceAll("_", " ")}`
+              : ""
+          }
+
+          ${
+            r.brokerage_name
+              ? `<br>Brokerage: ${r.brokerage_name}`
+              : ""
+          }
+
+          ${
+            r.agent_name
+              ? `<br>Agent: ${r.agent_name}`
+              : ""
+          }
+
+          ${
+            r.agent_phone
+              ? ` · ${r.agent_phone}`
+              : ""
+          }
+
+          ${
+            r.agent_email
+              ? `<br>${r.agent_email}`
+              : ""
+          }
+
+          ${
+            r.amount_due
+              ? `<br>Amount due: ${formatMoney(r.amount_due)}`
+              : ""
+          }
+
+          ${
+            r.owner_notes
+              ? `<br>Notes: ${r.owner_notes}`
+              : ""
+          }
+
         </div>
+
 
         <span class="badge">
           ${status.replaceAll("_", " ")}
         </span>
 
         <span class="badge">
-          payment: ${paymentStatus.replaceAll("_", " ")}
+          payment:
+          ${paymentStatus.replaceAll("_", " ")}
         </span>
+
 
         ${
           r.hold_expires_at
-            ? `<div class="meta hold">
-                Hold expires:
-                ${new Date(r.hold_expires_at).toLocaleString()}
-               </div>`
-            : ""
-        }
-
-        ${
-          showPaymentSummary
             ? `
-              <div class="money">
-                <strong>Payment received</strong>
-                <div class="meta" style="margin-top:6px;">
-                  ${formatMoney(r.amount_received)}
-                  ${r.payment_method
-                    ? ` · ${r.payment_method.replaceAll("_", " ")}`
-                    : ""}
-                  ${r.payment_received_at
-                    ? `<br>${new Date(r.payment_received_at).toLocaleString()}`
-                    : ""}
-                </div>
+              <div class="meta hold">
+
+                Hold expires:
+
+                ${new Date(
+                  r.hold_expires_at
+                ).toLocaleString()}
+
               </div>
             `
             : ""
         }
 
+
+        ${
+          showPaymentSummary
+            ? `
+              <div class="money">
+
+                <strong>
+                  Payment received
+                </strong>
+
+                <div
+                  class="meta"
+                  style="margin-top:6px;"
+                >
+
+                  ${formatMoney(
+                    r.amount_received
+                  )}
+
+                  ${
+                    r.payment_method
+                      ? ` · ${r.payment_method.replaceAll("_", " ")}`
+                      : ""
+                  }
+
+                  ${
+                    r.payment_received_at
+                      ? `<br>${new Date(
+                          r.payment_received_at
+                        ).toLocaleString()}`
+                      : ""
+                  }
+
+                </div>
+
+              </div>
+            `
+            : ""
+        }
+
+
         ${
           showPaymentForm
             ? `
               <div class="money">
-                <strong>Log payment</strong>
 
-                <div class="row payment-row">
+                <strong>
+                  Log payment
+                </strong>
+
+                <div
+                  class="row payment-row"
+                >
+
                   <input
                     type="number"
                     step="0.01"
@@ -235,189 +508,535 @@ function reservationCard(r) {
                     data-amount
                   >
 
-                  <select data-method>
-                    <option value="zelle">Zelle</option>
-                    <option value="venmo">Venmo</option>
-                    <option value="credit_card">Credit card</option>
-                    <option value="check">Check</option>
+                  <select
+                    data-method
+                  >
+
+                    <option value="zelle">
+                      Zelle
+                    </option>
+
+                    <option value="venmo">
+                      Venmo
+                    </option>
+
+                    <option value="credit_card">
+                      Credit card
+                    </option>
+
+                    <option value="check">
+                      Check
+                    </option>
+
                   </select>
 
-                  <button data-action="paid">
+                  <button
+                    data-action="paid"
+                  >
                     Mark paid
                   </button>
+
                 </div>
+
               </div>
             `
             : ""
         }
+
       </div>
 
+
       <div class="actions">
+
         ${
           showAccept
-            ? `<button class="primary" data-action="accept">
+            ? `
+              <button
+                class="primary"
+                data-action="accept"
+              >
                 Accept · 24h hold
-               </button>`
+              </button>
+            `
             : ""
         }
+
 
         ${
           showDecline
-            ? `<button data-action="decline">
+            ? `
+              <button
+                data-action="decline"
+              >
                 Decline
-               </button>`
+              </button>
+            `
             : ""
         }
 
+
         ${
           showCancel
-            ? `<button class="danger" data-action="cancel">
+            ? `
+              <button
+                class="danger"
+                data-action="cancel"
+              >
                 Cancel reservation
-               </button>`
+              </button>
+            `
             : ""
         }
+
       </div>
+
     </article>
   `;
 }
+
 
 async function refresh() {
   try {
     portalMessage.className = "";
     portalMessage.textContent = "";
 
-    const rows = await loadReservations();
+    const rows =
+      await loadReservations();
 
-    reservationList.innerHTML = rows.length
-      ? rows.map(reservationCard).join("")
-      : `<div class="card">No reservation requests yet.</div>`;
+    reservationList.innerHTML =
+      rows.length
+        ? rows
+            .map(
+              reservationCard
+            )
+            .join("")
+        : `
+          <div class="card">
+            No reservation requests yet.
+          </div>
+        `;
+
   } catch (err) {
-    message(portalMessage, err.message, true);
+    message(
+      portalMessage,
+      err.message,
+      true
+    );
   }
 }
+
+
+function toggleBrokerageFields() {
+  if (
+    bookingSource.value ===
+    "brokerage"
+  ) {
+    brokerageFields.classList.add(
+      "show"
+    );
+  } else {
+    brokerageFields.classList.remove(
+      "show"
+    );
+  }
+}
+
 
 function showPortal() {
   loginView.hidden = true;
   portalView.hidden = false;
+
+  loadProperties();
   refresh();
 }
 
+
 function signOut() {
   token = "";
-  sessionStorage.removeItem("dts_token");
+
+  sessionStorage.removeItem(
+    "dts_token"
+  );
+
   portalView.hidden = true;
   loginView.hidden = false;
 }
 
-loginForm.addEventListener("submit", async event => {
-  event.preventDefault();
 
-  const form = new FormData(loginForm);
+loginForm.addEventListener(
+  "submit",
+  async event => {
 
-  try {
-    await login(
-      form.get("email"),
-      form.get("password")
-    );
+    event.preventDefault();
 
-    showPortal();
-  } catch (err) {
-    message(loginMessage, err.message, true);
+    const form =
+      new FormData(loginForm);
+
+    try {
+      await login(
+        form.get("email"),
+        form.get("password")
+      );
+
+      showPortal();
+
+    } catch (err) {
+      message(
+        loginMessage,
+        err.message,
+        true
+      );
+    }
   }
-});
+);
 
-logoutButton.addEventListener("click", signOut);
 
-reservationList.addEventListener("click", async event => {
-  const button = event.target.closest(
-    "button[data-action]"
-  );
+logoutButton.addEventListener(
+  "click",
+  signOut
+);
 
-  if (!button) return;
 
-  const card = button.closest("[data-id]");
-  const id = card.dataset.id;
-  const action = button.dataset.action;
+bookingSource.addEventListener(
+  "change",
+  toggleBrokerageFields
+);
 
-  try {
-    button.disabled = true;
 
-    if (action === "accept") {
-      await updateReservation(id, {
-        status: "pending_payment",
-        hold_expires_at:
-          new Date(
-            Date.now() + 24 * 60 * 60 * 1000
-          ).toISOString()
-      });
+manualReservationForm.addEventListener(
+  "submit",
+  async event => {
+
+    event.preventDefault();
+
+    manualReservationMessage.className =
+      "";
+
+    manualReservationMessage.textContent =
+      "";
+
+    const form =
+      new FormData(
+        manualReservationForm
+      );
+
+
+    const source =
+      form.get("booking_source");
+
+
+    const amountDue =
+      form.get("amount_due");
+
+
+    const paymentStatus =
+      form.get("payment_status");
+
+
+    const reservation = {
+
+      property_id:
+        form.get("property_id"),
+
+      booking_source:
+        source,
+
+      guest_name:
+        form.get("guest_name"),
+
+      guest_email:
+        form.get("guest_email") ||
+        null,
+
+      guest_phone:
+        form.get("guest_phone") ||
+        null,
+
+      adults:
+        Number(
+          form.get("adults") || 1
+        ),
+
+      arrival_date:
+        form.get("arrival_date"),
+
+      departure_date:
+        form.get("departure_date"),
+
+      amount_due:
+        amountDue
+          ? Number(amountDue)
+          : null,
+
+      payment_status:
+        paymentStatus,
+
+      status:
+        "booked",
+
+      brokerage_name:
+        source === "brokerage"
+          ? form.get(
+              "brokerage_name"
+            ) || null
+          : null,
+
+      agent_name:
+        source === "brokerage"
+          ? form.get(
+              "agent_name"
+            ) || null
+          : null,
+
+      agent_phone:
+        source === "brokerage"
+          ? form.get(
+              "agent_phone"
+            ) || null
+          : null,
+
+      agent_email:
+        source === "brokerage"
+          ? form.get(
+              "agent_email"
+            ) || null
+          : null,
+
+      owner_notes:
+        form.get(
+          "owner_notes"
+        ) || null
+    };
+
+
+    try {
+
+      await createReservation(
+        reservation
+      );
+
 
       message(
-        portalMessage,
-        "Accepted. The 24-hour payment hold has started."
+        manualReservationMessage,
+        "Reservation saved."
       );
-    }
 
-    if (action === "decline") {
-      await updateReservation(id, {
-        status: "declined",
-        hold_expires_at: null
-      });
+
+      manualReservationForm.reset();
+
+      toggleBrokerageFields();
+
+      await refresh();
+
+
+    } catch (err) {
 
       message(
-        portalMessage,
-        "Reservation request declined."
+        manualReservationMessage,
+        err.message,
+        true
       );
+
+    }
+  }
+);
+
+
+reservationList.addEventListener(
+  "click",
+  async event => {
+
+    const button =
+      event.target.closest(
+        "button[data-action]"
+      );
+
+
+    if (!button) {
+      return;
     }
 
-    if (action === "cancel") {
-      const confirmed = window.confirm(
-        "Cancel this reservation and reopen the dates?"
+
+    const card =
+      button.closest(
+        "[data-id]"
       );
 
-      if (!confirmed) {
-        button.disabled = false;
-        return;
-      }
 
-      await updateReservation(id, {
-        status: "cancelled",
-        hold_expires_at: null
-      });
+    const id =
+      card.dataset.id;
 
-      message(
-        portalMessage,
-        "Reservation cancelled. The dates can be made available again."
-      );
-    }
 
-    if (action === "paid") {
-      const amount =
-        card.querySelector("[data-amount]").value;
+    const action =
+      button.dataset.action;
 
-      const method =
-        card.querySelector("[data-method]").value;
 
-      if (!amount || Number(amount) <= 0) {
-        throw new Error(
-          "Enter the payment amount first."
+    try {
+
+      button.disabled = true;
+
+
+      if (
+        action === "accept"
+      ) {
+
+        await updateReservation(
+          id,
+          {
+            status:
+              "pending_payment",
+
+            hold_expires_at:
+              new Date(
+                Date.now() +
+                24 *
+                60 *
+                60 *
+                1000
+              ).toISOString()
+          }
         );
+
+
+        message(
+          portalMessage,
+          "Accepted. The 24-hour payment hold has started."
+        );
+
       }
 
-      await addPayment(id, amount, method);
+
+      if (
+        action === "decline"
+      ) {
+
+        await updateReservation(
+          id,
+          {
+            status:
+              "declined",
+
+            hold_expires_at:
+              null
+          }
+        );
+
+
+        message(
+          portalMessage,
+          "Reservation request declined."
+        );
+
+      }
+
+
+      if (
+        action === "cancel"
+      ) {
+
+        const confirmed =
+          window.confirm(
+            "Cancel this reservation and reopen the dates?"
+          );
+
+
+        if (!confirmed) {
+
+          button.disabled =
+            false;
+
+          return;
+
+        }
+
+
+        await updateReservation(
+          id,
+          {
+            status:
+              "cancelled",
+
+            hold_expires_at:
+              null
+          }
+        );
+
+
+        message(
+          portalMessage,
+          "Reservation cancelled. The dates can be made available again."
+        );
+
+      }
+
+
+      if (
+        action === "paid"
+      ) {
+
+        const amount =
+          card.querySelector(
+            "[data-amount]"
+          ).value;
+
+
+        const method =
+          card.querySelector(
+            "[data-method]"
+          ).value;
+
+
+        if (
+          !amount ||
+          Number(amount) <= 0
+        ) {
+
+          throw new Error(
+            "Enter the payment amount first."
+          );
+
+        }
+
+
+        await addPayment(
+          id,
+          amount,
+          method
+        );
+
+
+        message(
+          portalMessage,
+          `Payment logged as ${method.replaceAll("_", " ")}.`
+        );
+
+      }
+
+
+      await refresh();
+
+
+    } catch (err) {
 
       message(
         portalMessage,
-        `Payment logged as ${method.replaceAll("_", " ")}.`
+        err.message,
+        true
       );
-    }
 
-    await refresh();
-  } catch (err) {
-    message(portalMessage, err.message, true);
-  } finally {
-    button.disabled = false;
+
+    } finally {
+
+      button.disabled =
+        false;
+
+    }
   }
-});
+);
+
+
+toggleBrokerageFields();
+
 
 if (token) {
   showPortal();
