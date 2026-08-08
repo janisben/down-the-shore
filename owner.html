@@ -67,7 +67,8 @@
 
     .actions button,
     .money button,
-    .manual-form button {
+    .manual-form button,
+    #ownerCalendarSection button {
       padding: 9px 12px;
       height: auto;
       min-height: 0;
@@ -148,6 +149,119 @@
       gap: 14px;
     }
 
+    #ownerCalendarSection {
+      margin-bottom: 30px;
+    }
+
+    #ownerCalendar {
+      width: 100%;
+    }
+
+    .calendar-property {
+      margin-bottom: 24px;
+    }
+
+    .calendar-property:last-child {
+      margin-bottom: 0;
+    }
+
+    .calendar-property h3 {
+      margin: 0 0 12px;
+    }
+
+    .owner-calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .owner-calendar-weekday {
+      text-align: center;
+      font-size: 11px;
+      color: #716f68;
+      padding: 5px 0;
+    }
+
+    .owner-calendar-day {
+      min-height: 68px;
+      border: 1px solid #e0ddd7;
+      padding: 6px;
+      background: #faf8f4;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+
+    .owner-calendar-day.blank {
+      visibility: hidden;
+    }
+
+    .owner-calendar-date {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .owner-calendar-item {
+      display: block;
+      padding: 3px 5px;
+      margin-top: 3px;
+      font-size: 10px;
+      line-height: 1.25;
+      border-radius: 2px;
+    }
+
+    .owner-calendar-item.booked {
+      background: #dfe9e4;
+    }
+
+    .owner-calendar-item.pending_payment {
+      background: #f3e3ad;
+    }
+
+    .owner-calendar-item.pending {
+      background: #eee9df;
+    }
+
+    .owner-calendar-item.waitlisted {
+      background: #e8e1f0;
+    }
+
+    .owner-calendar-item.cancelled,
+    .owner-calendar-item.declined {
+      background: #eee;
+      color: #888;
+      text-decoration: line-through;
+    }
+
+    .owner-calendar-legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .legend-chip {
+      padding: 5px 8px;
+      font-size: 12px;
+      border-radius: 2px;
+    }
+
+    .legend-chip.booked {
+      background: #dfe9e4;
+    }
+
+    .legend-chip.pending {
+      background: #f3e3ad;
+    }
+
+    .legend-chip.waitlisted {
+      background: #e8e1f0;
+    }
+
+    .legend-chip.available {
+      background: #faf8f4;
+      border: 1px solid #ddd;
+    }
+
     [hidden] {
       display: none !important;
     }
@@ -165,6 +279,16 @@
 
       .full {
         grid-column: auto;
+      }
+
+      .owner-calendar-grid {
+        grid-template-columns: repeat(7, minmax(40px, 1fr));
+        overflow-x: auto;
+      }
+
+      .owner-calendar-day {
+        min-height: 60px;
+        padding: 4px;
       }
     }
   </style>
@@ -313,6 +437,44 @@
         </form>
 
         <div id="manualReservationMessage"></div>
+      </section>
+
+      <section class="card" id="ownerCalendarSection">
+
+        <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
+
+          <div>
+            <div class="eyebrow">MASTER CALENDAR</div>
+            <h2 style="margin:4px 0 0;">
+              Property calendar
+            </h2>
+          </div>
+
+          <div class="row">
+            <button type="button" id="calendarPrev">
+              ← Previous
+            </button>
+
+            <button type="button" id="calendarToday">
+              Today
+            </button>
+
+            <button type="button" id="calendarNext">
+              Next →
+            </button>
+          </div>
+
+        </div>
+
+        <div id="ownerCalendar"></div>
+
+        <div class="owner-calendar-legend">
+          <span class="legend-chip available">Available</span>
+          <span class="legend-chip pending">Pending / hold</span>
+          <span class="legend-chip booked">Booked</span>
+          <span class="legend-chip waitlisted">Waitlist</span>
+        </div>
+
       </section>
 
       <div id="reservationList"></div>
