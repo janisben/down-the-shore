@@ -66,7 +66,8 @@
     }
 
     .actions button,
-    .money button {
+    .money button,
+    .manual-form button {
       padding: 9px 12px;
       height: auto;
       min-height: 0;
@@ -101,17 +102,69 @@
       color: #7a2f2a;
     }
 
+    .manual-form {
+      margin-bottom: 30px;
+    }
+
+    .manual-form h2 {
+      margin-top: 0;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-weight: 600;
+    }
+
+    .form-grid input,
+    .form-grid select,
+    .form-grid textarea {
+      padding: 10px;
+      border: 1px solid #ccc;
+      font: inherit;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .brokerage-fields {
+      display: none;
+      grid-column: 1 / -1;
+    }
+
+    .brokerage-fields.show {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
     [hidden] {
       display: none !important;
     }
 
     @media (max-width: 700px) {
-      .res {
+      .res,
+      .form-grid,
+      .brokerage-fields.show {
         grid-template-columns: 1fr;
       }
 
       .actions {
         justify-content: flex-start;
+      }
+
+      .full {
+        grid-column: auto;
       }
     }
   </style>
@@ -158,6 +211,109 @@
       </div>
 
       <div id="portalMessage"></div>
+
+      <section class="card manual-form">
+        <h2>Add reservation manually</h2>
+
+        <form id="manualReservationForm">
+          <div class="form-grid">
+
+            <label>
+              Property
+              <select name="property_id" id="manualProperty" required>
+                <option value="">Choose property</option>
+              </select>
+            </label>
+
+            <label>
+              Booking source
+              <select name="booking_source" id="bookingSource" required>
+                <option value="direct_manual">Direct / manual</option>
+                <option value="brokerage">Real estate company</option>
+              </select>
+            </label>
+
+            <label>
+              Guest last name
+              <input type="text" name="guest_name" required>
+            </label>
+
+            <label>
+              Guest email
+              <input type="email" name="guest_email">
+            </label>
+
+            <label>
+              Guest phone
+              <input type="tel" name="guest_phone">
+            </label>
+
+            <label>
+              Number of guests
+              <input type="number" name="adults" min="1" value="1">
+            </label>
+
+            <label>
+              Arrival
+              <input type="date" name="arrival_date" required>
+            </label>
+
+            <label>
+              Departure
+              <input type="date" name="departure_date" required>
+            </label>
+
+            <label>
+              Amount due
+              <input type="number" name="amount_due" min="0" step="0.01">
+            </label>
+
+            <label>
+              Payment status
+              <select name="payment_status">
+                <option value="waiting">Waiting for payment</option>
+                <option value="paid">Already paid</option>
+              </select>
+            </label>
+
+            <div id="brokerageFields" class="brokerage-fields">
+              <label>
+                Brokerage
+                <input type="text" name="brokerage_name">
+              </label>
+
+              <label>
+                Agent name
+                <input type="text" name="agent_name">
+              </label>
+
+              <label>
+                Agent phone
+                <input type="tel" name="agent_phone">
+              </label>
+
+              <label>
+                Agent email
+                <input type="email" name="agent_email">
+              </label>
+            </div>
+
+            <label class="full">
+              Owner notes
+              <textarea name="owner_notes" rows="3"></textarea>
+            </label>
+
+          </div>
+
+          <div style="margin-top:16px;">
+            <button type="submit">
+              Save reservation
+            </button>
+          </div>
+        </form>
+
+        <div id="manualReservationMessage"></div>
+      </section>
 
       <div id="reservationList"></div>
 
