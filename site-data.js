@@ -37,7 +37,7 @@ window.SITE_DATA = {
       bathrooms: 1,
       sleeps: 8,
       dogFriendly: true,
-      image: "assets/garden-night.jpeg",
+     image: "assets/E9C0BBB1-28BE-4C74-A8C3-064DD75D5798_1_105_c.jpeg",
       imagePosition: "center",
       status: "Available for direct booking",
       summary: "A charming historic home with comfortable gathering spaces, a welcoming porch, and room to settle in.",
