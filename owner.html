@@ -1196,7 +1196,7 @@ button.danger {
   <div class="eyebrow">OWNER PORTAL</div>
   <h1>Down the Shore</h1>
 
-  <form id="loginForm" method="post" action="#" onsubmit="return false;">
+  <form id="loginForm">
     <label>
       Email
       <input
@@ -1754,12 +1754,6 @@ Notes
 
 <script>
 (function () {
-  const form =
-    document.getElementById("loginForm");
-
-  const messageBox =
-    document.getElementById("loginMessage");
-
   const forgotButton =
     document.getElementById("forgotPasswordButton");
 
@@ -1920,113 +1914,6 @@ Notes
     );
   }
 
-  if (!form) return;
-
-  form.addEventListener(
-    "submit",
-    async function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const submitButton =
-        form.querySelector(
-          'button[type="submit"]'
-        );
-
-      const formData =
-        new FormData(form);
-
-      const email =
-        String(
-          formData.get("email") || ""
-        ).trim();
-
-      const password =
-        String(
-          formData.get("password") || ""
-        );
-
-      if (!email || !password) {
-        messageBox.className =
-          "notice error";
-
-        messageBox.textContent =
-          "Enter your email and password.";
-
-        return false;
-      }
-
-      try {
-        if (submitButton) {
-          submitButton.disabled = true;
-          submitButton.textContent =
-            "Signing in…";
-        }
-
-        messageBox.className = "";
-        messageBox.textContent = "";
-
-        const cfg = getConfig();
-
-        const response =
-          await fetch(
-            `${cfg.url}/auth/v1/token?grant_type=password`,
-            {
-              method: "POST",
-              headers: {
-                "apikey": cfg.publishableKey,
-                "Content-Type":
-                  "application/json"
-              },
-              body: JSON.stringify({
-                email,
-                password
-              })
-            }
-          );
-
-        const body =
-          await response.json();
-
-        if (
-          !response.ok ||
-          !body.access_token
-        ) {
-          throw new Error(
-            body.msg ||
-            body.error_description ||
-            "Could not sign in."
-          );
-        }
-
-        sessionStorage.setItem(
-          "dts_token",
-          body.access_token
-        );
-
-        window.location.replace(
-          "owner.html"
-        );
-
-      } catch (error) {
-        messageBox.className =
-          "notice error";
-
-        messageBox.textContent =
-          error.message ||
-          "Could not sign in.";
-
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent =
-            "Sign in";
-        }
-      }
-
-      return false;
-    },
-    true
-  );
 })();
 </script>
 
