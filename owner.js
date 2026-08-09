@@ -1,4729 +1,1361 @@
-const cfg = window.SITE_DATA.supabase;
+(() => {
+  let selectedReservationId = null;
+  let selectedPropertyId = null;
+  let selectedStatus = "all";
+  let searchText = "";
+  let sortDirection = "asc";
 
-let token =
-  sessionStorage.getItem("dts_token") || "";
+  const style = document.createElement("style");
 
-let calendarDate =
-  new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    1
-  );
+  style.textContent = `
+    .dts-reservations-shell {
+      display: grid;
+      gap: 18px;
+    }
 
-let currentReservations = [];
-let currentProperties = [];
-let currentCleanings = [];
-let currentRatePeriods = [];
-let currentPayments = [];
-let currentPaymentSchedule = [];
+    .dts-property-tabs,
+    .dts-status-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
+    .dts-property-tab,
+    .dts-status-tab {
+      border: 1px solid #d9dee5;
+      background: #fff;
+      color: #172334;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-weight: 600;
+    }
 
-const loginView =
-  document.getElementById("loginView");
+    .dts-property-tab.active,
+    .dts-status-tab.active {
+      background: #0d2b4d;
+      border-color: #0d2b4d;
+      color: #fff;
+    }
 
-const portalView =
-  document.getElementById("portalView");
+    .dts-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
 
-const loginForm =
-  document.getElementById("loginForm");
+    .dts-toolbar input,
+    .dts-toolbar select {
+      border: 1px solid #d9dee5;
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
 
-const loginMessage =
-  document.getElementById("loginMessage");
+    .dts-toolbar input {
+      min-width: 280px;
+    }
 
-const portalMessage =
-  document.getElementById("portalMessage");
+    .dts-reservation-summary {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
 
-const reservationList =
-  document.getElementById("reservationList");
+    .dts-summary-item {
+      padding: 15px;
+      border-right: 1px solid #e5e7eb;
+    }
 
-const logoutButton =
-  document.getElementById("logoutButton");
+    .dts-summary-item:last-child {
+      border-right: 0;
+    }
 
-const manualReservationForm =
-  document.getElementById("manualReservationForm");
+    .dts-summary-label {
+      color: #6f7782;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
 
-const manualReservationMessage =
-  document.getElementById("manualReservationMessage");
+    .dts-summary-value {
+      color: #0d2b4d;
+      font-weight: 700;
+      font-size: 20px;
+    }
 
-const manualProperty =
-  document.getElementById("manualProperty");
+    .dts-reservation-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 18px;
+      align-items: start;
+    }
 
-const bookingSource =
-  document.getElementById("bookingSource");
+    .dts-reservation-table-card,
+    .dts-detail-panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      overflow: hidden;
+    }
 
-const brokerageFields =
-  document.getElementById("brokerageFields");
+    .dts-table-title {
+      padding: 16px 18px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #0d2b4d;
+      font-weight: 700;
+    }
 
-const ownerCalendar =
-  document.getElementById("ownerCalendar");
+    .dts-reservation-row {
+      display: grid;
+      grid-template-columns:
+        minmax(170px, 1.2fr)
+        minmax(145px, .95fr)
+        75px
+        38px
+        120px
+        100px
+        100px;
+      gap: 10px;
+      align-items: center;
+      padding: 13px 18px;
+      border-bottom: 1px solid #edf0f3;
+      font-size: 13px;
+    }
 
-const calendarPrev =
-  document.getElementById("calendarPrev");
+    .dts-reservation-row:last-child {
+      border-bottom: 0;
+    }
 
-const calendarNext =
-  document.getElementById("calendarNext");
+    .dts-reservation-head {
+      background: #fafbfc;
+      color: #707987;
+      font-size: 11px;
+      font-weight: 700;
+    }
 
-const calendarToday =
-  document.getElementById("calendarToday");
+    .dts-guest-name {
+      color: #172334;
+      font-weight: 700;
+    }
 
-const cleaningList =
-  document.getElementById("cleaningList");
+    .dts-guest-email {
+      color: #737b86;
+      font-size: 11px;
+      margin-top: 2px;
+      word-break: break-word;
+    }
 
-const cleaningMessage =
-  document.getElementById("cleaningMessage");
+    .dts-date-button {
+      border: 1px solid #d5dce5;
+      background: #f4f7fa;
+      color: #0d2b4d;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-weight: 700;
+      text-align: left;
+      width: 100%;
+    }
 
-const ratePeriodForm =
-  document.getElementById("ratePeriodForm");
+    .dts-date-button:hover {
+      background: #eaf0f6;
+      border-color: #aebccc;
+    }
 
-const ratePeriodMessage =
-  document.getElementById("ratePeriodMessage");
+    .dts-status {
+      display: inline-block;
+      width: max-content;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
 
-const ratePeriodsList =
-  document.getElementById("ratePeriodsList");
+    .dts-status.booked {
+      background: #e4f0df;
+      color: #35643e;
+    }
 
-const rateProperty =
-  document.getElementById("rateProperty");
+    .dts-status.pending_payment,
+    .dts-status.pending,
+    .dts-status.requested {
+      background: #fff0c9;
+      color: #725600;
+    }
 
-const rateStayRule =
-  document.getElementById("rateStayRule");
+    .dts-status.waitlisted {
+      background: #eee8f8;
+      color: #594878;
+    }
 
-const propertySettingsList =
-  document.getElementById("propertySettingsList");
+    .dts-status.cancelled,
+    .dts-status.declined {
+      background: #f1f2f4;
+      color: #777;
+    }
 
-const propertySettingsMessage =
-  document.getElementById("propertySettingsMessage");
+    .dts-clean-icon {
+      width: 24px;
+      height: 24px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #e4f0df;
+      color: #35643e;
+      font-size: 13px;
+      font-weight: 800;
+    }
 
+    .dts-money-paid {
+      color: #35643e;
+      font-size: 11px;
+      margin-top: 2px;
+    }
 
-const dashboardStats =
-  document.getElementById("dashboardStats");
+    .dts-money-due {
+      color: #a23a31;
+      font-size: 11px;
+      margin-top: 2px;
+    }
 
-const dashboardCalendar =
-  document.getElementById("dashboardCalendar");
+    .dts-detail-panel {
+      position: sticky;
+      top: 24px;
+      padding: 18px;
+      min-height: 280px;
+    }
 
-const dashboardPendingList =
-  document.getElementById("dashboardPendingList");
+    .dts-detail-empty {
+      color: #7d8490;
+      padding: 40px 12px;
+      text-align: center;
+    }
 
-const dashboardUpcoming =
-  document.getElementById("dashboardUpcoming");
+    .dts-detail-panel h3 {
+      margin: 0 0 6px;
+      color: #0d2b4d;
+      font-size: 20px;
+    }
 
-const pendingReservationList =
-  document.getElementById("pendingReservationList");
+    .dts-detail-meta {
+      color: #6f7782;
+      font-size: 13px;
+      line-height: 1.6;
+    }
 
-const sidebarPendingCount =
-  document.getElementById("sidebarPendingCount");
+    .dts-detail-section {
+      border-top: 1px solid #e5e7eb;
+      margin-top: 16px;
+      padding-top: 16px;
+    }
 
-const ownerPageTitle =
-  document.getElementById("ownerPageTitle");
+    .dts-detail-money {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      margin: 7px 0;
+      font-size: 13px;
+    }
 
-const ownerPageSubtitle =
-  document.getElementById("ownerPageSubtitle");
+    .dts-detail-money strong {
+      color: #0d2b4d;
+    }
 
+    .dts-detail-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 16px;
+    }
 
-const headers = (extra = {}) => ({
-  apikey: cfg.publishableKey,
-  Authorization: `Bearer ${token}`,
-  "Content-Type": "application/json",
-  ...extra
-});
+    .dts-detail-actions button {
+      border: 1px solid #cfd5dd;
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px 12px;
+      font-weight: 700;
+    }
 
+    .dts-detail-actions .primary {
+      background: #0d2b4d;
+      color: #fff;
+      border-color: #0d2b4d;
+    }
 
-function message(
-  el,
-  text,
-  isError = false
-) {
-  el.className =
-    isError
-      ? "notice error"
-      : "notice";
+    .dts-detail-actions button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
 
-  el.textContent = text;
-}
+    .dts-waitlist-note {
+      background: #f7f3fb;
+      border: 1px solid #e5daef;
+      border-radius: 9px;
+      padding: 11px;
+      color: #594878;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 14px;
+    }
 
+    .dts-full-details {
+      margin-top: 14px;
+    }
 
-async function login(
-  email,
-  password
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/auth/v1/token?grant_type=password`,
+    .dts-full-details summary {
+      cursor: pointer;
+      color: #155aa8;
+      font-weight: 700;
+    }
+
+    .dts-full-details .card.res {
+      margin: 14px 0 0;
+      padding: 14px;
+      grid-template-columns: 1fr;
+    }
+
+    .dts-full-details .actions {
+      margin-top: 10px;
+    }
+
+    .dts-empty-row {
+      padding: 28px;
+      color: #7d8490;
+      text-align: center;
+    }
+
+    @media (max-width: 1180px) {
+      .dts-reservation-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .dts-detail-panel {
+        position: static;
+      }
+
+      .dts-reservation-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dts-reservation-row {
+        grid-template-columns:
+          minmax(150px, 1.1fr)
+          minmax(130px, .9fr)
+          60px
+          34px
+          110px
+          90px
+          90px;
+        padding: 12px;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .dts-reservation-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .dts-reservation-head {
+        display: none;
+      }
+
+      .dts-toolbar input {
+        min-width: 100%;
+      }
+
+      .dts-reservation-summary {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+
+  function dtsDate(value) {
+    if (!value) return "";
+
+    return new Date(
+      `${value}T12:00:00`
+    ).toLocaleDateString(
+      "en-US",
       {
-        method: "POST",
-
-        headers: {
-          apikey:
-            cfg.publishableKey,
-
-          "Content-Type":
-            "application/json"
-        },
-
-        body:
-          JSON.stringify({
-            email,
-            password
-          })
+        month: "short",
+        day: "numeric",
+        year: "numeric"
       }
     );
-
-  const body =
-    await res.json();
-
-  if (!res.ok) {
-    throw new Error(
-      body.msg ||
-      "Could not sign in."
-    );
   }
 
-  token =
-    body.access_token;
-
-  sessionStorage.setItem(
-    "dts_token",
-    token
-  );
-}
-
-
-async function fetchTable(
-  table,
-  query = ""
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/${table}${query}`,
+  function dtsMoney(value) {
+    return Number(value || 0).toLocaleString(
+      "en-US",
       {
-        headers: headers()
+        style: "currency",
+        currency: "USD"
       }
     );
+  }
 
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
+  function dtsIsActive(reservation) {
+    return ![
+      "cancelled",
+      "declined"
+    ].includes(
+      reservation.status
     );
   }
 
-  return res.json();
-}
-
-
-async function loadProperties() {
-  const properties =
-    await fetchTable(
-      "properties",
-      "?select=id,name,cleaning_fee,pet_fee,max_dogs&order=name"
-    );
-
-  currentProperties =
-    properties;
-
-  const propertyOptions =
-    `<option value="">
-      Choose property
-    </option>` +
-
-    properties
-      .map(
-        property => `
-          <option value="${property.id}">
-            ${property.name}
-          </option>
-        `
-      )
-      .join("");
-
-  manualProperty.innerHTML =
-    propertyOptions;
-
-  rateProperty.innerHTML =
-    propertyOptions;
-
-  return properties;
-}
-
-
-
-async function updateProperty(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/properties?id=eq.${id}`,
-      {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify(changes)
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function loadReservations() {
-  const [
-    reservations,
-    properties
-  ] =
-    await Promise.all([
-      fetchTable(
-        "reservations",
-        "?select=*&order=created_at.desc"
-      ),
-
-      fetchTable(
-        "properties",
-        "?select=id,name,cleaning_fee,pet_fee,max_dogs"
-      )
-    ]);
-
-  currentProperties =
-    properties;
-
-  const propertyMap =
-    Object.fromEntries(
-      properties.map(
-        property => [
-          property.id,
-          property.name
-        ]
-      )
-    );
-
-  currentReservations =
-    reservations.map(
-      reservation => ({
-        ...reservation,
-
-        property_name:
-          propertyMap[
-            reservation.property_id
-          ] ||
-          "Property"
-      })
-    );
-
-  return currentReservations;
-}
-
-
-async function loadCleanings() {
-  const cleanings =
-    await fetchTable(
-      "cleaning_assignments",
-      "?select=*&order=checkout_date.asc"
-    );
-
-  const propertyMap =
-    Object.fromEntries(
-      currentProperties.map(
-        property => [
-          property.id,
-          property.name
-        ]
-      )
-    );
-
-  const reservationMap =
-    Object.fromEntries(
-      currentReservations.map(
-        reservation => [
-          reservation.id,
-          reservation
-        ]
-      )
-    );
-
-  currentCleanings =
-    cleanings.map(
-      cleaning => ({
-        ...cleaning,
-
-        property_name:
-          propertyMap[
-            cleaning.property_id
-          ] ||
-          "Property",
-
-        reservation:
-          reservationMap[
-            cleaning.reservation_id
-          ] ||
-          null
-      })
-    );
-
-  return currentCleanings;
-}
-
-
-
-async function loadRatePeriods() {
-  const periods =
-    await fetchTable(
-      "rate_periods",
-      "?select=*&order=start_date.asc"
-    );
-
-  const propertyMap =
-    Object.fromEntries(
-      currentProperties.map(
-        property => [
-          property.id,
-          property.name
-        ]
-      )
-    );
-
-  currentRatePeriods =
-    periods.map(
-      period => ({
-        ...period,
-        property_name:
-          propertyMap[
-            period.property_id
-          ] ||
-          "Property"
-      })
-    );
-
-  return currentRatePeriods;
-}
-
-
-
-async function loadPayments() {
-  currentPayments =
-    await fetchTable(
-      "payments",
-      "?select=*&order=received_at.asc"
-    );
-
-  return currentPayments;
-}
-
-
-async function loadPaymentSchedule() {
-  currentPaymentSchedule =
-    await fetchTable(
-      "payment_schedule",
-      "?select=*&order=due_date.asc"
-    );
-
-  return currentPaymentSchedule;
-}
-
-
-async function createPaymentScheduleItem(
-  data
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payment_schedule`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify(data)
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function updatePaymentScheduleItem(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payment_schedule?id=eq.${id}`,
-      {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify({
-            ...changes,
-            updated_at:
-              new Date().toISOString()
-          })
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function deletePaymentScheduleItem(
-  id
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payment_schedule?id=eq.${id}`,
-      {
-        method: "DELETE",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          })
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function createRatePeriod(
-  data
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/rate_periods`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify(data)
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function updateRatePeriod(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/rate_periods?id=eq.${id}`,
-      {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify({
-            ...changes,
-            updated_at:
-              new Date().toISOString()
-          })
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function deleteRatePeriod(
-  id
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/rate_periods?id=eq.${id}`,
-      {
-        method: "DELETE",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          })
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function updateReservation(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/reservations?id=eq.${id}`,
-      {
-        method: "PATCH",
-
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-
-        body:
-          JSON.stringify(changes)
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function createReservation(
-  data
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/reservations`,
-      {
-        method: "POST",
-
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-
-        body:
-          JSON.stringify(data)
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function updateCleaning(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/cleaning_assignments?id=eq.${id}`,
-      {
-        method: "PATCH",
-
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-
-        body:
-          JSON.stringify({
-            ...changes,
-            updated_at:
-              new Date().toISOString()
-          })
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-async function addPayment(
-  id,
-  amount,
-  method
-) {
-  const now =
-    new Date().toISOString();
-
-  const reservation =
-    currentReservations.find(
-      item => item.id === id
-    );
-
-  if (!reservation) {
-    throw new Error(
-      "Reservation not found."
-    );
-  }
-
-  const numericAmount =
-    Number(amount);
-
-  const alreadyPaid =
-    paymentsForReservation(id)
-      .reduce(
-        (
-          total,
-          payment
-        ) =>
-          total +
-          Number(
-            payment.amount ||
-            0
-          ),
-        0
+  function dtsIsPast(reservation) {
+    if (!reservation.departure_date) {
+      return false;
+    }
+
+    const departure =
+      new Date(
+        `${reservation.departure_date}T12:00:00`
       );
 
-  const totalDue =
-    Number(
-      reservation.amount_due ||
-      0
-    );
+    const today =
+      new Date();
 
-  const balanceBefore =
-    Math.max(
-      0,
-      totalDue -
-      alreadyPaid
-    );
+    today.setHours(0, 0, 0, 0);
 
-  if (
-    numericAmount >
-    balanceBefore &&
-    balanceBefore > 0
+    return departure < today;
+  }
+
+  function dtsCleaningConfirmed(
+    reservation
   ) {
-    throw new Error(
-      `That payment is larger than the remaining balance of ${formatMoney(balanceBefore)}.`
+    return currentCleanings.some(
+      cleaning =>
+        cleaning.reservation_id ===
+          reservation.id &&
+        [
+          "confirmed",
+          "completed"
+        ].includes(
+          cleaning.status
+        )
     );
   }
 
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payments`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify({
-            reservation_id:
-              id,
-            amount:
-              numericAmount,
-            payment_method:
-              method,
-            received_at:
-              now
-          })
-      }
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-
-  const paidAfter =
-    alreadyPaid +
-    numericAmount;
-
-  const balanceAfter =
-    Math.max(
-      0,
-      totalDue -
-      paidAfter
-    );
-
-  await updateReservation(
-    id,
-    {
-      payment_status:
-        balanceAfter <= 0
-          ? "paid"
-          : "partial",
-      payment_method:
-        method,
-      amount_received:
-        paidAfter,
-      payment_received_at:
-        now,
-      hold_expires_at:
-        paidAfter > 0
-          ? null
-          : reservation.hold_expires_at,
-      status:
-        paidAfter > 0
-          ? "booked"
-          : reservation.status
-    }
-  );
-}
-
-
-function formatDate(value) {
-  if (!value) {
-    return "";
-  }
-
-  return new Date(
-    `${value}T12:00:00`
-  ).toLocaleDateString(
-    "en-US",
-    {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    }
-  );
-}
-
-
-function formatMoney(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
+  function dtsTotals(
+    reservation
   ) {
-    return "";
+    const total =
+      Number(
+        reservation.amount_due || 0
+      );
+
+    const paid =
+      currentPayments
+        .filter(
+          payment =>
+            payment.reservation_id ===
+            reservation.id
+        )
+        .reduce(
+          (sum, payment) =>
+            sum +
+            Number(
+              payment.amount || 0
+            ),
+          0
+        );
+
+    return {
+      total,
+      paid,
+      balance:
+        Math.max(
+          0,
+          total - paid
+        )
+    };
   }
 
-  return Number(
-    value
-  ).toLocaleString(
-    "en-US",
-    {
-      style:
-        "currency",
-
-      currency:
-        "USD"
-    }
-  );
-}
-
-
-function parseDate(value) {
-  return new Date(
-    `${value}T12:00:00`
-  );
-}
-
-
-function isSaturday(value) {
-  return (
-    parseDate(value).getDay() === 6
-  );
-}
-
-
-function nightsBetween(
-  startDate,
-  endDate
-) {
-  const millisecondsPerDay =
-    24 * 60 * 60 * 1000;
-
-  return Math.round(
-    (
-      parseDate(endDate) -
-      parseDate(startDate)
-    ) /
-    millisecondsPerDay
-  );
-}
-
-
-function validateRateDates(
-  stayRule,
-  startDate,
-  endDate
-) {
-  if (
-    !startDate ||
-    !endDate ||
-    parseDate(endDate) <=
-      parseDate(startDate)
+  function dtsOverlap(
+    first,
+    second
   ) {
-    throw new Error(
-      "End date must be after start date."
+    const firstStart =
+      new Date(
+        `${first.arrival_date}T12:00:00`
+      );
+
+    const firstEnd =
+      new Date(
+        `${first.departure_date}T12:00:00`
+      );
+
+    const secondStart =
+      new Date(
+        `${second.arrival_date}T12:00:00`
+      );
+
+    const secondEnd =
+      new Date(
+        `${second.departure_date}T12:00:00`
+      );
+
+    return (
+      firstStart < secondEnd &&
+      firstEnd > secondStart
     );
   }
 
-  if (
-    stayRule ===
-    "weekly"
+  function dtsBlocksDates(
+    reservation
   ) {
     if (
-      !isSaturday(startDate) ||
-      !isSaturday(endDate)
+      [
+        "cancelled",
+        "declined",
+        "waitlisted"
+      ].includes(
+        reservation.status
+      )
     ) {
-      throw new Error(
-        "Weekly-only periods must run Saturday to Saturday."
-      );
+      return false;
     }
 
     if (
-      nightsBetween(
-        startDate,
-        endDate
-      ) !== 7
-    ) {
-      throw new Error(
-        "Weekly-only periods must be exactly 7 nights."
-      );
-    }
-  }
-}
-
-
-function isoDate(date) {
-  const year =
-    date.getFullYear();
-
-  const month =
-    String(
-      date.getMonth() + 1
-    ).padStart(2, "0");
-
-  const day =
-    String(
-      date.getDate()
-    ).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-
-function reservationCalendarStatus(
-  reservation
-) {
-  if (
-    reservation.status ===
-    "pending_payment"
-  ) {
-    if (
+      reservation.status ===
+        "pending_payment" &&
       reservation.hold_expires_at &&
       new Date(
         reservation.hold_expires_at
       ) <= new Date()
     ) {
-      return null;
+      return false;
     }
 
-    return "pending_payment";
-  }
-
-  if (
-    reservation.status ===
-    "pending" ||
-    reservation.status ===
-    "requested"
-  ) {
-    return "pending";
-  }
-
-  if (
-    reservation.status ===
-    "booked"
-  ) {
-    return "booked";
-  }
-
-  if (
-    reservation.status ===
-    "waitlisted"
-  ) {
-    return "waitlisted";
-  }
-
-  return null;
-}
-
-
-function reservationTouchesDate(
-  reservation,
-  dateString
-) {
-  const arrival =
-    parseDate(
-      reservation.arrival_date
+    return [
+      "pending",
+      "requested",
+      "pending_payment",
+      "booked"
+    ].includes(
+      reservation.status
     );
+  }
 
-  const departure =
-    parseDate(
-      reservation.departure_date
-    );
-
-  const date =
-    parseDate(
-      dateString
-    );
-
-  return (
-    date >= arrival &&
-    date < departure
-  );
-}
-
-
-function calendarItemsForDay(
-  propertyId,
-  dateString
-) {
-  return currentReservations
-    .filter(
-      reservation =>
-        reservation.property_id ===
-          propertyId &&
-
-        reservationCalendarStatus(
-          reservation
+  function dtsDatesAvailable(
+    reservation
+  ) {
+    return !currentReservations.some(
+      other =>
+        other.id !==
+          reservation.id &&
+        other.property_id ===
+          reservation.property_id &&
+        dtsBlocksDates(
+          other
         ) &&
-
-        reservationTouchesDate(
+        dtsOverlap(
           reservation,
-          dateString
+          other
         )
-    )
-    .map(
-      reservation => ({
-        reservation,
-
-        status:
-          reservationCalendarStatus(
-            reservation
-          )
-      })
     );
-}
-
-
-function cleanerIsConfirmed(
-  reservation
-) {
-  return currentCleanings.some(
-    cleaning =>
-      cleaning.reservation_id ===
-        reservation.id &&
-
-      (
-        cleaning.status ===
-          "confirmed" ||
-        cleaning.status ===
-          "completed"
-      )
-  );
-}
-
-
-function calendarItemLabel(
-  reservation,
-  status
-) {
-  const name =
-    reservation.guest_name ||
-    "Guest";
-
-  if (
-    status ===
-    "pending_payment"
-  ) {
-    return `${name} · hold`;
   }
 
-  if (
-    status ===
-    "waitlisted"
-  ) {
-    return `${name} · waitlist`;
-  }
+  function dtsPropertyTabs() {
+    const properties =
+      currentProperties || [];
 
-  if (
-    status ===
-    "pending"
-  ) {
-    return `${name} · request`;
-  }
+    if (
+      selectedPropertyId === null &&
+      properties.length
+    ) {
+      const cottage =
+        properties.find(
+          property =>
+            property.name ===
+            "Little Yellow Cottage"
+        );
 
-  if (
-    status ===
-      "booked" &&
-    cleanerIsConfirmed(
-      reservation
-    )
-  ) {
-    return `${name} 🧹`;
-  }
+      selectedPropertyId =
+        cottage
+          ? cottage.id
+          : properties[0].id;
+    }
 
-  return name;
-}
-
-
-
-function paymentDueItemsForDay(
-  propertyId,
-  dateString
-) {
-  const reservationMap =
-    Object.fromEntries(
-      currentReservations.map(
-        reservation => [
-          reservation.id,
-          reservation
-        ]
-      )
-    );
-
-  return currentPaymentSchedule
-    .filter(
-      item => {
-        const reservation =
-          reservationMap[
-            item.reservation_id
-          ];
-
-        if (
-          !reservation ||
-          reservation.property_id !==
-            propertyId ||
-          !activeReservation(
-            reservation
-          ) ||
-          item.due_date !==
-            dateString
-        ) {
-          return false;
+    return `
+      <div class="dts-property-tabs">
+        ${
+          properties
+            .map(
+              property => `
+                <button
+                  type="button"
+                  class="dts-property-tab ${
+                    selectedPropertyId ===
+                    property.id
+                      ? "active"
+                      : ""
+                  }"
+                  data-dts-property="${property.id}"
+                >
+                  ${property.name}
+                </button>
+              `
+            )
+            .join("")
         }
 
-        const allocation =
-          scheduleAllocations(
+        <button
+          type="button"
+          class="dts-property-tab ${
+            selectedPropertyId ===
+            "all"
+              ? "active"
+              : ""
+          }"
+          data-dts-property="all"
+        >
+          All Properties
+        </button>
+      </div>
+    `;
+  }
+
+  function dtsFilteredReservations() {
+    let items =
+      [...currentReservations];
+
+    if (
+      selectedPropertyId &&
+      selectedPropertyId !==
+        "all"
+    ) {
+      items =
+        items.filter(
+          reservation =>
+            reservation.property_id ===
+            selectedPropertyId
+        );
+    }
+
+    if (
+      selectedStatus ===
+      "upcoming"
+    ) {
+      items =
+        items.filter(
+          reservation =>
+            dtsIsActive(
+              reservation
+            ) &&
+            !dtsIsPast(
+              reservation
+            ) &&
+            reservation.status !==
+              "waitlisted"
+        );
+    }
+
+    if (
+      selectedStatus ===
+      "past"
+    ) {
+      items =
+        items.filter(
+          reservation =>
+            dtsIsActive(
+              reservation
+            ) &&
+            dtsIsPast(
+              reservation
+            )
+        );
+    }
+
+    if (
+      selectedStatus ===
+      "cancelled"
+    ) {
+      items =
+        items.filter(
+          reservation =>
+            [
+              "cancelled",
+              "declined"
+            ].includes(
+              reservation.status
+            )
+        );
+    }
+
+    if (
+      selectedStatus ===
+      "waitlist"
+    ) {
+      items =
+        items.filter(
+          reservation =>
+            reservation.status ===
+            "waitlisted"
+        );
+    }
+
+    if (searchText) {
+      const needle =
+        searchText.toLowerCase();
+
+      items =
+        items.filter(
+          reservation =>
+            [
+              reservation.guest_name,
+              reservation.guest_email,
+              reservation.guest_phone,
+              reservation.property_name
+            ]
+              .filter(Boolean)
+              .some(
+                value =>
+                  String(value)
+                    .toLowerCase()
+                    .includes(needle)
+              )
+        );
+    }
+
+    items.sort(
+      (a, b) => {
+        const aDate =
+          a.arrival_date || "";
+
+        const bDate =
+          b.arrival_date || "";
+
+        return sortDirection ===
+          "asc"
+          ? aDate.localeCompare(
+              bDate
+            )
+          : bDate.localeCompare(
+              aDate
+            );
+      }
+    );
+
+    return items;
+  }
+
+  function dtsCounts() {
+    let source =
+      currentReservations;
+
+    if (
+      selectedPropertyId &&
+      selectedPropertyId !==
+        "all"
+    ) {
+      source =
+        source.filter(
+          reservation =>
+            reservation.property_id ===
+            selectedPropertyId
+        );
+    }
+
+    const upcoming =
+      source.filter(
+        reservation =>
+          dtsIsActive(
             reservation
-          ).find(
-            scheduled =>
-              scheduled.id ===
-              item.id
+          ) &&
+          !dtsIsPast(
+            reservation
+          ) &&
+          reservation.status !==
+            "waitlisted"
+      ).length;
+
+    const past =
+      source.filter(
+        reservation =>
+          dtsIsActive(
+            reservation
+          ) &&
+          dtsIsPast(
+            reservation
+          )
+      ).length;
+
+    const waitlist =
+      source.filter(
+        reservation =>
+          reservation.status ===
+          "waitlisted"
+      ).length;
+
+    const cancelled =
+      source.filter(
+        reservation =>
+          [
+            "cancelled",
+            "declined"
+          ].includes(
+            reservation.status
+          )
+      ).length;
+
+    return {
+      upcoming,
+      past,
+      waitlist,
+      cancelled
+    };
+  }
+
+  function dtsSummary() {
+    const source =
+      dtsFilteredReservations();
+
+    let balance = 0;
+    let revenue = 0;
+
+    source.forEach(
+      reservation => {
+        const totals =
+          dtsTotals(
+            reservation
           );
 
-        return (
-          allocation &&
-          allocation.remaining > 0
-        );
+        balance +=
+          totals.balance;
+
+        revenue +=
+          totals.paid;
       }
-    )
-    .map(
-      item => ({
-        schedule:
-          item,
-        reservation:
-          reservationMap[
-            item.reservation_id
-          ]
-      })
-    );
-}
-
-
-function renderPropertyCalendar(
-  property
-) {
-  const year =
-    calendarDate.getFullYear();
-
-  const month =
-    calendarDate.getMonth();
-
-  const firstDay =
-    new Date(
-      year,
-      month,
-      1
     );
 
-  const daysInMonth =
-    new Date(
-      year,
-      month + 1,
-      0
-    ).getDate();
+    const counts =
+      dtsCounts();
 
-  let cells = "";
+    return `
+      <div class="dts-reservation-summary">
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
+            Upcoming stays
+          </div>
+          <div class="dts-summary-value">
+            ${counts.upcoming}
+          </div>
+        </div>
 
-  for (
-    let blank = 0;
-    blank <
-      firstDay.getDay();
-    blank++
-  ) {
-    cells += `
-      <div
-        class="owner-calendar-day blank"
-      ></div>
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
+            Past stays
+          </div>
+          <div class="dts-summary-value">
+            ${counts.past}
+          </div>
+        </div>
+
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
+            Waitlisted
+          </div>
+          <div class="dts-summary-value">
+            ${counts.waitlist}
+          </div>
+        </div>
+
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
+            Balance due
+          </div>
+          <div class="dts-summary-value">
+            ${dtsMoney(balance)}
+          </div>
+        </div>
+
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
+            Payments logged
+          </div>
+          <div class="dts-summary-value">
+            ${dtsMoney(revenue)}
+          </div>
+        </div>
+      </div>
     `;
   }
 
-  for (
-    let day = 1;
-    day <= daysInMonth;
-    day++
-  ) {
-    const date =
-      new Date(
-        year,
-        month,
-        day
-      );
+  function dtsStatusTabs() {
+    const counts =
+      dtsCounts();
 
-    const dateString =
-      isoDate(date);
+    return `
+      <div class="dts-status-tabs">
+        <button
+          type="button"
+          class="dts-status-tab ${
+            selectedStatus ===
+            "all"
+              ? "active"
+              : ""
+          }"
+          data-dts-status="all"
+        >
+          All
+        </button>
 
+        <button
+          type="button"
+          class="dts-status-tab ${
+            selectedStatus ===
+            "upcoming"
+              ? "active"
+              : ""
+          }"
+          data-dts-status="upcoming"
+        >
+          Upcoming ${counts.upcoming}
+        </button>
+
+        <button
+          type="button"
+          class="dts-status-tab ${
+            selectedStatus ===
+            "past"
+              ? "active"
+              : ""
+          }"
+          data-dts-status="past"
+        >
+          Past ${counts.past}
+        </button>
+
+        <button
+          type="button"
+          class="dts-status-tab ${
+            selectedStatus ===
+            "cancelled"
+              ? "active"
+              : ""
+          }"
+          data-dts-status="cancelled"
+        >
+          Cancelled ${counts.cancelled}
+        </button>
+
+        <button
+          type="button"
+          class="dts-status-tab ${
+            selectedStatus ===
+            "waitlist"
+              ? "active"
+              : ""
+          }"
+          data-dts-status="waitlist"
+        >
+          Waitlist ${counts.waitlist}
+        </button>
+      </div>
+    `;
+  }
+
+  function dtsReservationRows() {
     const items =
-      calendarItemsForDay(
-        property.id,
-        dateString
+      dtsFilteredReservations();
+
+    if (!items.length) {
+      return `
+        <div class="dts-empty-row">
+          No reservations match these filters.
+        </div>
+      `;
+    }
+
+    return items
+      .map(
+        reservation => {
+          const totals =
+            dtsTotals(
+              reservation
+            );
+
+          const cleaning =
+            dtsCleaningConfirmed(
+              reservation
+            );
+
+          return `
+            <div class="dts-reservation-row">
+              <div>
+                <div class="dts-guest-name">
+                  ${
+                    reservation.guest_name ||
+                    "Guest"
+                  }
+                </div>
+
+                <div class="dts-guest-email">
+                  ${
+                    reservation.guest_email ||
+                    ""
+                  }
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  class="dts-date-button"
+                  data-dts-open="${reservation.id}"
+                >
+                  ${dtsDate(reservation.arrival_date)}
+                  –
+                  ${dtsDate(reservation.departure_date)}
+                </button>
+              </div>
+
+              <div>
+                ${reservation.adults || 0}
+              </div>
+
+              <div>
+                ${
+                  cleaning
+                    ? `
+                      <span
+                        class="dts-clean-icon"
+                        title="Cleaning confirmed"
+                        aria-label="Cleaning confirmed"
+                      >
+                        ✓
+                      </span>
+                    `
+                    : ""
+                }
+              </div>
+
+              <div>
+                <span
+                  class="dts-status ${reservation.status || "pending"}"
+                >
+                  ${String(
+                    reservation.status ||
+                    "pending"
+                  ).replaceAll(
+                    "_",
+                    " "
+                  )}
+                </span>
+              </div>
+
+              <div>
+                ${dtsMoney(
+                  totals.total
+                )}
+              </div>
+
+              <div>
+                <strong>
+                  ${dtsMoney(
+                    totals.balance
+                  )}
+                </strong>
+
+                ${
+                  totals.balance <= 0 &&
+                  totals.total > 0
+                    ? `
+                      <div class="dts-money-paid">
+                        Paid in full
+                      </div>
+                    `
+                    : totals.balance > 0
+                      ? `
+                        <div class="dts-money-due">
+                          Balance due
+                        </div>
+                      `
+                      : ""
+                }
+              </div>
+            </div>
+          `;
+        }
+      )
+      .join("");
+  }
+
+  function dtsDetailPanel() {
+    if (!selectedReservationId) {
+      return `
+        <aside class="dts-detail-panel">
+          <div class="dts-detail-empty">
+            Select a reservation by clicking its dates.
+          </div>
+        </aside>
+      `;
+    }
+
+    const reservation =
+      currentReservations.find(
+        item =>
+          item.id ===
+          selectedReservationId
       );
 
-    const paymentItems =
-      paymentDueItemsForDay(
-        property.id,
-        dateString
+    if (!reservation) {
+      selectedReservationId =
+        null;
+
+      return dtsDetailPanel();
+    }
+
+    const totals =
+      dtsTotals(
+        reservation
       );
 
-    const itemHtml =
-      items
-        .map(
-          item => `
-            <span
-              class="owner-calendar-item ${item.status}"
-              title="${item.reservation.guest_name || "Guest"} · ${formatDate(item.reservation.arrival_date)} – ${formatDate(item.reservation.departure_date)}"
-            >
-              ${calendarItemLabel(
-                item.reservation,
-                item.status
-              )}
-            </span>
-          `
-        )
-        .join("") +
+    const isWaitlisted =
+      reservation.status ===
+      "waitlisted";
 
-      paymentItems
-        .map(
-          item => `
-            <span
-              class="owner-calendar-item payment_due"
-              title="${item.reservation.guest_name || "Guest"} · ${item.schedule.label || "Payment"}"
-            >
-              💵 ${item.reservation.guest_name || "Guest"}
-            </span>
-          `
-        )
-        .join("");
+    const datesAvailable =
+      isWaitlisted
+        ? dtsDatesAvailable(
+            reservation
+          )
+        : false;
 
-    cells += `
-      <div
-        class="owner-calendar-day"
-      >
+    return `
+      <aside class="dts-detail-panel">
+        <h3>
+          ${
+            reservation.guest_name ||
+            "Guest"
+          }
+        </h3>
+
+        <span
+          class="dts-status ${reservation.status || "pending"}"
+        >
+          ${String(
+            reservation.status ||
+            "pending"
+          ).replaceAll(
+            "_",
+            " "
+          )}
+        </span>
 
         <div
-          class="owner-calendar-date"
+          class="dts-detail-meta"
+          style="margin-top:12px;"
         >
-          ${day}
-        </div>
-
-        ${itemHtml}
-
-      </div>
-    `;
-  }
-
-  return `
-    <section
-      class="calendar-property"
-    >
-
-      <h3>
-        ${property.name}
-      </h3>
-
-      <div
-        class="owner-calendar-grid"
-      >
-
-        <div class="owner-calendar-weekday">Sun</div>
-        <div class="owner-calendar-weekday">Mon</div>
-        <div class="owner-calendar-weekday">Tue</div>
-        <div class="owner-calendar-weekday">Wed</div>
-        <div class="owner-calendar-weekday">Thu</div>
-        <div class="owner-calendar-weekday">Fri</div>
-        <div class="owner-calendar-weekday">Sat</div>
-
-        ${cells}
-
-      </div>
-
-    </section>
-  `;
-}
-
-
-function renderOwnerCalendar() {
-  const monthTitle =
-    calendarDate
-      .toLocaleDateString(
-        "en-US",
-        {
-          month:
-            "long",
-
-          year:
-            "numeric"
-        }
-      );
-
-  ownerCalendar.innerHTML = `
-    <h2
-      style="
-        text-align:center;
-        margin:0 0 22px;
-        font-family:Georgia,serif;
-        font-weight:400;
-      "
-    >
-      ${monthTitle}
-    </h2>
-
-    ${
-      currentProperties
-        .map(
-          renderPropertyCalendar
-        )
-        .join("")
-    }
-  `;
-}
-
-
-function cleaningCard(cleaning) {
-  const reservation =
-    cleaning.reservation;
-
-  const guestName =
-    reservation?.guest_name ||
-    "Guest";
-
-  const status =
-    cleaning.status ||
-    "waiting";
-
-  const canEdit =
-    status !== "cancelled" &&
-    status !== "completed";
-
-  return `
-    <article
-      class="cleaning-card ${status}"
-      data-cleaning-id="${cleaning.id}"
-    >
-
-      <h3>
-        ${cleaning.property_name}
-      </h3>
-
-      <div class="meta">
-        Checkout:
-        <strong>
-          ${formatDate(cleaning.checkout_date)}
-        </strong>
-
-        <br>
-
-        Guest:
-        ${guestName}
-      </div>
-
-      <span class="cleaning-status">
-        ${status.replaceAll("_", " ")}
-      </span>
-
-      ${
-        status === "waiting"
-          ? `
-            <div class="cleaning-warning">
-              Cleaner confirmation is still needed.
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        status === "confirmed"
-          ? `
-            <div class="notice">
-              Cleaner confirmed
-              ${
-                cleaning.confirmed_at
-                  ? ` · ${new Date(cleaning.confirmed_at).toLocaleString()}`
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        status === "completed"
-          ? `
-            <div class="notice">
-              Cleaning completed
-              ${
-                cleaning.completed_at
-                  ? ` · ${new Date(cleaning.completed_at).toLocaleString()}`
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        cleaning.cleaner_name ||
-        cleaning.cleaner_email
-          ? `
-            <div
-              class="meta"
-              style="margin-top:10px;"
-            >
-              Cleaner:
-              ${cleaning.cleaner_name || ""}
-
-              ${
-                cleaning.cleaner_email
-                  ? `<br>${cleaning.cleaner_email}`
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        canEdit
-          ? `
-            <div
-              class="row"
-              style="
-                margin-top:12px;
-                align-items:end;
-              "
-            >
-
-              <label>
-                Cleaner name
-                <input
-                  type="text"
-                  value="${cleaning.cleaner_name || ""}"
-                  data-cleaner-name
-                >
-              </label>
-
-              <label>
-                Cleaner email
-                <input
-                  type="email"
-                  value="${cleaning.cleaner_email || ""}"
-                  data-cleaner-email
-                >
-              </label>
-
-              <button
-                type="button"
-                data-cleaning-action="save-cleaner"
-              >
-                Save cleaner
-              </button>
-
-              ${
-                status === "waiting"
-                  ? `
-                    <button
-                      type="button"
-                      data-cleaning-action="confirm"
-                    >
-                      Mark confirmed
-                    </button>
-                  `
-                  : ""
-              }
-
-              ${
-                status === "confirmed"
-                  ? `
-                    <button
-                      type="button"
-                      data-cleaning-action="complete"
-                    >
-                      Mark completed
-                    </button>
-                  `
-                  : ""
-              }
-
-            </div>
-          `
-          : ""
-      }
-
-    </article>
-  `;
-}
-
-
-function renderCleaningDashboard() {
-  const active =
-    currentCleanings.filter(
-      cleaning =>
-        cleaning.status !==
-        "cancelled"
-    );
-
-  if (!active.length) {
-    cleaningList.innerHTML = `
-      <div class="meta">
-        No active cleaning assignments.
-      </div>
-    `;
-
-    return;
-  }
-
-  cleaningList.innerHTML =
-    active
-      .map(cleaningCard)
-      .join("");
-}
-
-
-
-function ratePeriodCard(period) {
-  return `
-    <article
-      class="rate-card"
-      data-rate-id="${period.id}"
-    >
-      <div class="rate-card-grid">
-
-        <label>
-          Property
-          <select data-rate-property>
-            ${
-              currentProperties
-                .map(
-                  property => `
-                    <option
-                      value="${property.id}"
-                      ${
-                        property.id ===
-                        period.property_id
-                          ? "selected"
-                          : ""
-                      }
-                    >
-                      ${property.name}
-                    </option>
-                  `
-                )
-                .join("")
-            }
-          </select>
-        </label>
-
-        <label>
-          Stay rule
-          <select data-rate-stay-rule>
-            <option
-              value="weekly"
-              ${
-                period.stay_rule ===
-                "weekly"
-                  ? "selected"
-                  : ""
-              }
-            >
-              Weekly only
-            </option>
-            <option
-              value="flexible"
-              ${
-                period.stay_rule ===
-                "flexible"
-                  ? "selected"
-                  : ""
-              }
-            >
-              Flexible / shorter stays
-            </option>
-          </select>
-        </label>
-
-        <label>
-          Start date
-          <input
-            type="date"
-            value="${period.start_date}"
-            data-rate-start
-          >
-        </label>
-
-        <label>
-          End date
-          <input
-            type="date"
-            value="${period.end_date}"
-            data-rate-end
-          >
-        </label>
-
-        <label>
-          Weekly price
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value="${period.weekly_price ?? ""}"
-            data-rate-weekly
-          >
-        </label>
-
-        <label>
-          Nightly price
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value="${period.nightly_price ?? ""}"
-            data-rate-nightly
-          >
-        </label>
-
-        <label>
-          Minimum nights
-          <input
-            type="number"
-            min="1"
-            value="${period.minimum_nights || 1}"
-            data-rate-minimum
-          >
-        </label>
-
-        <label class="rate-blocked-row">
-          <input
-            type="checkbox"
-            data-rate-blocked
-            ${period.blocked ? "checked" : ""}
-          >
-          Block these dates
-        </label>
-
-        <label class="full">
-          Notes
-          <textarea
-            rows="2"
-            data-rate-notes
-          >${period.notes || ""}</textarea>
-        </label>
-
-      </div>
-
-      <div
-        class="row"
-        style="margin-top:12px;"
-      >
-        <button
-          type="button"
-          data-rate-action="save"
-        >
-          Save changes
-        </button>
-
-        <button
-          type="button"
-          class="danger"
-          data-rate-action="delete"
-        >
-          Delete
-        </button>
-      </div>
-    </article>
-  `;
-}
-
-
-
-function propertySettingsCard(
-  property
-) {
-  return `
-    <article
-      class="property-settings-card"
-      data-property-settings-id="${property.id}"
-    >
-      <div class="property-settings-grid">
-
-        <div>
-          <strong>${property.name}</strong>
-        </div>
-
-        <label>
-          Cleaning fee
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value="${property.cleaning_fee ?? ""}"
-            data-property-cleaning-fee
-          >
-        </label>
-
-        <label>
-          Pet fee per dog
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value="${property.pet_fee ?? ""}"
-            data-property-pet-fee
-          >
-        </label>
-
-        <label>
-          Maximum dogs
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value="${property.max_dogs ?? 0}"
-            data-property-max-dogs
-          >
-        </label>
-
-      </div>
-
-      <div
-        class="row"
-        style="margin-top:12px;"
-      >
-        <button
-          type="button"
-          data-property-settings-action="save"
-        >
-          Save fees
-        </button>
-      </div>
-    </article>
-  `;
-}
-
-
-function renderPropertySettings() {
-  if (!currentProperties.length) {
-    propertySettingsList.innerHTML = `
-      <div class="meta">
-        No properties found.
-      </div>
-    `;
-    return;
-  }
-
-  propertySettingsList.innerHTML =
-    currentProperties
-      .map(propertySettingsCard)
-      .join("");
-}
-
-
-function renderRatePeriods() {
-  if (!currentRatePeriods.length) {
-    ratePeriodsList.innerHTML = `
-      <div class="meta">
-        No rate periods yet. Add your first one above.
-      </div>
-    `;
-    return;
-  }
-
-  ratePeriodsList.innerHTML =
-    currentRatePeriods
-      .map(ratePeriodCard)
-      .join("");
-}
-
-
-
-function paymentsForReservation(
-  reservationId
-) {
-  return currentPayments.filter(
-    payment =>
-      payment.reservation_id ===
-      reservationId
-  );
-}
-
-
-function scheduleForReservation(
-  reservationId
-) {
-  return currentPaymentSchedule
-    .filter(
-      item =>
-        item.reservation_id ===
-        reservationId
-    )
-    .sort(
-      (a, b) =>
-        parseDate(a.due_date) -
-        parseDate(b.due_date)
-    );
-}
-
-
-function paymentTotals(
-  reservation
-) {
-  const totalDue =
-    Number(
-      reservation.amount_due ||
-      0
-    );
-
-  const paid =
-    paymentsForReservation(
-      reservation.id
-    )
-      .reduce(
-        (
-          total,
-          payment
-        ) =>
-          total +
-          Number(
-            payment.amount ||
-            0
-          ),
-        0
-      );
-
-  return {
-    totalDue,
-    paid,
-    balance:
-      Math.max(
-        0,
-        totalDue -
-        paid
-      )
-  };
-}
-
-
-function scheduleAllocations(
-  reservation
-) {
-  let remainingPaid =
-    paymentTotals(
-      reservation
-    ).paid;
-
-  const today =
-    new Date();
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-  return scheduleForReservation(
-    reservation.id
-  ).map(
-    item => {
-      const due =
-        Number(
-          item.amount_due ||
-          0
-        );
-
-      const applied =
-        Math.min(
-          remainingPaid,
-          due
-        );
-
-      remainingPaid =
-        Math.max(
-          0,
-          remainingPaid -
-          applied
-        );
-
-      const remaining =
-        Math.max(
-          0,
-          due -
-          applied
-        );
-
-      let status =
-        "upcoming";
-
-      if (remaining <= 0) {
-        status =
-          "paid";
-      } else if (applied > 0) {
-        status =
-          "partial";
-      } else if (
-        parseDate(
-          item.due_date
-        ) <= today
-      ) {
-        status =
-          "due";
-      }
-
-      return {
-        ...item,
-        applied,
-        remaining,
-        status
-      };
-    }
-  );
-}
-
-
-
-function scheduledTotal(
-  reservationId
-) {
-  return scheduleForReservation(
-    reservationId
-  ).reduce(
-    (
-      total,
-      item
-    ) =>
-      total +
-      Number(
-        item.amount_due ||
-        0
-      ),
-    0
-  );
-}
-
-
-function unscheduledAmount(
-  reservation
-) {
-  return Math.max(
-    0,
-    Number(
-      reservation.amount_due ||
-      0
-    ) -
-    scheduledTotal(
-      reservation.id
-    )
-  );
-}
-
-
-function visibleScheduledTotal(
-  card
-) {
-  return Array.from(
-    card.querySelectorAll(
-      "[data-payment-due-amount]"
-    )
-  ).reduce(
-    (
-      total,
-      input
-    ) =>
-      total +
-      Number(
-        input.value ||
-        0
-      ),
-    0
-  );
-}
-
-
-function refreshScheduleArithmetic(
-  card
-) {
-  if (!card) {
-    return;
-  }
-
-  const reservationId =
-    card.dataset.id;
-
-  const reservation =
-    currentReservations.find(
-      item =>
-        item.id ===
-        reservationId
-    );
-
-  if (!reservation) {
-    return;
-  }
-
-  const totalDue =
-    Number(
-      reservation.amount_due ||
-      0
-    );
-
-  const scheduled =
-    visibleScheduledTotal(
-      card
-    );
-
-  const remaining =
-    totalDue -
-    scheduled;
-
-  const scheduledEl =
-    card.querySelector(
-      "[data-scheduled-total]"
-    );
-
-  const unscheduledEl =
-    card.querySelector(
-      "[data-unscheduled-total]"
-    );
-
-  const warningEl =
-    card.querySelector(
-      "[data-schedule-warning]"
-    );
-
-  if (scheduledEl) {
-    scheduledEl.textContent =
-      formatMoney(
-        scheduled
-      );
-  }
-
-  if (unscheduledEl) {
-    unscheduledEl.textContent =
-      formatMoney(
-        Math.max(
-          0,
-          remaining
-        )
-      );
-  }
-
-  if (warningEl) {
-    if (remaining < 0) {
-      warningEl.textContent =
-        `Scheduled payments exceed the reservation total by ${formatMoney(Math.abs(remaining))}.`;
-    } else if (remaining === 0) {
-      warningEl.textContent =
-        "Payment schedule matches the reservation total.";
-    } else {
-      warningEl.textContent =
-        `${formatMoney(remaining)} still needs to be scheduled.`;
-    }
-  }
-
-  const useRemaining =
-    card.querySelector(
-      "[data-use-remaining]"
-    );
-
-  if (useRemaining) {
-    useRemaining.disabled =
-      remaining <= 0;
-  }
-}
-
-
-function paymentScheduleMarkup(
-  reservation
-) {
-  const schedule =
-    scheduleAllocations(
-      reservation
-    );
-
-  const history =
-    paymentsForReservation(
-      reservation.id
-    )
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(
-            b.received_at
-          ) -
-          new Date(
-            a.received_at
-          )
-      );
-
-  const scheduled =
-    scheduledTotal(
-      reservation.id
-    );
-
-  const unscheduled =
-    Math.max(
-      0,
-      Number(
-        reservation.amount_due ||
-        0
-      ) -
-      scheduled
-    );
-
-  return `
-    <div class="payment-schedule">
-      <h3>
-        Payment schedule
-      </h3>
-
-      <div class="payment-schedule-summary">
-        <div class="payment-summary-item">
-          <div class="payment-summary-label">
-            Scheduled total
-          </div>
-          <div
-            class="payment-summary-value"
-            data-scheduled-total
-          >
-            ${formatMoney(scheduled)}
-          </div>
-        </div>
-
-        <div class="payment-summary-item">
-          <div class="payment-summary-label">
-            Still unscheduled
-          </div>
-          <div
-            class="payment-summary-value"
-            data-unscheduled-total
-          >
-            ${formatMoney(unscheduled)}
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="payment-schedule-warning"
-        data-schedule-warning
-      >
-        ${
-          unscheduled > 0
-            ? `${formatMoney(unscheduled)} still needs to be scheduled.`
-            : "Payment schedule matches the reservation total."
-        }
-      </div>
-
-      <div class="payment-schedule-list">
-        ${
-          schedule.length
-            ? schedule
-                .map(
-                  item => `
-                    <div
-                      class="payment-schedule-row"
-                      data-payment-schedule-id="${item.id}"
-                    >
-                      <input
-                        type="text"
-                        value="${item.label || "Payment"}"
-                        data-payment-label
-                      >
-
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value="${Number(item.amount_due || 0)}"
-                        data-payment-due-amount
-                      >
-
-                      <input
-                        type="date"
-                        value="${item.due_date}"
-                        data-payment-due-date
-                      >
-
-                      <div>
-                        <span
-                          class="payment-installment-status ${item.status}"
-                        >
-                          ${
-                            item.status === "paid"
-                              ? "Paid"
-                              : item.status === "partial"
-                                ? `${formatMoney(item.remaining)} left`
-                                : item.status === "due"
-                                  ? "Due"
-                                  : "Upcoming"
-                          }
-                        </span>
-
-                        <div
-                          class="row"
-                          style="margin-top:6px;"
-                        >
-                          <button
-                            type="button"
-                            data-payment-schedule-action="save"
-                          >
-                            Save
-                          </button>
-
-                          <button
-                            type="button"
-                            class="danger"
-                            data-payment-schedule-action="delete"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  `
-                )
-                .join("")
-            : `
-              <div class="meta">
-                No payment installments scheduled yet.
-              </div>
-            `
-        }
-      </div>
-
-      <div class="payment-add-schedule">
-        <div class="row">
-          <label>
-            Label
-            <input
-              type="text"
-              placeholder="Deposit, final balance…"
-              data-new-payment-label
-            >
-          </label>
-
-          <label>
-            Amount
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="Amount"
-              data-new-payment-amount
-            >
-          </label>
-
-          <label>
-            Due date
-            <input
-              type="date"
-              data-new-payment-date
-            >
-          </label>
-
-          <button
-            type="button"
-            class="use-remaining-btn"
-            data-use-remaining
-            ${unscheduled <= 0 ? "disabled" : ""}
-          >
-            Use remaining balance
-          </button>
-
-          <button
-            type="button"
-            data-action="add-payment-schedule"
-          >
-            Add due date
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      class="payment-history"
-      style="margin-top:14px;"
-    >
-      <h3>
-        Payment history
-      </h3>
-
-      <div class="payment-history-list">
-        ${
-          history.length
-            ? history
-                .map(
-                  payment => `
-                    <div class="payment-history-row">
-                      <strong>
-                        ${formatMoney(payment.amount)}
-                      </strong>
-
-                      <span>
-                        ${(payment.payment_method || "").replaceAll("_", " ")}
-                      </span>
-
-                      <span class="meta">
-                        ${
-                          payment.received_at
-                            ? new Date(
-                                payment.received_at
-                              ).toLocaleString()
-                            : ""
-                        }
-                      </span>
-                    </div>
-                  `
-                )
-                .join("")
-            : `
-              <div class="meta">
-                No payments logged yet.
-              </div>
-            `
-        }
-      </div>
-    </div>
-  `;
-}
-
-
-function reservationCard(r) {
-  const status =
-    r.status ||
-    "pending";
-
-  const totals =
-    paymentTotals(
-      r
-    );
-
-  let paymentStatus =
-    r.payment_status ||
-    "waiting";
-
-  if (
-    totals.totalDue > 0
-  ) {
-    if (
-      totals.balance <= 0
-    ) {
-      paymentStatus =
-        "paid";
-    } else if (
-      totals.paid > 0
-    ) {
-      paymentStatus =
-        "partial";
-    } else {
-      paymentStatus =
-        "waiting";
-    }
-  }
-
-  const showAccept =
-    status ===
-      "pending" ||
-    status ===
-      "requested";
-
-  const showDecline =
-    status ===
-      "pending" ||
-    status ===
-      "requested";
-
-  const showCancel =
-    status ===
-      "pending_payment" ||
-    status ===
-      "booked";
-
-  const canTakePayment =
-    status !==
-      "declined" &&
-    status !==
-      "cancelled" &&
-    status !==
-      "waitlisted" &&
-    totals.balance > 0;
-
-  return `
-    <article
-      class="card res"
-      data-id="${r.id}"
-    >
-      <div>
-        <h2>
-          ${r.guest_name || "Guest"}
-        </h2>
-
-        <div class="meta">
-          <strong>
-            ${r.property_name}
-          </strong>
-
-          <br>
-
-          ${formatDate(r.arrival_date)}
+          ${dtsDate(reservation.arrival_date)}
           –
-          ${formatDate(r.departure_date)}
+          ${dtsDate(reservation.departure_date)}
 
           <br>
 
-          ${r.guest_email || ""}
-
-          ${
-            r.guest_phone
-              ? ` · ${r.guest_phone}`
-              : ""
-          }
+          ${reservation.property_name}
 
           <br>
 
-          ${r.adults || 0}
+          ${reservation.adults || 0}
           guest(s)
 
           ${
-            r.dogs
-              ? ` · ${r.dogs} dog(s)`
+            reservation.dogs
+              ? `<br>${reservation.dogs} dog(s)`
               : ""
           }
 
           ${
-            r.booking_source
-              ? `<br>Source: ${r.booking_source.replaceAll("_", " ")}`
+            reservation.guest_email
+              ? `<br>${reservation.guest_email}`
               : ""
           }
 
           ${
-            r.brokerage_name
-              ? `<br>Brokerage: ${r.brokerage_name}`
-              : ""
-          }
-
-          ${
-            r.agent_name
-              ? `<br>Agent: ${r.agent_name}`
-              : ""
-          }
-
-          ${
-            r.agent_phone
-              ? ` · ${r.agent_phone}`
-              : ""
-          }
-
-          ${
-            r.agent_email
-              ? `<br>${r.agent_email}`
-              : ""
-          }
-
-          ${
-            r.owner_notes
-              ? `<br>Notes: ${r.owner_notes}`
+            reservation.guest_phone
+              ? `<br>${reservation.guest_phone}`
               : ""
           }
         </div>
 
-        <span class="badge">
-          ${status.replaceAll("_", " ")}
-        </span>
+        <div class="dts-detail-section">
+          <strong>
+            Payment summary
+          </strong>
 
-        <span class="badge">
-          payment:
-          ${paymentStatus.replaceAll("_", " ")}
-        </span>
-
-        ${
-          r.hold_expires_at &&
-          status ===
-            "pending_payment"
-            ? `
-              <div class="meta hold">
-                Hold expires:
-                ${new Date(r.hold_expires_at).toLocaleString()}
-              </div>
-            `
-            : ""
-        }
-
-        <div class="payment-summary">
-          <div class="payment-summary-grid">
-            <div class="payment-summary-item">
-              <div class="payment-summary-label">
-                Total due
-              </div>
-              <div class="payment-summary-value">
-                ${formatMoney(totals.totalDue)}
-              </div>
-            </div>
-
-            <div class="payment-summary-item">
-              <div class="payment-summary-label">
-                Paid so far
-              </div>
-              <div class="payment-summary-value">
-                ${formatMoney(totals.paid)}
-              </div>
-            </div>
-
-            <div class="payment-summary-item">
-              <div class="payment-summary-label">
-                Balance
-              </div>
-              <div class="payment-summary-value">
-                ${formatMoney(totals.balance)}
-              </div>
-            </div>
+          <div class="dts-detail-money">
+            <span>Total</span>
+            <strong>
+              ${dtsMoney(totals.total)}
+            </strong>
           </div>
 
-          ${
-            canTakePayment
-              ? `
-                <div class="payment-log-row">
-                  <label>
-                    Payment amount
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max="${totals.balance}"
-                      placeholder="Amount"
-                      data-amount
-                    >
-                  </label>
-
-                  <label>
-                    Method
-                    <select data-method>
-                      <option value="zelle">Zelle</option>
-                      <option value="venmo">Venmo</option>
-                      <option value="credit_card">Credit card</option>
-                      <option value="check">Check</option>
-                    </select>
-                  </label>
-
-                  <button
-                    type="button"
-                    data-action="paid"
-                  >
-                    Log payment
-                  </button>
-                </div>
-              `
-              : totals.totalDue > 0
-                ? `
-                  <div class="notice">
-                    Paid in full
-                  </div>
-                `
-                : ""
-          }
-
-          ${paymentScheduleMarkup(r)}
-        </div>
-      </div>
-
-      <div class="actions">
-        ${
-          showAccept
-            ? `
-              <button
-                class="primary"
-                data-action="accept"
-              >
-                Accept · 24h hold
-              </button>
-            `
-            : ""
-        }
-
-        ${
-          showDecline
-            ? `
-              <button
-                data-action="decline"
-              >
-                Decline
-              </button>
-            `
-            : ""
-        }
-
-        ${
-          showCancel
-            ? `
-              <button
-                class="danger"
-                data-action="cancel"
-              >
-                Cancel reservation
-              </button>
-            `
-            : ""
-        }
-      </div>
-    </article>
-  `;
-}
-
-
-function activeReservation(
-  reservation
-) {
-  return ![
-    "cancelled",
-    "declined"
-  ].includes(
-    reservation.status
-  );
-}
-
-
-function pendingReservation(
-  reservation
-) {
-  return [
-    "pending",
-    "requested"
-  ].includes(
-    reservation.status
-  );
-}
-
-
-function reservationNights(
-  reservation
-) {
-  if (
-    !reservation.arrival_date ||
-    !reservation.departure_date
-  ) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.round(
-      (
-        parseDate(
-          reservation.departure_date
-        ) -
-        parseDate(
-          reservation.arrival_date
-        )
-      ) /
-      (
-        24 *
-        60 *
-        60 *
-        1000
-      )
-    )
-  );
-}
-
-
-function renderDashboardStats() {
-  const booked =
-    currentReservations.filter(
-      reservation =>
-        activeReservation(
-          reservation
-        ) &&
-        reservation.status ===
-          "booked"
-    );
-
-  const nightsBooked =
-    booked.reduce(
-      (
-        total,
-        reservation
-      ) =>
-        total +
-        reservationNights(
-          reservation
-        ),
-      0
-    );
-
-  const pendingCount =
-    currentReservations.filter(
-      pendingReservation
-    ).length;
-
-  const cleaningCount =
-    currentCleanings.filter(
-      cleaning =>
-        cleaning.status ===
-          "waiting" ||
-        cleaning.status ===
-          "confirmed"
-    ).length;
-
-  const rentalIncome =
-    currentReservations
-      .filter(
-        reservation =>
-          reservation.payment_status ===
-            "paid" &&
-          activeReservation(
-            reservation
-          )
-      )
-      .reduce(
-        (
-          total,
-          reservation
-        ) =>
-          total +
-          Number(
-            reservation.amount_received ||
-            reservation.amount_due ||
-            0
-          ),
-        0
-      );
-
-  dashboardStats.innerHTML = `
-    <article class="stat-card">
-      <div class="stat-icon">▣</div>
-      <div>
-        <div class="stat-number">
-          ${nightsBooked}
-        </div>
-        <div class="stat-label">
-          Nights booked
-        </div>
-        <div class="stat-sub">
-          Active booked stays
-        </div>
-      </div>
-    </article>
-
-    <article class="stat-card">
-      <div class="stat-icon">✓</div>
-      <div>
-        <div class="stat-number">
-          ${pendingCount}
-        </div>
-        <div class="stat-label">
-          Pending requests
-        </div>
-        <div class="stat-sub">
-          Needs review
-        </div>
-      </div>
-    </article>
-
-    <article class="stat-card">
-      <div class="stat-icon">♨</div>
-      <div>
-        <div class="stat-number">
-          ${cleaningCount}
-        </div>
-        <div class="stat-label">
-          Cleanings
-        </div>
-        <div class="stat-sub">
-          Waiting or confirmed
-        </div>
-      </div>
-    </article>
-
-    <article class="stat-card">
-      <div class="stat-icon">$</div>
-      <div>
-        <div class="stat-number">
-          ${formatMoney(
-            rentalIncome
-          )}
-        </div>
-        <div class="stat-label">
-          Rental income
-        </div>
-        <div class="stat-sub">
-          Payments logged
-        </div>
-      </div>
-    </article>
-  `;
-
-  if (pendingCount) {
-    sidebarPendingCount.hidden =
-      false;
-
-    sidebarPendingCount.textContent =
-      pendingCount;
-  } else {
-    sidebarPendingCount.hidden =
-      true;
-
-    sidebarPendingCount.textContent =
-      "";
-  }
-}
-
-
-function renderDashboardCalendar() {
-  const year =
-    calendarDate.getFullYear();
-
-  const month =
-    calendarDate.getMonth();
-
-  const monthTitle =
-    calendarDate.toLocaleDateString(
-      "en-US",
-      {
-        month: "long",
-        year: "numeric"
-      }
-    );
-
-  const firstDay =
-    new Date(
-      year,
-      month,
-      1
-    );
-
-  const daysInMonth =
-    new Date(
-      year,
-      month + 1,
-      0
-    ).getDate();
-
-  const properties =
-    currentProperties.map(
-      property => {
-        let cells = "";
-
-        for (
-          let blank = 0;
-          blank <
-            firstDay.getDay();
-          blank++
-        ) {
-          cells += `
-            <div
-              class="dashboard-mini-day blank"
-            ></div>
-          `;
-        }
-
-        for (
-          let day = 1;
-          day <= daysInMonth;
-          day++
-        ) {
-          const dateString =
-            isoDate(
-              new Date(
-                year,
-                month,
-                day
-              )
-            );
-
-          const items =
-            calendarItemsForDay(
-              property.id,
-              dateString
-            );
-
-          const paymentItems =
-            paymentDueItemsForDay(
-              property.id,
-              dateString
-            );
-
-          cells += `
-            <div
-              class="dashboard-mini-day"
-            >
-              <div
-                class="dashboard-mini-date"
-              >
-                ${day}
-              </div>
-
-              ${
-                [
-                  ...items.map(
-                    item => ({
-                      label:
-                        item.reservation.guest_name ||
-                        "Guest",
-                      status:
-                        item.status
-                    })
-                  ),
-                  ...paymentItems.map(
-                    item => ({
-                      label:
-                        `💵 ${item.reservation.guest_name || "Guest"}`,
-                      status:
-                        "pending_payment"
-                    })
-                  )
-                ]
-                  .slice(0, 2)
-                  .map(
-                    item => `
-                      <span
-                        class="dashboard-mini-item ${item.status}"
-                      >
-                        ${item.label}
-                      </span>
-                    `
-                  )
-                  .join("")
-              }
-            </div>
-          `;
-        }
-
-        return `
-          <div
-            class="dashboard-calendar-property"
-          >
-            <h3>
-              ${property.name}
-            </h3>
-
-            <div
-              class="dashboard-mini-grid"
-            >
-              ${cells}
-            </div>
+          <div class="dts-detail-money">
+            <span>Paid</span>
+            <strong>
+              ${dtsMoney(totals.paid)}
+            </strong>
           </div>
-        `;
-      }
-    )
-    .join("");
 
-  dashboardCalendar.innerHTML = `
-    <div
-      class="dashboard-calendar-preview-title"
-    >
-      ${monthTitle}
-    </div>
-
-    <div
-      class="dashboard-calendar-properties"
-    >
-      ${properties}
-    </div>
-  `;
-}
-
-
-function pendingMiniCard(
-  reservation
-) {
-  return `
-    <article
-      class="pending-mini"
-    >
-      <div
-        class="pending-mini-top"
-      >
-        <div>
-          <h3>
-            ${reservation.property_name}
-          </h3>
-          <div class="meta">
-            ${reservation.guest_name || "Guest"}
+          <div class="dts-detail-money">
+            <span>Balance</span>
+            <strong>
+              ${dtsMoney(totals.balance)}
+            </strong>
           </div>
         </div>
 
-        <div class="amount">
+        ${
+          isWaitlisted
+            ? `
+              <div class="dts-waitlist-note">
+                ${
+                  datesAvailable
+                    ? "These dates are currently available. You can offer them to this waitlisted guest for 24 hours."
+                    : "These dates are still being held or booked by another reservation."
+                }
+              </div>
+
+              <div class="dts-detail-actions">
+                <button
+                  type="button"
+                  class="primary"
+                  data-dts-offer="${reservation.id}"
+                  ${datesAvailable ? "" : "disabled"}
+                >
+                  Offer Dates · 24h Hold
+                </button>
+              </div>
+            `
+            : ""
+        }
+
+        <details class="dts-full-details">
+          <summary>
+            Payment & reservation controls
+          </summary>
+
           ${
-            reservation.amount_due
-              ? formatMoney(
-                  reservation.amount_due
+            typeof reservationCard ===
+            "function"
+              ? reservationCard(
+                  reservation
                 )
               : ""
           }
-        </div>
-      </div>
+        </details>
+      </aside>
+    `;
+  }
 
-      <div class="meta">
-        ${formatDate(reservation.arrival_date)}
-        –
-        ${formatDate(reservation.departure_date)}
+  function renderDtsReservations() {
+    const mount =
+      document.getElementById(
+        "reservationList"
+      );
 
-        <br>
+    if (!mount) {
+      return;
+    }
 
-        ${reservation.adults || 0}
-        guest(s)
+    mount.innerHTML = `
+      <div class="dts-reservations-shell">
 
-        ${
-          reservation.dogs
-            ? ` · ${reservation.dogs} dog(s)`
-            : ""
-        }
-      </div>
+        ${dtsPropertyTabs()}
 
-      <div
-        class="pending-mini-actions"
-      >
-        <button
-          type="button"
-          class="review"
-          data-dashboard-review="${reservation.id}"
-        >
-          Review
-        </button>
-      </div>
-    </article>
-  `;
-}
+        <div class="dts-toolbar">
+          ${dtsStatusTabs()}
 
+          <div
+            style="
+              display:flex;
+              gap:8px;
+              flex-wrap:wrap;
+            "
+          >
+            <input
+              type="search"
+              placeholder="Search guest or email"
+              value="${searchText}"
+              data-dts-search
+            >
 
-function renderDashboardPending() {
-  const pending =
-    currentReservations
-      .filter(
-        pendingReservation
-      )
-      .slice(0, 3);
+            <select data-dts-sort>
+              <option
+                value="asc"
+                ${
+                  sortDirection ===
+                  "asc"
+                    ? "selected"
+                    : ""
+                }
+              >
+                Arrival date — soonest
+              </option>
 
-  dashboardPendingList.innerHTML =
-    pending.length
-      ? pending
-          .map(
-            pendingMiniCard
-          )
-          .join("")
-      : `
-        <div class="empty-state">
-          No pending requests right now.
-        </div>
-      `;
-
-  const allPending =
-    currentReservations.filter(
-      pendingReservation
-    );
-
-  pendingReservationList.innerHTML =
-    allPending.length
-      ? allPending
-          .map(
-            reservationCard
-          )
-          .join("")
-      : `
-        <div class="empty-state">
-          No pending reservation requests.
-        </div>
-      `;
-}
-
-
-function upcomingEvents() {
-  const today =
-    new Date();
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-  const events = [];
-
-  currentReservations
-    .filter(
-      reservation =>
-        activeReservation(
-          reservation
-        ) &&
-        [
-          "booked",
-          "pending_payment"
-        ].includes(
-          reservation.status
-        )
-    )
-    .forEach(
-      reservation => {
-        if (
-          reservation.arrival_date
-        ) {
-          const date =
-            parseDate(
-              reservation.arrival_date
-            );
-
-          if (date >= today) {
-            events.push({
-              type:
-                "checkin",
-              date:
-                reservation.arrival_date,
-              property:
-                reservation.property_name,
-              guest:
-                reservation.guest_name ||
-                "Guest",
-              time:
-                "2:00 PM"
-            });
-          }
-        }
-
-        if (
-          reservation.departure_date
-        ) {
-          const date =
-            parseDate(
-              reservation.departure_date
-            );
-
-          if (date >= today) {
-            events.push({
-              type:
-                "checkout",
-              date:
-                reservation.departure_date,
-              property:
-                reservation.property_name,
-              guest:
-                reservation.guest_name ||
-                "Guest",
-              time:
-                "10:00 AM"
-            });
-          }
-        }
-
-        scheduleAllocations(
-          reservation
-        )
-          .filter(
-            item =>
-              item.remaining > 0 &&
-              parseDate(
-                item.due_date
-              ) >= today
-          )
-          .forEach(
-            item => {
-              events.push({
-                type:
-                  "payment",
-                date:
-                  item.due_date,
-                property:
-                  reservation.property_name,
-                guest:
-                  reservation.guest_name ||
-                  "Guest",
-                time:
-                  item.label ||
-                  "Payment due",
-                amount:
-                  item.remaining
-              });
-            }
-          );
-      }
-    );
-
-  return events
-    .sort(
-      (a, b) => {
-        const dateDiff =
-          parseDate(a.date) -
-          parseDate(b.date);
-
-        if (dateDiff !== 0) {
-          return dateDiff;
-        }
-
-        const order = {
-          checkout: 1,
-          payment: 2,
-          checkin: 3
-        };
-
-        return (
-          order[a.type] -
-          order[b.type]
-        );
-      }
-    )
-    .slice(0, 4);
-}
-
-
-function renderDashboardUpcoming() {
-  const events =
-    upcomingEvents();
-
-  dashboardUpcoming.innerHTML =
-    events.length
-      ? events
-          .map(
-            event => {
-              const date =
-                parseDate(
-                  event.date
-                );
-
-              const month =
-                date.toLocaleDateString(
-                  "en-US",
-                  {
-                    month:
-                      "short"
-                  }
-                );
-
-              const day =
-                date.getDate();
-
-              return `
-                <article
-                  class="upcoming-event"
-                >
-                  <span
-                    class="event-type ${event.type}"
-                  >
-                    ${
-                      event.type ===
-                        "checkin"
-                        ? "CHECK-IN"
-                        : event.type ===
-                            "checkout"
-                          ? "CHECK-OUT"
-                          : "PAYMENT DUE"
-                    }
-                  </span>
-
-                  <div
-                    class="event-date"
-                  >
-                    ${month} ${day}
-                  </div>
-
-                  <div
-                    class="event-property"
-                  >
-                    ${event.property}
-                  </div>
-
-                  <div
-                    class="event-meta"
-                  >
-                    ${event.guest}
-                    <br>
-                    ${
-                      event.type ===
-                        "payment"
-                        ? `${event.time} · ${formatMoney(event.amount)}`
-                        : event.time
-                    }
-                  </div>
-                </article>
-              `;
-            }
-          )
-          .join("")
-      : `
-        <div class="empty-state">
-          No upcoming events.
-        </div>
-      `;
-}
-
-
-function renderDashboard() {
-  renderDashboardStats();
-  renderDashboardCalendar();
-  renderDashboardPending();
-  renderDashboardUpcoming();
-}
-
-
-function showOwnerView(
-  view
-) {
-  const titles = {
-    dashboard: [
-      "Welcome back, Janis!",
-      "Here’s what’s happening at your shore homes."
-    ],
-    calendar: [
-      "Calendar",
-      "See reservations across both properties."
-    ],
-    pending: [
-      "Pending requests",
-      "Review new booking requests and start payment holds."
-    ],
-    reservations: [
-      "Reservations",
-      "View every reservation in one place."
-    ],
-    "add-reservation": [
-      "Add reservation",
-      "Enter an existing or manual booking."
-    ],
-    pricing: [
-      "Pricing & fees",
-      "Control rates, stay rules, cleaning fees, and pet fees."
-    ],
-    cleaning: [
-      "Cleaning dashboard",
-      "Manage upcoming turnovers and cleaner confirmations."
-    ]
-  };
-
-  document
-    .querySelectorAll(
-      "[data-owner-panel]"
-    )
-    .forEach(
-      panel => {
-        panel.classList.toggle(
-          "active",
-          panel.dataset.ownerPanel ===
-            view
-        );
-      }
-    );
-
-  document
-    .querySelectorAll(
-      ".owner-nav-link[data-owner-view]"
-    )
-    .forEach(
-      button => {
-        button.classList.toggle(
-          "active",
-          button.dataset.ownerView ===
-            view
-        );
-      }
-    );
-
-  const [
-    title,
-    subtitle
-  ] =
-    titles[view] ||
-    titles.dashboard;
-
-  ownerPageTitle.textContent =
-    title;
-
-  ownerPageSubtitle.textContent =
-    subtitle;
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-}
-
-
-async function refresh() {
-  try {
-    portalMessage.className = "";
-    portalMessage.textContent = "";
-
-    await loadReservations();
-    await loadCleanings();
-    await loadRatePeriods();
-    await loadPayments();
-    await loadPaymentSchedule();
-
-    reservationList.innerHTML =
-      currentReservations.length
-        ? currentReservations
-            .map(
-              reservationCard
-            )
-            .join("")
-        : `
-          <div class="card">
-            No reservation requests yet.
+              <option
+                value="desc"
+                ${
+                  sortDirection ===
+                  "desc"
+                    ? "selected"
+                    : ""
+                }
+              >
+                Arrival date — latest
+              </option>
+            </select>
           </div>
-        `;
+        </div>
 
-    renderOwnerCalendar();
-    renderCleaningDashboard();
-    renderPropertySettings();
-    renderRatePeriods();
-    renderDashboard();
+        ${dtsSummary()}
 
-  } catch (err) {
-    message(
-      portalMessage,
-      err.message,
-      true
-    );
+        <div class="dts-reservation-layout">
+          <section
+            class="dts-reservation-table-card"
+          >
+            <div class="dts-table-title">
+              Reservations
+            </div>
+
+            <div
+              class="
+                dts-reservation-row
+                dts-reservation-head
+              "
+            >
+              <div>Guest</div>
+              <div>Dates</div>
+              <div>Guests</div>
+              <div title="Cleaning confirmed">
+                🧹
+              </div>
+              <div>Status</div>
+              <div>Total</div>
+              <div>Balance</div>
+            </div>
+
+            ${dtsReservationRows()}
+          </section>
+
+          ${dtsDetailPanel()}
+        </div>
+      </div>
+    `;
   }
-}
 
-
-function toggleBrokerageFields() {
-  if (
-    bookingSource.value ===
-    "brokerage"
+  async function dtsOfferWaitlistedGuest(
+    reservationId,
+    button
   ) {
-    brokerageFields
-      .classList
-      .add("show");
-  } else {
-    brokerageFields
-      .classList
-      .remove("show");
-  }
-}
-
-
-function showPortal() {
-  loginView.hidden =
-    true;
-
-  portalView.hidden =
-    false;
-
-  loadProperties()
-    .then(
-      async () => {
-        await refresh();
-        showOwnerView(
-          "dashboard"
-        );
-      }
-    );
-}
-
-
-function signOut() {
-  token = "";
-
-  sessionStorage.removeItem(
-    "dts_token"
-  );
-
-  portalView.hidden =
-    true;
-
-  loginView.hidden =
-    false;
-}
-
-
-loginForm.addEventListener(
-  "submit",
-  async event => {
-
-    event.preventDefault();
-
-    const form =
-      new FormData(
-        loginForm
-      );
-
-    try {
-      await login(
-        form.get("email"),
-        form.get("password")
-      );
-
-      showPortal();
-
-    } catch (err) {
-      message(
-        loginMessage,
-        err.message,
-        true
-      );
-    }
-  }
-);
-
-
-logoutButton.addEventListener(
-  "click",
-  signOut
-);
-
-
-bookingSource.addEventListener(
-  "change",
-  toggleBrokerageFields
-);
-
-
-calendarPrev.addEventListener(
-  "click",
-  () => {
-    calendarDate =
-      new Date(
-        calendarDate.getFullYear(),
-        calendarDate.getMonth() - 1,
-        1
-      );
-
-    renderOwnerCalendar();
-  }
-);
-
-
-calendarNext.addEventListener(
-  "click",
-  () => {
-    calendarDate =
-      new Date(
-        calendarDate.getFullYear(),
-        calendarDate.getMonth() + 1,
-        1
-      );
-
-    renderOwnerCalendar();
-  }
-);
-
-
-calendarToday.addEventListener(
-  "click",
-  () => {
-    const today =
-      new Date();
-
-    calendarDate =
-      new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        1
-      );
-
-    renderOwnerCalendar();
-  }
-);
-
-
-manualReservationForm.addEventListener(
-  "submit",
-  async event => {
-
-    event.preventDefault();
-
-    manualReservationMessage.className =
-      "";
-
-    manualReservationMessage.textContent =
-      "";
-
-    const form =
-      new FormData(
-        manualReservationForm
-      );
-
-
-    const source =
-      form.get(
-        "booking_source"
-      );
-
-
-    const amountDue =
-      form.get(
-        "amount_due"
-      );
-
-
-    const paymentStatus =
-      form.get(
-        "payment_status"
-      );
-
-
-    const reservation = {
-
-      property_id:
-        form.get(
-          "property_id"
-        ),
-
-      booking_source:
-        source,
-
-      guest_name:
-        form.get(
-          "guest_name"
-        ),
-
-      guest_email:
-        form.get(
-          "guest_email"
-        ) || null,
-
-      guest_phone:
-        form.get(
-          "guest_phone"
-        ) || null,
-
-      adults:
-        Number(
-          form.get(
-            "adults"
-          ) || 1
-        ),
-
-      arrival_date:
-        form.get(
-          "arrival_date"
-        ),
-
-      departure_date:
-        form.get(
-          "departure_date"
-        ),
-
-      amount_due:
-        amountDue
-          ? Number(
-              amountDue
-            )
-          : null,
-
-      payment_status:
-        paymentStatus,
-
-      status:
-        "booked",
-
-      brokerage_name:
-        source ===
-          "brokerage"
-          ? form.get(
-              "brokerage_name"
-            ) || null
-          : null,
-
-      agent_name:
-        source ===
-          "brokerage"
-          ? form.get(
-              "agent_name"
-            ) || null
-          : null,
-
-      agent_phone:
-        source ===
-          "brokerage"
-          ? form.get(
-              "agent_phone"
-            ) || null
-          : null,
-
-      agent_email:
-        source ===
-          "brokerage"
-          ? form.get(
-              "agent_email"
-            ) || null
-          : null,
-
-      owner_notes:
-        form.get(
-          "owner_notes"
-        ) || null
-    };
-
-
-    try {
-
-      await createReservation(
-        reservation
-      );
-
-
-      message(
-        manualReservationMessage,
-        "Reservation saved."
-      );
-
-
-      manualReservationForm
-        .reset();
-
-
-      toggleBrokerageFields();
-
-
-      await refresh();
-
-
-    } catch (err) {
-
-      message(
-        manualReservationMessage,
-        err.message,
-        true
-      );
-
-    }
-  }
-);
-
-
-reservationList.addEventListener(
-  "click",
-  async event => {
-
-    const button =
-      event.target.closest(
-        "button[data-action]"
-      );
-
-
-    if (!button) {
-      return;
-    }
-
-
-    const card =
-      button.closest(
-        "[data-id]"
-      );
-
-
-    const id =
-      card.dataset.id;
-
-
-    const action =
-      button.dataset.action;
-
-
-    try {
-
-      button.disabled =
-        true;
-
-
-      if (
-        action ===
-        "accept"
-      ) {
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "pending_payment",
-
-            hold_expires_at:
-              new Date(
-                Date.now() +
-                24 *
-                60 *
-                60 *
-                1000
-              ).toISOString()
-          }
-        );
-
-
-        message(
-          portalMessage,
-          "Accepted. The 24-hour payment hold has started."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "decline"
-      ) {
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "declined",
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-        message(
-          portalMessage,
-          "Reservation request declined."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "cancel"
-      ) {
-
-        const confirmed =
-          window.confirm(
-            "Cancel this reservation and reopen the dates?"
-          );
-
-
-        if (!confirmed) {
-          button.disabled =
-            false;
-
-          return;
-        }
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "cancelled",
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-        message(
-          portalMessage,
-          "Reservation cancelled. The dates are available again."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "paid"
-      ) {
-
-        const amount =
-          card
-            .querySelector(
-              "[data-amount]"
-            )
-            .value;
-
-
-        const method =
-          card
-            .querySelector(
-              "[data-method]"
-            )
-            .value;
-
-
-        if (
-          !amount ||
-          Number(amount) <= 0
-        ) {
-
-          throw new Error(
-            "Enter the payment amount first."
-          );
-
-        }
-
-
-        await addPayment(
-          id,
-          amount,
-          method
-        );
-
-
-        message(
-          portalMessage,
-          `Payment recorded as ${method.replaceAll("_", " ")}.`
-        );
-
-      }
-
-
-      await refresh();
-
-
-    } catch (err) {
-
-      message(
-        portalMessage,
-        err.message,
-        true
-      );
-
-
-    } finally {
-
-      button.disabled =
-        false;
-
-    }
-  }
-);
-
-
-pendingReservationList.addEventListener(
-  "click",
-  async event => {
-
-    const button =
-      event.target.closest(
-        "button[data-action]"
-      );
-
-
-    if (!button) {
-      return;
-    }
-
-
-    const card =
-      button.closest(
-        "[data-id]"
-      );
-
-
-    const id =
-      card.dataset.id;
-
-
-    const action =
-      button.dataset.action;
-
-
-    try {
-
-      button.disabled =
-        true;
-
-
-      if (
-        action ===
-        "accept"
-      ) {
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "pending_payment",
-
-            hold_expires_at:
-              new Date(
-                Date.now() +
-                24 *
-                60 *
-                60 *
-                1000
-              ).toISOString()
-          }
-        );
-
-
-        message(
-          portalMessage,
-          "Accepted. The 24-hour payment hold has started."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "decline"
-      ) {
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "declined",
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-        message(
-          portalMessage,
-          "Reservation request declined."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "cancel"
-      ) {
-
-        const confirmed =
-          window.confirm(
-            "Cancel this reservation and reopen the dates?"
-          );
-
-
-        if (!confirmed) {
-          button.disabled =
-            false;
-
-          return;
-        }
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "cancelled",
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-        message(
-          portalMessage,
-          "Reservation cancelled. The dates are available again."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "paid"
-      ) {
-
-        const amount =
-          card
-            .querySelector(
-              "[data-amount]"
-            )
-            .value;
-
-
-        const method =
-          card
-            .querySelector(
-              "[data-method]"
-            )
-            .value;
-
-
-        if (
-          !amount ||
-          Number(amount) <= 0
-        ) {
-
-          throw new Error(
-            "Enter the payment amount first."
-          );
-
-        }
-
-
-        await addPayment(
-          id,
-          amount,
-          method
-        );
-
-
-        message(
-          portalMessage,
-          `Payment recorded as ${method.replaceAll("_", " ")}.`
-        );
-
-      }
-
-
-      await refresh();
-
-
-    } catch (err) {
-
-      message(
-        portalMessage,
-        err.message,
-        true
-      );
-
-
-    } finally {
-
-      button.disabled =
-        false;
-
-    }
-  }
-);
-
-
-cleaningList.addEventListener(
-  "click",
-  async event => {
-
-    const button =
-      event.target.closest(
-        "button[data-cleaning-action]"
-      );
-
-
-    if (!button) {
-      return;
-    }
-
-
-    const card =
-      button.closest(
-        "[data-cleaning-id]"
-      );
-
-
-    const id =
-      card.dataset.cleaningId;
-
-
-    const action =
-      button.dataset.cleaningAction;
-
-
-    try {
-
-      button.disabled =
-        true;
-
-
-      if (
-        action ===
-        "save-cleaner"
-      ) {
-
-        const cleanerName =
-          card
-            .querySelector(
-              "[data-cleaner-name]"
-            )
-            .value
-            .trim();
-
-
-        const cleanerEmail =
-          card
-            .querySelector(
-              "[data-cleaner-email]"
-            )
-            .value
-            .trim();
-
-
-        await updateCleaning(
-          id,
-          {
-            cleaner_name:
-              cleanerName ||
-              null,
-
-            cleaner_email:
-              cleanerEmail ||
-              null
-          }
-        );
-
-
-        message(
-          cleaningMessage,
-          "Cleaner information saved."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "confirm"
-      ) {
-
-        await updateCleaning(
-          id,
-          {
-            status:
-              "confirmed",
-
-            confirmed_at:
-              new Date()
-                .toISOString()
-          }
-        );
-
-
-        message(
-          cleaningMessage,
-          "Cleaning confirmed."
-        );
-
-      }
-
-
-      if (
-        action ===
-        "complete"
-      ) {
-
-        await updateCleaning(
-          id,
-          {
-            status:
-              "completed",
-
-            completed_at:
-              new Date()
-                .toISOString()
-          }
-        );
-
-
-        message(
-          cleaningMessage,
-          "Cleaning marked completed."
-        );
-
-      }
-
-
-      await refresh();
-
-
-    } catch (err) {
-
-      message(
-        cleaningMessage,
-        err.message,
-        true
-      );
-
-
-    } finally {
-
-      button.disabled =
-        false;
-
-    }
-  }
-);
-
-
-
-
-propertySettingsList.addEventListener(
-  "click",
-  async event => {
-    const button =
-      event.target.closest(
-        "button[data-property-settings-action]"
-      );
-
-    if (!button) {
-      return;
-    }
-
-    const card =
-      button.closest(
-        "[data-property-settings-id]"
-      );
-
-    const id =
-      card.dataset.propertySettingsId;
-
-    const cleaningFee =
-      card.querySelector(
-        "[data-property-cleaning-fee]"
-      ).value;
-
-    const petFee =
-      card.querySelector(
-        "[data-property-pet-fee]"
-      ).value;
-
-    const maxDogs =
-      card.querySelector(
-        "[data-property-max-dogs]"
-      ).value;
-
-    try {
-      button.disabled = true;
-
-      if (
-        cleaningFee === "" ||
-        Number(cleaningFee) < 0
-      ) {
-        throw new Error(
-          "Enter a valid cleaning fee."
-        );
-      }
-
-      if (
-        petFee === "" ||
-        Number(petFee) < 0
-      ) {
-        throw new Error(
-          "Enter a valid pet fee."
-        );
-      }
-
-      if (
-        maxDogs === "" ||
-        Number(maxDogs) < 0
-      ) {
-        throw new Error(
-          "Enter a valid maximum number of dogs."
-        );
-      }
-
-      await updateProperty(
-        id,
-        {
-          cleaning_fee:
-            Number(cleaningFee),
-          pet_fee:
-            Number(petFee),
-          max_dogs:
-            Number(maxDogs)
-        }
-      );
-
-      message(
-        propertySettingsMessage,
-        "Property fees saved."
-      );
-
-      await loadProperties();
-      renderPropertySettings();
-
-    } catch (err) {
-      message(
-        propertySettingsMessage,
-        err.message,
-        true
-      );
-    } finally {
-      button.disabled = false;
-    }
-  }
-);
-
-
-rateStayRule.addEventListener(
-  "change",
-  () => {
-    const minimum =
-      ratePeriodForm.elements.minimum_nights;
-
-    if (
-      rateStayRule.value ===
-      "weekly"
-    ) {
-      minimum.value = "7";
-    } else if (
-      Number(minimum.value) === 7
-    ) {
-      minimum.value = "2";
-    }
-  }
-);
-
-
-ratePeriodForm.addEventListener(
-  "submit",
-  async event => {
-    event.preventDefault();
-
-    ratePeriodMessage.className = "";
-    ratePeriodMessage.textContent = "";
-
-    const form =
-      new FormData(
-        ratePeriodForm
-      );
-
-    const startDate =
-      form.get("start_date");
-
-    const endDate =
-      form.get("end_date");
-
-    const stayRule =
-      form.get("stay_rule");
-
-    try {
-      validateRateDates(
-        stayRule,
-        startDate,
-        endDate
-      );
-    } catch (err) {
-      message(
-        ratePeriodMessage,
-        err.message,
-        true
-      );
-      return;
-    }
-
-    const weekly =
-      form.get("weekly_price");
-
-    const nightly =
-      form.get("nightly_price");
-
-    const blocked =
-      form.get("blocked") === "on";
-
-    if (
-      !blocked &&
-      !weekly &&
-      !nightly
-    ) {
-      message(
-        ratePeriodMessage,
-        "Enter a weekly or nightly price, or block the dates.",
-        true
-      );
-      return;
-    }
-
-    try {
-      await createRatePeriod({
-        property_id:
-          form.get("property_id"),
-        start_date:
-          startDate,
-        end_date:
-          endDate,
-        weekly_price:
-          weekly
-            ? Number(weekly)
-            : null,
-        nightly_price:
-          nightly
-            ? Number(nightly)
-            : null,
-        stay_rule:
-          stayRule,
-        minimum_nights:
-          Number(
-            form.get("minimum_nights") ||
-            1
-          ),
-        blocked,
-        notes:
-          form.get("notes") ||
-          null
-      });
-
-      message(
-        ratePeriodMessage,
-        "Rate period saved."
-      );
-
-      ratePeriodForm.reset();
-      ratePeriodForm.elements.minimum_nights.value =
-        "7";
-
-      await loadRatePeriods();
-      renderRatePeriods();
-
-    } catch (err) {
-      message(
-        ratePeriodMessage,
-        err.message,
-        true
-      );
-    }
-  }
-);
-
-
-ratePeriodsList.addEventListener(
-  "click",
-  async event => {
-    const button =
-      event.target.closest(
-        "button[data-rate-action]"
-      );
-
-    if (!button) {
-      return;
-    }
-
-    const card =
-      button.closest(
-        "[data-rate-id]"
-      );
-
-    const id =
-      card.dataset.rateId;
-
-    const action =
-      button.dataset.rateAction;
-
-    try {
-      button.disabled = true;
-
-      if (action === "delete") {
-        const confirmed =
-          window.confirm(
-            "Delete this rate period?"
-          );
-
-        if (!confirmed) {
-          button.disabled = false;
-          return;
-        }
-
-        await deleteRatePeriod(id);
-
-        message(
-          ratePeriodMessage,
-          "Rate period deleted."
-        );
-      }
-
-      if (action === "save") {
-        const startDate =
-          card.querySelector(
-            "[data-rate-start]"
-          ).value;
-
-        const endDate =
-          card.querySelector(
-            "[data-rate-end]"
-          ).value;
-
-        const stayRule =
-          card.querySelector(
-            "[data-rate-stay-rule]"
-          ).value;
-
-        validateRateDates(
-          stayRule,
-          startDate,
-          endDate
-        );
-
-        const weekly =
-          card.querySelector(
-            "[data-rate-weekly]"
-          ).value;
-
-        const nightly =
-          card.querySelector(
-            "[data-rate-nightly]"
-          ).value;
-
-        const blocked =
-          card.querySelector(
-            "[data-rate-blocked]"
-          ).checked;
-
-        if (
-          !blocked &&
-          !weekly &&
-          !nightly
-        ) {
-          throw new Error(
-            "Enter a weekly or nightly price, or block the dates."
-          );
-        }
-
-        await updateRatePeriod(
-          id,
-          {
-            property_id:
-              card.querySelector(
-                "[data-rate-property]"
-              ).value,
-            start_date:
-              startDate,
-            end_date:
-              endDate,
-            weekly_price:
-              weekly
-                ? Number(weekly)
-                : null,
-            nightly_price:
-              nightly
-                ? Number(nightly)
-                : null,
-            stay_rule:
-              stayRule,
-            minimum_nights:
-              Number(
-                card.querySelector(
-                  "[data-rate-minimum]"
-                ).value ||
-                1
-              ),
-            blocked,
-            notes:
-              card.querySelector(
-                "[data-rate-notes]"
-              ).value ||
-              null
-          }
-        );
-
-        message(
-          ratePeriodMessage,
-          "Rate period updated."
-        );
-      }
-
-      await loadRatePeriods();
-      renderRatePeriods();
-
-    } catch (err) {
-      message(
-        ratePeriodMessage,
-        err.message,
-        true
-      );
-    } finally {
-      button.disabled = false;
-    }
-  }
-);
-
-
-
-
-document.addEventListener(
-  "input",
-  event => {
-    if (
-      event.target.matches(
-        "[data-payment-due-amount]"
-      )
-    ) {
-      refreshScheduleArithmetic(
-        event.target.closest(
-          "[data-id]"
-        )
-      );
-    }
-  }
-);
-
-
-document.addEventListener(
-  "click",
-  event => {
-    const useRemaining =
-      event.target.closest(
-        "[data-use-remaining]"
-      );
-
-    if (!useRemaining) {
-      return;
-    }
-
-    const card =
-      useRemaining.closest(
-        "[data-id]"
-      );
-
-    const reservationId =
-      card.dataset.id;
-
     const reservation =
       currentReservations.find(
         item =>
@@ -4732,341 +1364,282 @@ document.addEventListener(
       );
 
     if (!reservation) {
+      throw new Error(
+        "Reservation not found."
+      );
+    }
+
+    if (
+      reservation.status !==
+      "waitlisted"
+    ) {
+      throw new Error(
+        "This reservation is no longer waitlisted."
+      );
+    }
+
+    if (
+      !dtsDatesAvailable(
+        reservation
+      )
+    ) {
+      throw new Error(
+        "These dates are not currently available."
+      );
+    }
+
+    if (
+      !reservation.guest_email
+    ) {
+      throw new Error(
+        "This guest does not have an email address."
+      );
+    }
+
+    const confirmed =
+      window.confirm(
+        `Offer ${reservation.guest_name || "this guest"} these dates for 24 hours?`
+      );
+
+    if (!confirmed) {
       return;
     }
 
-    const visibleScheduled =
-      visibleScheduledTotal(
-        card
+    button.disabled = true;
+    button.textContent =
+      "Sending offer…";
+
+    const holdExpiresAt =
+      new Date(
+        Date.now() +
+        24 *
+        60 *
+        60 *
+        1000
+      ).toISOString();
+
+    await updateReservation(
+      reservation.id,
+      {
+        status:
+          "pending_payment",
+        hold_expires_at:
+          holdExpiresAt
+      }
+    );
+
+    const response =
+      await fetch(
+        "/api/reservation-approved",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body:
+            JSON.stringify({
+              to:
+                reservation.guest_email,
+              guestName:
+                reservation.guest_name,
+              propertyName:
+                reservation.property_name,
+              arrivalDate:
+                reservation.arrival_date,
+              departureDate:
+                reservation.departure_date,
+              holdExpiresAt
+            })
+        }
       );
 
-    const remaining =
-      Math.max(
-        0,
-        Number(
-          reservation.amount_due ||
-          0
-        ) -
-        visibleScheduled
-      );
+    let result = null;
 
-    const amountInput =
-      card.querySelector(
-        "[data-new-payment-amount]"
-      );
-
-    if (amountInput) {
-      amountInput.value =
-        remaining.toFixed(2);
-
-      amountInput.focus();
+    try {
+      result =
+        await response.json();
+    } catch {
+      result = null;
     }
-  }
-);
 
-
-document.addEventListener(
-  "click",
-  async event => {
-    const scheduleAction =
-      event.target.closest(
-        "[data-payment-schedule-action]"
+    if (!response.ok) {
+      throw new Error(
+        result?.details?.message ||
+        result?.error ||
+        "The hold was created, but the email could not be sent."
       );
+    }
 
-    if (scheduleAction) {
-      const row =
-        scheduleAction.closest(
-          "[data-payment-schedule-id]"
+    message(
+      portalMessage,
+      "Waitlisted guest offered the dates. The 24-hour hold has started and the approval email was sent."
+    );
+
+    await refresh();
+
+    selectedReservationId =
+      reservation.id;
+
+    renderDtsReservations();
+  }
+
+  document.addEventListener(
+    "click",
+    async event => {
+      const offerButton =
+        event.target.closest(
+          "[data-dts-offer]"
         );
 
-      const id =
-        row.dataset.paymentScheduleId;
-
-      try {
-        scheduleAction.disabled =
-          true;
-
-        if (
-          scheduleAction.dataset.paymentScheduleAction ===
-          "delete"
-        ) {
-          if (
-            !window.confirm(
-              "Delete this scheduled payment?"
-            )
-          ) {
-            scheduleAction.disabled =
-              false;
-            return;
-          }
-
-          await deletePaymentScheduleItem(
-            id
+      if (offerButton) {
+        try {
+          await dtsOfferWaitlistedGuest(
+            offerButton.dataset.dtsOffer,
+            offerButton
           );
-        } else {
-          const label =
-            row.querySelector(
-              "[data-payment-label]"
-            ).value.trim();
-
-          const amount =
-            Number(
-              row.querySelector(
-                "[data-payment-due-amount]"
-              ).value
-            );
-
-          const dueDate =
-            row.querySelector(
-              "[data-payment-due-date]"
-            ).value;
-
-          if (
-            !label ||
-            !amount ||
-            amount <= 0 ||
-            !dueDate
-          ) {
-            throw new Error(
-              "Enter a label, amount, and due date."
-            );
-          }
-
-          const card =
-            row.closest(
-              "[data-id]"
-            );
-
-          const reservationId =
-            card.dataset.id;
-
-          const reservation =
-            currentReservations.find(
-              item =>
-                item.id ===
-                reservationId
-            );
-
-          const otherScheduled =
-            scheduleForReservation(
-              reservationId
-            )
-              .filter(
-                item =>
-                  item.id !== id
-              )
-              .reduce(
-                (
-                  total,
-                  item
-                ) =>
-                  total +
-                  Number(
-                    item.amount_due ||
-                    0
-                  ),
-                0
-              );
-
-          const maxAllowed =
-            Math.max(
-              0,
-              Number(
-                reservation.amount_due ||
-                0
-              ) -
-              otherScheduled
-            );
-
-          if (
-            amount >
-            maxAllowed
-          ) {
-            throw new Error(
-              `That installment is too large. The maximum for this installment is ${formatMoney(maxAllowed)}.`
-            );
-          }
-
-          await updatePaymentScheduleItem(
-            id,
-            {
-              label,
-              amount_due:
-                amount,
-              due_date:
-                dueDate
-            }
+        } catch (error) {
+          message(
+            portalMessage,
+            error.message,
+            true
           );
+
+          offerButton.disabled =
+            false;
+
+          offerButton.textContent =
+            "Offer Dates · 24h Hold";
         }
 
-        await refresh();
-
-      } catch (err) {
-        message(
-          portalMessage,
-          err.message,
-          true
-        );
-      } finally {
-        scheduleAction.disabled =
-          false;
+        return;
       }
 
-      return;
-    }
-
-    const addSchedule =
-      event.target.closest(
-        'button[data-action="add-payment-schedule"]'
-      );
-
-    if (addSchedule) {
-      const card =
-        addSchedule.closest(
-          "[data-id]"
+      const propertyButton =
+        event.target.closest(
+          "[data-dts-property]"
         );
 
-      const reservationId =
-        card.dataset.id;
+      if (propertyButton) {
+        selectedPropertyId =
+          propertyButton.dataset.dtsProperty;
 
-      const label =
-        card.querySelector(
-          "[data-new-payment-label]"
-        ).value.trim();
+        selectedReservationId =
+          null;
 
-      const amount =
-        Number(
-          card.querySelector(
-            "[data-new-payment-amount]"
-          ).value
-        );
-
-      const dueDate =
-        card.querySelector(
-          "[data-new-payment-date]"
-        ).value;
-
-      try {
-        addSchedule.disabled =
-          true;
-
-        if (
-          !label ||
-          !amount ||
-          amount <= 0 ||
-          !dueDate
-        ) {
-          throw new Error(
-            "Enter a label, amount, and due date."
-          );
-        }
-
-        const reservation =
-          currentReservations.find(
-            item =>
-              item.id ===
-              reservationId
-          );
-
-        const remaining =
-          unscheduledAmount(
-            reservation
-          );
-
-        if (
-          amount >
-          remaining
-        ) {
-          throw new Error(
-            `That installment is larger than the remaining unscheduled amount of ${formatMoney(remaining)}.`
-          );
-        }
-
-        await createPaymentScheduleItem({
-          reservation_id:
-            reservationId,
-          label,
-          amount_due:
-            amount,
-          due_date:
-            dueDate,
-          reminder_days_before:
-            3
-        });
-
-        await refresh();
-
-      } catch (err) {
-        message(
-          portalMessage,
-          err.message,
-          true
-        );
-      } finally {
-        addSchedule.disabled =
-          false;
+        renderDtsReservations();
+        return;
       }
 
-      return;
+      const statusButton =
+        event.target.closest(
+          "[data-dts-status]"
+        );
+
+      if (statusButton) {
+        selectedStatus =
+          statusButton.dataset.dtsStatus;
+
+        selectedReservationId =
+          null;
+
+        renderDtsReservations();
+        return;
+      }
+
+      const openButton =
+        event.target.closest(
+          "[data-dts-open]"
+        );
+
+      if (openButton) {
+        selectedReservationId =
+          openButton.dataset.dtsOpen;
+
+        renderDtsReservations();
+      }
     }
-  }
-);
+  );
 
+  document.addEventListener(
+    "input",
+    event => {
+      if (
+        event.target.matches(
+          "[data-dts-search]"
+        )
+      ) {
+        searchText =
+          event.target.value;
 
-document.addEventListener(
-  "click",
-  event => {
-    const viewButton =
-      event.target.closest(
-        "[data-owner-view]"
-      );
+        renderDtsReservations();
 
-    if (viewButton) {
-      showOwnerView(
-        viewButton.dataset.ownerView
-      );
-      return;
+        const input =
+          document.querySelector(
+            "[data-dts-search]"
+          );
+
+        if (input) {
+          input.focus();
+
+          input.setSelectionRange(
+            input.value.length,
+            input.value.length
+          );
+        }
+      }
     }
+  );
 
-    const reviewButton =
-      event.target.closest(
-        "[data-dashboard-review]"
-      );
+  document.addEventListener(
+    "change",
+    event => {
+      if (
+        event.target.matches(
+          "[data-dts-sort]"
+        )
+      ) {
+        sortDirection =
+          event.target.value;
 
-    if (reviewButton) {
-      showOwnerView(
-        "pending"
-      );
+        renderDtsReservations();
+      }
+    }
+  );
 
-      const id =
-        reviewButton.dataset.dashboardReview;
+  const mount =
+    document.getElementById(
+      "reservationList"
+    );
 
-      window.setTimeout(
+  if (mount) {
+    const observer =
+      new MutationObserver(
         () => {
-          const card =
-            pendingReservationList
-              .querySelector(
-                `[data-id="${id}"]`
-              );
-
-          if (card) {
-            card.scrollIntoView({
-              behavior: "smooth",
-              block: "center"
-            });
+          if (
+            !mount.querySelector(
+              ".dts-reservations-shell"
+            )
+          ) {
+            window.setTimeout(
+              renderDtsReservations,
+              20
+            );
           }
-        },
-        100
+        }
       );
-    }
+
+    observer.observe(
+      mount,
+      {
+        childList: true,
+        subtree: false
+      }
+    );
   }
-);
 
-
-
-toggleBrokerageFields();
-
-
-if (token) {
-  showPortal();
-}
+  window.setTimeout(
+    renderDtsReservations,
+    600
+  );
+})();
