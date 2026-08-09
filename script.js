@@ -875,232 +875,92 @@ async function submitReservation(
   };
 }
 
-function injectCalendarStyles() {
-  const style =
-    document.createElement("style");
+function injectCalendarStyles() {}
 
-  style.textContent = `
 
-    .availability-wrap {
-      margin: 0 0 28px;
-      padding: 18px;
-      background: #fff;
-      border: 1px solid rgba(36,35,31,.14);
-      width: 100%;
-      box-sizing: border-box;
-      overflow: hidden;
-    }
+function weeklyPriceLabel(period) {
+  if (!period || period.stay_rule !== "weekly" || period.weekly_price == null) {
+    return "";
+  }
+  return formatMoney(period.weekly_price);
+}
 
-    .availability-heading {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
+function publishedRateSummary(ratePeriods) {
+  const open = ratePeriods.filter(period => !period.blocked);
+  const weekly = open.filter(period => period.stay_rule === "weekly" && period.weekly_price != null);
+  const flexible = open.filter(period => period.stay_rule === "flexible" && period.nightly_price != null);
+  const parts = [];
 
-    .availability-heading h3 {
-      margin: 0;
-      font-family: Georgia, serif;
-      font-size: 24px;
-      font-weight: 400;
-    }
+  if (weekly.length) {
+    const prices = weekly.map(period => Number(period.weekly_price));
+    const low = Math.min(...prices);
+    const high = Math.max(...prices);
+    parts.push(`
+      <div class="rate-summary-line">
+        <strong>Weekly stays: ${low === high ? formatMoney(low) : `${formatMoney(low)}–${formatMoney(high)}`}</strong>
+        Saturday check-in at 2:00 PM · Saturday checkout at 10:00 AM.
+      </div>
+    `);
+  }
 
-    .calendar-nav {
-      display: flex;
-      gap: 8px;
-    }
+  if (flexible.length) {
+    const prices = flexible.map(period => Number(period.nightly_price));
+    const low = Math.min(...prices);
+    const high = Math.max(...prices);
+    const minimum = Math.min(...flexible.map(period => Number(period.minimum_nights || 1)));
+    parts.push(`
+      <div class="rate-summary-line">
+        <strong>Selected short-stay openings: ${low === high ? `${formatMoney(low)}/night` : `${formatMoney(low)}–${formatMoney(high)}/night`}</strong>
+        Minimum stay varies by date; currently as low as ${minimum} night${minimum === 1 ? "" : "s"}.
+      </div>
+    `);
+  }
 
-    .calendar-nav button {
-      width: 38px;
-      height: 38px;
-      border: 1px solid #ddd;
-      background: white;
-      cursor: pointer;
-      font-size: 20px;
-    }
-
-    .calendar-months {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
-    }
-
-    .calendar-months .calendar-month:nth-child(2) {
-      display: none;
-    }
-
-    .calendar-month h4 {
-      margin: 0 0 12px;
-      text-align: center;
-      font-family: Georgia, serif;
-      font-size: 18px;
-      font-weight: 400;
-    }
-
-    .calendar-weekdays,
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 4px;
-    }
-
-    .calendar-weekdays div {
-      text-align: center;
-      font-size: 10px;
-      color: #716f68;
-      padding: 4px 0;
-    }
-
-    .calendar-day {
-      aspect-ratio: 1;
-      min-width: 0;
-      border: 1px solid transparent;
-      background: #f7f4ef;
-      cursor: pointer;
-      font-size: 12px;
-      position: relative;
-      padding: 0;
-    }
-
-    .calendar-day:hover {
-      border-color: #24231f;
-    }
-
-    .calendar-day.blank {
-      visibility: hidden;
-    }
-
-    .calendar-day.booked {
-      background: #dedede;
-      color: #888;
-      cursor: not-allowed;
-      text-decoration: line-through;
-    }
-
-    .calendar-day.pending {
-      background: #f3e3ad;
-      color: #5f4c00;
-    }
-
-    .calendar-day.blocked,
-    .calendar-day.unpriced {
-      background: #f0eee9;
-      color: #aaa;
-      cursor: not-allowed;
-    }
-
-    .calendar-day.blocked {
-      text-decoration: line-through;
-    }
-
-    .calendar-day.weekly-start {
-      box-shadow: inset 0 0 0 2px #8a7752;
-    }
-
-    .calendar-day.selected {
-      background: #24231f;
-      color: white;
-    }
-
-    .calendar-day.in-range {
-      background: #dfe9e4;
-    }
-
-    .calendar-day.pending.in-range {
-      background: #ead590;
-    }
-
-    .availability-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 16px;
-      font-size: 11px;
-      color: #716f68;
-    }
-
-    .legend-item {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-
-    .legend-dot {
-      width: 12px;
-      height: 12px;
-      border: 1px solid #ccc;
-      flex: 0 0 auto;
-    }
-
-    .legend-available {
-      background: #f7f4ef;
-    }
-
-    .legend-pending {
-      background: #f3e3ad;
-    }
-
-    .legend-booked {
-      background: #dedede;
-    }
-
-    .legend-closed {
-      background: #f0eee9;
-    }
-
-    .calendar-message {
-      margin-top: 14px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .calendar-message.pending-note {
-      padding: 10px;
-      background: #fff4cf;
-    }
-
-    .quote-box {
-      margin: 16px 0 22px;
-      padding: 16px;
-      border: 1px solid rgba(36,35,31,.14);
-      background: #faf8f4;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .quote-box h3 {
-      margin: 0 0 10px;
-      font-size: 19px;
-    }
-
-    .quote-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      padding: 4px 0;
-    }
-
-    .quote-total {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #ddd;
-      font-weight: 700;
-      font-size: 16px;
-    }
-
-    @media (max-width: 750px) {
-      .availability-wrap {
-        padding: 14px;
-      }
-
-      .availability-heading h3 {
-        font-size: 21px;
-      }
-    }
+  return parts.join("") || `
+    <div class="rate-summary-line">
+      <strong>No published rates right now.</strong>
+      Check back soon for newly opened dates.
+    </div>
   `;
+}
 
-  document.head.appendChild(style);
+function renderWeeklyAvailabilityList(ratePeriods, availability, onChoose) {
+  const container = document.querySelector("[data-weekly-rate-list]");
+  const section = document.querySelector("[data-weekly-list-section]");
+  if (!container || !section) return;
+
+  const items = ratePeriods
+    .filter(period => !period.blocked && period.stay_rule === "weekly" && period.weekly_price != null)
+    .map(period => ({
+      period,
+      isBooked: rangeContainsStatus(period.start_date, period.end_date, availability, "booked"),
+      isPending: rangeContainsStatus(period.start_date, period.end_date, availability, "pending")
+    }))
+    .filter(item => !item.isBooked);
+
+  if (!items.length) {
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+  container.innerHTML = items.map(item => `
+    <article class="weekly-rate-item ${item.isPending ? "pending" : ""}">
+      <div>
+        <div class="weekly-rate-dates">${formatShortDate(item.period.start_date)} – ${formatShortDate(item.period.end_date)}</div>
+        <div class="weekly-rate-meta">Saturday to Saturday · ${item.isPending ? "pending hold — waitlist available" : "available"}</div>
+      </div>
+      <div class="weekly-rate-price">${formatMoney(item.period.weekly_price)}</div>
+      <button class="weekly-rate-action" type="button" data-weekly-select="${item.period.id}">Select week</button>
+    </article>
+  `).join("");
+
+  container.querySelectorAll("[data-weekly-select]").forEach(button => {
+    button.addEventListener("click", () => {
+      const period = ratePeriods.find(item => String(item.id) === String(button.dataset.weeklySelect));
+      if (period) onChoose(period);
+    });
+  });
 }
 
 function renderMonth(
@@ -1298,7 +1158,14 @@ function renderMonth(
         title="${title}"
         ${disabled}
       >
-        ${day}
+        <span>${day}</span>
+        ${
+          period &&
+          period.stay_rule === "weekly" &&
+          dateString === period.start_date
+            ? `<span class="weekly-price">${weeklyPriceLabel(period)}</span>`
+            : ""
+        }
       </button>
     `;
   }
@@ -1492,6 +1359,14 @@ async function renderProperty() {
       propertyId
     );
 
+  const publishedRateSummaryEl =
+    document.querySelector("[data-published-rate-summary]");
+
+  if (publishedRateSummaryEl) {
+    publishedRateSummaryEl.innerHTML =
+      publishedRateSummary(ratePeriods);
+  }
+
   if (!property.dogFriendly) {
     dogCountField.style.display =
       "none";
@@ -1549,16 +1424,19 @@ async function renderProperty() {
   let selectedDeparture =
     "";
 
+  const calendarMount =
+    document.querySelector("[data-calendar-mount]");
+
   const calendarWrap =
     document.createElement("div");
 
   calendarWrap.className =
     "availability-wrap";
 
-  form.parentNode.insertBefore(
-    calendarWrap,
-    form
-  );
+  calendarMount.appendChild(calendarWrap);
+
+  const quoteMount =
+    document.querySelector("[data-quote-mount]");
 
   const quoteBox =
     document.createElement("div");
@@ -1569,10 +1447,7 @@ async function renderProperty() {
   quoteBox.hidden =
     true;
 
-  form.parentNode.insertBefore(
-    quoteBox,
-    form
-  );
+  quoteMount.replaceWith(quoteBox);
 
   function currentQuote() {
     if (
@@ -1680,6 +1555,26 @@ async function renderProperty() {
       quoteBox.textContent =
         error.message;
     }
+  }
+
+  function selectWeeklyPeriod(period) {
+    selectedArrival = period.start_date;
+    selectedDeparture = period.end_date;
+    form.elements.arrival.value = selectedArrival;
+    form.elements.departure.value = selectedDeparture;
+
+    calendarStart = new Date(
+      parseDate(selectedArrival).getFullYear(),
+      parseDate(selectedArrival).getMonth(),
+      1
+    );
+
+    drawCalendar();
+
+    document.getElementById("booking").scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
   }
 
   function drawCalendar() {
@@ -1917,19 +1812,7 @@ async function renderProperty() {
                 return;
               }
 
-              selectedArrival =
-                rate.start_date;
-
-              selectedDeparture =
-                rate.end_date;
-
-              form.elements.arrival.value =
-                selectedArrival;
-
-              form.elements.departure.value =
-                selectedDeparture;
-
-              drawCalendar();
+              selectWeeklyPeriod(rate);
               return;
             }
 
@@ -2001,6 +1884,12 @@ async function renderProperty() {
           }
         );
       });
+
+    renderWeeklyAvailabilityList(
+      ratePeriods,
+      availability,
+      selectWeeklyPeriod
+    );
 
     renderQuote();
   }
@@ -2074,6 +1963,11 @@ async function renderProperty() {
           await getRatePeriods(
             propertyId
           );
+
+        if (publishedRateSummaryEl) {
+          publishedRateSummaryEl.innerHTML =
+            publishedRateSummary(ratePeriods);
+        }
 
         drawCalendar();
 
