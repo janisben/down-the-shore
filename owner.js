@@ -1,7 +1,9 @@
 const cfg = window.SITE_DATA.supabase;
 
+
 let token =
   sessionStorage.getItem("dts_token") || "";
+
 
 let calendarDate =
   new Date(
@@ -9,6 +11,7 @@ let calendarDate =
     new Date().getMonth(),
     1
   );
+
 
 let currentReservations = [];
 let currentProperties = [];
@@ -18,105 +21,142 @@ let currentPayments = [];
 let currentPaymentSchedule = [];
 
 
+
+
 const loginView =
   document.getElementById("loginView");
+
 
 const portalView =
   document.getElementById("portalView");
 
+
 const loginForm =
   document.getElementById("loginForm");
+
 
 const loginMessage =
   document.getElementById("loginMessage");
 
+
 const portalMessage =
   document.getElementById("portalMessage");
+
 
 const reservationList =
   document.getElementById("reservationList");
 
+
 const logoutButton =
   document.getElementById("logoutButton");
+
 
 const manualReservationForm =
   document.getElementById("manualReservationForm");
 
+
 const manualReservationMessage =
   document.getElementById("manualReservationMessage");
+
 
 const manualProperty =
   document.getElementById("manualProperty");
 
+
 const bookingSource =
   document.getElementById("bookingSource");
+
 
 const brokerageFields =
   document.getElementById("brokerageFields");
 
+
 const ownerCalendar =
   document.getElementById("ownerCalendar");
+
 
 const calendarPrev =
   document.getElementById("calendarPrev");
 
+
 const calendarNext =
   document.getElementById("calendarNext");
+
 
 const calendarToday =
   document.getElementById("calendarToday");
 
+
 const cleaningList =
   document.getElementById("cleaningList");
+
 
 const cleaningMessage =
   document.getElementById("cleaningMessage");
 
+
 const ratePeriodForm =
   document.getElementById("ratePeriodForm");
+
 
 const ratePeriodMessage =
   document.getElementById("ratePeriodMessage");
 
+
 const ratePeriodsList =
   document.getElementById("ratePeriodsList");
+
 
 const rateProperty =
   document.getElementById("rateProperty");
 
+
 const rateStayRule =
   document.getElementById("rateStayRule");
 
+
 const propertySettingsList =
   document.getElementById("propertySettingsList");
+
 
 const propertySettingsMessage =
   document.getElementById("propertySettingsMessage");
 
 
+
+
 const dashboardStats =
   document.getElementById("dashboardStats");
+
 
 const dashboardCalendar =
   document.getElementById("dashboardCalendar");
 
+
 const dashboardPendingList =
   document.getElementById("dashboardPendingList");
+
 
 const dashboardUpcoming =
   document.getElementById("dashboardUpcoming");
 
+
 const pendingReservationList =
   document.getElementById("pendingReservationList");
+
 
 const sidebarPendingCount =
   document.getElementById("sidebarPendingCount");
 
+
 const ownerPageTitle =
   document.getElementById("ownerPageTitle");
 
+
 const ownerPageSubtitle =
   document.getElementById("ownerPageSubtitle");
+
+
 
 
 const headers = (extra = {}) => ({
@@ -125,6 +165,8 @@ const headers = (extra = {}) => ({
   "Content-Type": "application/json",
   ...extra
 });
+
+
 
 
 function message(
@@ -137,8 +179,11 @@ function message(
       ? "notice error"
       : "notice";
 
+
   el.textContent = text;
 }
+
+
 
 
 async function login(
@@ -151,13 +196,16 @@ async function login(
       {
         method: "POST",
 
+
         headers: {
           apikey:
             cfg.publishableKey,
 
+
           "Content-Type":
             "application/json"
         },
+
 
         body:
           JSON.stringify({
@@ -167,8 +215,10 @@ async function login(
       }
     );
 
+
   const body =
     await res.json();
+
 
   if (!res.ok) {
     throw new Error(
@@ -177,14 +227,18 @@ async function login(
     );
   }
 
+
   token =
     body.access_token;
+
 
   sessionStorage.setItem(
     "dts_token",
     token
   );
 }
+
+
 
 
 async function fetchTable(
@@ -199,14 +253,18 @@ async function fetchTable(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 
+
   return res.json();
 }
+
+
 
 
 async function loadProperties() {
@@ -216,13 +274,16 @@ async function loadProperties() {
       "?select=id,name,cleaning_fee,pet_fee,max_dogs&order=name"
     );
 
+
   currentProperties =
     properties;
+
 
   const propertyOptions =
     `<option value="">
       Choose property
     </option>` +
+
 
     properties
       .map(
@@ -234,14 +295,20 @@ async function loadProperties() {
       )
       .join("");
 
+
   manualProperty.innerHTML =
     propertyOptions;
+
 
   rateProperty.innerHTML =
     propertyOptions;
 
+
   return properties;
 }
+
+
+
 
 
 
@@ -264,12 +331,15 @@ async function updateProperty(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
 
 
 async function loadReservations() {
@@ -283,14 +353,17 @@ async function loadReservations() {
         "?select=*&order=created_at.desc"
       ),
 
+
       fetchTable(
         "properties",
         "?select=id,name,cleaning_fee,pet_fee,max_dogs"
       )
     ]);
 
+
   currentProperties =
     properties;
+
 
   const propertyMap =
     Object.fromEntries(
@@ -302,10 +375,12 @@ async function loadReservations() {
       )
     );
 
+
   currentReservations =
     reservations.map(
       reservation => ({
         ...reservation,
+
 
         property_name:
           propertyMap[
@@ -315,8 +390,11 @@ async function loadReservations() {
       })
     );
 
+
   return currentReservations;
 }
+
+
 
 
 async function loadCleanings() {
@@ -325,6 +403,7 @@ async function loadCleanings() {
       "cleaning_assignments",
       "?select=*&order=checkout_date.asc"
     );
+
 
   const propertyMap =
     Object.fromEntries(
@@ -335,6 +414,7 @@ async function loadCleanings() {
         ]
       )
     );
+
 
   const reservationMap =
     Object.fromEntries(
@@ -346,16 +426,19 @@ async function loadCleanings() {
       )
     );
 
+
   currentCleanings =
     cleanings.map(
       cleaning => ({
         ...cleaning,
+
 
         property_name:
           propertyMap[
             cleaning.property_id
           ] ||
           "Property",
+
 
         reservation:
           reservationMap[
@@ -365,8 +448,12 @@ async function loadCleanings() {
       })
     );
 
+
   return currentCleanings;
 }
+
+
+
 
 
 
@@ -377,6 +464,7 @@ async function loadRatePeriods() {
       "?select=*&order=start_date.asc"
     );
 
+
   const propertyMap =
     Object.fromEntries(
       currentProperties.map(
@@ -386,6 +474,7 @@ async function loadRatePeriods() {
         ]
       )
     );
+
 
   currentRatePeriods =
     periods.map(
@@ -399,8 +488,12 @@ async function loadRatePeriods() {
       })
     );
 
+
   return currentRatePeriods;
 }
+
+
+
 
 
 
@@ -411,8 +504,11 @@ async function loadPayments() {
       "?select=*&order=received_at.asc"
     );
 
+
   return currentPayments;
 }
+
+
 
 
 async function loadPaymentSchedule() {
@@ -422,8 +518,11 @@ async function loadPaymentSchedule() {
       "?select=*&order=due_date.asc"
     );
 
+
   return currentPaymentSchedule;
 }
+
+
 
 
 async function createPaymentScheduleItem(
@@ -444,12 +543,15 @@ async function createPaymentScheduleItem(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
 
 
 async function updatePaymentScheduleItem(
@@ -475,12 +577,15 @@ async function updatePaymentScheduleItem(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
 
 
 async function deletePaymentScheduleItem(
@@ -499,12 +604,31 @@ async function deletePaymentScheduleItem(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
+
+
+function wholeDollarRate(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error("Enter a valid whole-dollar rental rate.");
+  }
+
+  return Math.round(amount);
+}
+
 
 
 async function createRatePeriod(
@@ -525,12 +649,15 @@ async function createRatePeriod(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
 
 
 async function updateRatePeriod(
@@ -556,12 +683,15 @@ async function updateRatePeriod(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
 
 
 async function deleteRatePeriod(
@@ -580,12 +710,15 @@ async function deleteRatePeriod(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
 
 
 async function updateReservation(
@@ -598,16 +731,19 @@ async function updateReservation(
       {
         method: "PATCH",
 
+
         headers:
           headers({
             Prefer:
               "return=minimal"
           }),
 
+
         body:
           JSON.stringify(changes)
       }
     );
+
 
   if (!res.ok) {
     throw new Error(
@@ -615,6 +751,8 @@ async function updateReservation(
     );
   }
 }
+
+
 
 
 async function createReservation(
@@ -626,16 +764,19 @@ async function createReservation(
       {
         method: "POST",
 
+
         headers:
           headers({
             Prefer:
               "return=minimal"
           }),
 
+
         body:
           JSON.stringify(data)
       }
     );
+
 
   if (!res.ok) {
     throw new Error(
@@ -643,6 +784,8 @@ async function createReservation(
     );
   }
 }
+
+
 
 
 async function updateCleaning(
@@ -655,11 +798,13 @@ async function updateCleaning(
       {
         method: "PATCH",
 
+
         headers:
           headers({
             Prefer:
               "return=minimal"
           }),
+
 
         body:
           JSON.stringify({
@@ -670,12 +815,15 @@ async function updateCleaning(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 }
+
+
 
 
 async function addPayment(
@@ -686,10 +834,12 @@ async function addPayment(
   const now =
     new Date().toISOString();
 
+
   const reservation =
     currentReservations.find(
       item => item.id === id
     );
+
 
   if (!reservation) {
     throw new Error(
@@ -697,8 +847,10 @@ async function addPayment(
     );
   }
 
+
   const numericAmount =
     Number(amount);
+
 
   const alreadyPaid =
     paymentsForReservation(id)
@@ -715,11 +867,13 @@ async function addPayment(
         0
       );
 
+
   const totalDue =
     Number(
       reservation.amount_due ||
       0
     );
+
 
   const balanceBefore =
     Math.max(
@@ -727,6 +881,7 @@ async function addPayment(
       totalDue -
       alreadyPaid
     );
+
 
   if (
     numericAmount >
@@ -737,6 +892,7 @@ async function addPayment(
       `That payment is larger than the remaining balance of ${formatMoney(balanceBefore)}.`
     );
   }
+
 
   const res =
     await fetch(
@@ -762,15 +918,18 @@ async function addPayment(
       }
     );
 
+
   if (!res.ok) {
     throw new Error(
       await res.text()
     );
   }
 
+
   const paidAfter =
     alreadyPaid +
     numericAmount;
+
 
   const balanceAfter =
     Math.max(
@@ -778,6 +937,7 @@ async function addPayment(
       totalDue -
       paidAfter
     );
+
 
   await updateReservation(
     id,
@@ -805,10 +965,13 @@ async function addPayment(
 }
 
 
+
+
 function formatDate(value) {
   if (!value) {
     return "";
   }
+
 
   return new Date(
     `${value}T12:00:00`
@@ -823,6 +986,8 @@ function formatDate(value) {
 }
 
 
+
+
 function formatMoney(value) {
   if (
     value === null ||
@@ -832,6 +997,7 @@ function formatMoney(value) {
     return "";
   }
 
+
   return Number(
     value
   ).toLocaleString(
@@ -840,11 +1006,14 @@ function formatMoney(value) {
       style:
         "currency",
 
+
       currency:
         "USD"
     }
   );
 }
+
+
 
 
 function parseDate(value) {
@@ -854,11 +1023,15 @@ function parseDate(value) {
 }
 
 
+
+
 function isSaturday(value) {
   return (
     parseDate(value).getDay() === 6
   );
 }
+
+
 
 
 function nightsBetween(
@@ -868,6 +1041,7 @@ function nightsBetween(
   const millisecondsPerDay =
     24 * 60 * 60 * 1000;
 
+
   return Math.round(
     (
       parseDate(endDate) -
@@ -876,6 +1050,8 @@ function nightsBetween(
     millisecondsPerDay
   );
 }
+
+
 
 
 function validateRateDates(
@@ -894,6 +1070,7 @@ function validateRateDates(
     );
   }
 
+
   if (
     stayRule ===
     "weekly"
@@ -906,6 +1083,7 @@ function validateRateDates(
         "Weekly-only periods must run Saturday to Saturday."
       );
     }
+
 
     if (
       nightsBetween(
@@ -921,22 +1099,29 @@ function validateRateDates(
 }
 
 
+
+
 function isoDate(date) {
   const year =
     date.getFullYear();
+
 
   const month =
     String(
       date.getMonth() + 1
     ).padStart(2, "0");
 
+
   const day =
     String(
       date.getDate()
     ).padStart(2, "0");
 
+
   return `${year}-${month}-${day}`;
 }
+
+
 
 
 function reservationCalendarStatus(
@@ -955,8 +1140,10 @@ function reservationCalendarStatus(
       return null;
     }
 
+
     return "pending_payment";
   }
+
 
   if (
     reservation.status ===
@@ -967,12 +1154,14 @@ function reservationCalendarStatus(
     return "pending";
   }
 
+
   if (
     reservation.status ===
     "booked"
   ) {
     return "booked";
   }
+
 
   if (
     reservation.status ===
@@ -981,8 +1170,11 @@ function reservationCalendarStatus(
     return "waitlisted";
   }
 
+
   return null;
 }
+
+
 
 
 function reservationTouchesDate(
@@ -994,21 +1186,26 @@ function reservationTouchesDate(
       reservation.arrival_date
     );
 
+
   const departure =
     parseDate(
       reservation.departure_date
     );
+
 
   const date =
     parseDate(
       dateString
     );
 
+
   return (
     date >= arrival &&
     date < departure
   );
 }
+
+
 
 
 function calendarItemsForDay(
@@ -1021,9 +1218,11 @@ function calendarItemsForDay(
         reservation.property_id ===
           propertyId &&
 
+
         reservationCalendarStatus(
           reservation
         ) &&
+
 
         reservationTouchesDate(
           reservation,
@@ -1034,6 +1233,7 @@ function calendarItemsForDay(
       reservation => ({
         reservation,
 
+
         status:
           reservationCalendarStatus(
             reservation
@@ -1043,6 +1243,8 @@ function calendarItemsForDay(
 }
 
 
+
+
 function cleanerIsConfirmed(
   reservation
 ) {
@@ -1050,6 +1252,7 @@ function cleanerIsConfirmed(
     cleaning =>
       cleaning.reservation_id ===
         reservation.id &&
+
 
       (
         cleaning.status ===
@@ -1061,6 +1264,8 @@ function cleanerIsConfirmed(
 }
 
 
+
+
 function calendarItemLabel(
   reservation,
   status
@@ -1069,12 +1274,14 @@ function calendarItemLabel(
     reservation.guest_name ||
     "Guest";
 
+
   if (
     status ===
     "pending_payment"
   ) {
     return `${name} · hold`;
   }
+
 
   if (
     status ===
@@ -1083,12 +1290,14 @@ function calendarItemLabel(
     return `${name} · waitlist`;
   }
 
+
   if (
     status ===
     "pending"
   ) {
     return `${name} · request`;
   }
+
 
   if (
     status ===
@@ -1100,8 +1309,12 @@ function calendarItemLabel(
     return `${name} 🧹`;
   }
 
+
   return name;
 }
+
+
+
 
 
 
@@ -1119,6 +1332,7 @@ function paymentDueItemsForDay(
       )
     );
 
+
   return currentPaymentSchedule
     .filter(
       item => {
@@ -1126,6 +1340,7 @@ function paymentDueItemsForDay(
           reservationMap[
             item.reservation_id
           ];
+
 
         if (
           !reservation ||
@@ -1140,6 +1355,7 @@ function paymentDueItemsForDay(
           return false;
         }
 
+
         const allocation =
           scheduleAllocations(
             reservation
@@ -1148,6 +1364,7 @@ function paymentDueItemsForDay(
               scheduled.id ===
               item.id
           );
+
 
         return (
           allocation &&
@@ -1168,14 +1385,18 @@ function paymentDueItemsForDay(
 }
 
 
+
+
 function renderPropertyCalendar(
   property
 ) {
   const year =
     calendarDate.getFullYear();
 
+
   const month =
     calendarDate.getMonth();
+
 
   const firstDay =
     new Date(
@@ -1184,6 +1405,7 @@ function renderPropertyCalendar(
       1
     );
 
+
   const daysInMonth =
     new Date(
       year,
@@ -1191,7 +1413,9 @@ function renderPropertyCalendar(
       0
     ).getDate();
 
+
   let cells = "";
+
 
   for (
     let blank = 0;
@@ -1206,6 +1430,7 @@ function renderPropertyCalendar(
     `;
   }
 
+
   for (
     let day = 1;
     day <= daysInMonth;
@@ -1218,8 +1443,10 @@ function renderPropertyCalendar(
         day
       );
 
+
     const dateString =
       isoDate(date);
+
 
     const items =
       calendarItemsForDay(
@@ -1227,11 +1454,13 @@ function renderPropertyCalendar(
         dateString
       );
 
+
     const paymentItems =
       paymentDueItemsForDay(
         property.id,
         dateString
       );
+
 
     const itemHtml =
       items
@@ -1250,6 +1479,7 @@ function renderPropertyCalendar(
         )
         .join("") +
 
+
       paymentItems
         .map(
           item => `
@@ -1263,10 +1493,12 @@ function renderPropertyCalendar(
         )
         .join("");
 
+
     cells += `
       <div
         class="owner-calendar-day"
       >
+
 
         <div
           class="owner-calendar-date"
@@ -1274,24 +1506,30 @@ function renderPropertyCalendar(
           ${day}
         </div>
 
+
         ${itemHtml}
+
 
       </div>
     `;
   }
+
 
   return `
     <section
       class="calendar-property"
     >
 
+
       <h3>
         ${property.name}
       </h3>
 
+
       <div
         class="owner-calendar-grid"
       >
+
 
         <div class="owner-calendar-weekday">Sun</div>
         <div class="owner-calendar-weekday">Mon</div>
@@ -1301,13 +1539,18 @@ function renderPropertyCalendar(
         <div class="owner-calendar-weekday">Fri</div>
         <div class="owner-calendar-weekday">Sat</div>
 
+
         ${cells}
 
+
       </div>
+
 
     </section>
   `;
 }
+
+
 
 
 function renderOwnerCalendar() {
@@ -1319,10 +1562,12 @@ function renderOwnerCalendar() {
           month:
             "long",
 
+
           year:
             "numeric"
         }
       );
+
 
   ownerCalendar.innerHTML = `
     <h2
@@ -1336,6 +1581,7 @@ function renderOwnerCalendar() {
       ${monthTitle}
     </h2>
 
+
     ${
       currentProperties
         .map(
@@ -1347,21 +1593,27 @@ function renderOwnerCalendar() {
 }
 
 
+
+
 function cleaningCard(cleaning) {
   const reservation =
     cleaning.reservation;
+
 
   const guestName =
     reservation?.guest_name ||
     "Guest";
 
+
   const status =
     cleaning.status ||
     "waiting";
 
+
   const canEdit =
     status !== "cancelled" &&
     status !== "completed";
+
 
   return `
     <article
@@ -1369,9 +1621,11 @@ function cleaningCard(cleaning) {
       data-cleaning-id="${cleaning.id}"
     >
 
+
       <h3>
         ${cleaning.property_name}
       </h3>
+
 
       <div class="meta">
         Checkout:
@@ -1379,15 +1633,19 @@ function cleaningCard(cleaning) {
           ${formatDate(cleaning.checkout_date)}
         </strong>
 
+
         <br>
+
 
         Guest:
         ${guestName}
       </div>
 
+
       <span class="cleaning-status">
         ${status.replaceAll("_", " ")}
       </span>
+
 
       ${
         status === "waiting"
@@ -1398,6 +1656,7 @@ function cleaningCard(cleaning) {
           `
           : ""
       }
+
 
       ${
         status === "confirmed"
@@ -1414,6 +1673,7 @@ function cleaningCard(cleaning) {
           : ""
       }
 
+
       ${
         status === "completed"
           ? `
@@ -1429,6 +1689,7 @@ function cleaningCard(cleaning) {
           : ""
       }
 
+
       ${
         cleaning.cleaner_name ||
         cleaning.cleaner_email
@@ -1440,6 +1701,7 @@ function cleaningCard(cleaning) {
               Cleaner:
               ${cleaning.cleaner_name || ""}
 
+
               ${
                 cleaning.cleaner_email
                   ? `<br>${cleaning.cleaner_email}`
@@ -1449,6 +1711,7 @@ function cleaningCard(cleaning) {
           `
           : ""
       }
+
 
       ${
         canEdit
@@ -1461,6 +1724,7 @@ function cleaningCard(cleaning) {
               "
             >
 
+
               <label>
                 Cleaner name
                 <input
@@ -1469,6 +1733,7 @@ function cleaningCard(cleaning) {
                   data-cleaner-name
                 >
               </label>
+
 
               <label>
                 Cleaner email
@@ -1479,12 +1744,14 @@ function cleaningCard(cleaning) {
                 >
               </label>
 
+
               <button
                 type="button"
                 data-cleaning-action="save-cleaner"
               >
                 Save cleaner
               </button>
+
 
               ${
                 status === "waiting"
@@ -1499,6 +1766,7 @@ function cleaningCard(cleaning) {
                   : ""
               }
 
+
               ${
                 status === "confirmed"
                   ? `
@@ -1512,14 +1780,18 @@ function cleaningCard(cleaning) {
                   : ""
               }
 
+
             </div>
           `
           : ""
       }
 
+
     </article>
   `;
 }
+
+
 
 
 function renderCleaningDashboard() {
@@ -1530,6 +1802,7 @@ function renderCleaningDashboard() {
         "cancelled"
     );
 
+
   if (!active.length) {
     cleaningList.innerHTML = `
       <div class="meta">
@@ -1537,14 +1810,19 @@ function renderCleaningDashboard() {
       </div>
     `;
 
+
     return;
   }
+
 
   cleaningList.innerHTML =
     active
       .map(cleaningCard)
       .join("");
 }
+
+
+
 
 
 
@@ -1555,6 +1833,7 @@ function ratePeriodCard(period) {
       data-rate-id="${period.id}"
     >
       <div class="rate-card-grid">
+
 
         <label>
           Property
@@ -1580,6 +1859,7 @@ function ratePeriodCard(period) {
             }
           </select>
         </label>
+
 
         <label>
           Stay rule
@@ -1609,6 +1889,7 @@ function ratePeriodCard(period) {
           </select>
         </label>
 
+
         <label>
           Start date
           <input
@@ -1617,6 +1898,7 @@ function ratePeriodCard(period) {
             data-rate-start
           >
         </label>
+
 
         <label>
           End date
@@ -1627,27 +1909,30 @@ function ratePeriodCard(period) {
           >
         </label>
 
+
         <label>
           Weekly price
           <input
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             value="${period.weekly_price ?? ""}"
             data-rate-weekly
           >
         </label>
+
 
         <label>
           Nightly price
           <input
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             value="${period.nightly_price ?? ""}"
             data-rate-nightly
           >
         </label>
+
 
         <label>
           Minimum nights
@@ -1659,6 +1944,7 @@ function ratePeriodCard(period) {
           >
         </label>
 
+
         <label class="rate-blocked-row">
           <input
             type="checkbox"
@@ -1668,6 +1954,7 @@ function ratePeriodCard(period) {
           Block these dates
         </label>
 
+
         <label class="full">
           Notes
           <textarea
@@ -1676,7 +1963,9 @@ function ratePeriodCard(period) {
           >${period.notes || ""}</textarea>
         </label>
 
+
       </div>
+
 
       <div
         class="row"
@@ -1688,6 +1977,7 @@ function ratePeriodCard(period) {
         >
           Save changes
         </button>
+
 
         <button
           type="button"
@@ -1703,6 +1993,9 @@ function ratePeriodCard(period) {
 
 
 
+
+
+
 function propertySettingsCard(
   property
 ) {
@@ -1713,9 +2006,11 @@ function propertySettingsCard(
     >
       <div class="property-settings-grid">
 
+
         <div>
           <strong>${property.name}</strong>
         </div>
+
 
         <label>
           Cleaning fee
@@ -1728,6 +2023,7 @@ function propertySettingsCard(
           >
         </label>
 
+
         <label>
           Pet fee per dog
           <input
@@ -1738,6 +2034,7 @@ function propertySettingsCard(
             data-property-pet-fee
           >
         </label>
+
 
         <label>
           Maximum dogs
@@ -1750,7 +2047,9 @@ function propertySettingsCard(
           >
         </label>
 
+
       </div>
+
 
       <div
         class="row"
@@ -1768,6 +2067,8 @@ function propertySettingsCard(
 }
 
 
+
+
 function renderPropertySettings() {
   if (!currentProperties.length) {
     propertySettingsList.innerHTML = `
@@ -1778,11 +2079,14 @@ function renderPropertySettings() {
     return;
   }
 
+
   propertySettingsList.innerHTML =
     currentProperties
       .map(propertySettingsCard)
       .join("");
 }
+
+
 
 
 function renderRatePeriods() {
@@ -1795,11 +2099,15 @@ function renderRatePeriods() {
     return;
   }
 
+
   ratePeriodsList.innerHTML =
     currentRatePeriods
       .map(ratePeriodCard)
       .join("");
 }
+
+
+
 
 
 
@@ -1812,6 +2120,8 @@ function paymentsForReservation(
       reservationId
   );
 }
+
+
 
 
 function scheduleForReservation(
@@ -1831,6 +2141,8 @@ function scheduleForReservation(
 }
 
 
+
+
 function paymentTotals(
   reservation
 ) {
@@ -1839,6 +2151,7 @@ function paymentTotals(
       reservation.amount_due ||
       0
     );
+
 
   const paid =
     paymentsForReservation(
@@ -1857,6 +2170,7 @@ function paymentTotals(
         0
       );
 
+
   return {
     totalDue,
     paid,
@@ -1870,6 +2184,8 @@ function paymentTotals(
 }
 
 
+
+
 function scheduleAllocations(
   reservation
 ) {
@@ -1878,8 +2194,10 @@ function scheduleAllocations(
       reservation
     ).paid;
 
+
   const today =
     new Date();
+
 
   today.setHours(
     0,
@@ -1887,6 +2205,7 @@ function scheduleAllocations(
     0,
     0
   );
+
 
   return scheduleForReservation(
     reservation.id
@@ -1898,11 +2217,13 @@ function scheduleAllocations(
           0
         );
 
+
       const applied =
         Math.min(
           remainingPaid,
           due
         );
+
 
       remainingPaid =
         Math.max(
@@ -1911,6 +2232,7 @@ function scheduleAllocations(
           applied
         );
 
+
       const remaining =
         Math.max(
           0,
@@ -1918,8 +2240,10 @@ function scheduleAllocations(
           applied
         );
 
+
       let status =
         "upcoming";
+
 
       if (remaining <= 0) {
         status =
@@ -1936,6 +2260,7 @@ function scheduleAllocations(
           "due";
       }
 
+
       return {
         ...item,
         applied,
@@ -1945,6 +2270,9 @@ function scheduleAllocations(
     }
   );
 }
+
+
+
 
 
 
@@ -1968,6 +2296,8 @@ function scheduledTotal(
 }
 
 
+
+
 function unscheduledAmount(
   reservation
 ) {
@@ -1982,6 +2312,8 @@ function unscheduledAmount(
     )
   );
 }
+
+
 
 
 function visibleScheduledTotal(
@@ -2006,6 +2338,8 @@ function visibleScheduledTotal(
 }
 
 
+
+
 function refreshScheduleArithmetic(
   card
 ) {
@@ -2013,8 +2347,10 @@ function refreshScheduleArithmetic(
     return;
   }
 
+
   const reservationId =
     card.dataset.id;
+
 
   const reservation =
     currentReservations.find(
@@ -2023,9 +2359,11 @@ function refreshScheduleArithmetic(
         reservationId
     );
 
+
   if (!reservation) {
     return;
   }
+
 
   const totalDue =
     Number(
@@ -2033,29 +2371,35 @@ function refreshScheduleArithmetic(
       0
     );
 
+
   const scheduled =
     visibleScheduledTotal(
       card
     );
 
+
   const remaining =
     totalDue -
     scheduled;
+
 
   const scheduledEl =
     card.querySelector(
       "[data-scheduled-total]"
     );
 
+
   const unscheduledEl =
     card.querySelector(
       "[data-unscheduled-total]"
     );
 
+
   const warningEl =
     card.querySelector(
       "[data-schedule-warning]"
     );
+
 
   if (scheduledEl) {
     scheduledEl.textContent =
@@ -2063,6 +2407,7 @@ function refreshScheduleArithmetic(
         scheduled
       );
   }
+
 
   if (unscheduledEl) {
     unscheduledEl.textContent =
@@ -2073,6 +2418,7 @@ function refreshScheduleArithmetic(
         )
       );
   }
+
 
   if (warningEl) {
     if (remaining < 0) {
@@ -2087,16 +2433,20 @@ function refreshScheduleArithmetic(
     }
   }
 
+
   const useRemaining =
     card.querySelector(
       "[data-use-remaining]"
     );
+
 
   if (useRemaining) {
     useRemaining.disabled =
       remaining <= 0;
   }
 }
+
+
 
 
 function paymentScheduleMarkup(
@@ -2106,6 +2456,7 @@ function paymentScheduleMarkup(
     scheduleAllocations(
       reservation
     );
+
 
   const history =
     paymentsForReservation(
@@ -2122,10 +2473,12 @@ function paymentScheduleMarkup(
           )
       );
 
+
   const scheduled =
     scheduledTotal(
       reservation.id
     );
+
 
   const unscheduled =
     Math.max(
@@ -2137,11 +2490,13 @@ function paymentScheduleMarkup(
       scheduled
     );
 
+
   return `
     <div class="payment-schedule">
       <h3>
         Payment schedule
       </h3>
+
 
       <div class="payment-schedule-summary">
         <div class="payment-summary-item">
@@ -2156,6 +2511,7 @@ function paymentScheduleMarkup(
           </div>
         </div>
 
+
         <div class="payment-summary-item">
           <div class="payment-summary-label">
             Still unscheduled
@@ -2169,6 +2525,7 @@ function paymentScheduleMarkup(
         </div>
       </div>
 
+
       <div
         class="payment-schedule-warning"
         data-schedule-warning
@@ -2179,6 +2536,7 @@ function paymentScheduleMarkup(
             : "Payment schedule matches the reservation total."
         }
       </div>
+
 
       <div class="payment-schedule-list">
         ${
@@ -2196,6 +2554,7 @@ function paymentScheduleMarkup(
                         data-payment-label
                       >
 
+
                       <input
                         type="number"
                         min="0.01"
@@ -2204,11 +2563,13 @@ function paymentScheduleMarkup(
                         data-payment-due-amount
                       >
 
+
                       <input
                         type="date"
                         value="${item.due_date}"
                         data-payment-due-date
                       >
+
 
                       <div>
                         <span
@@ -2225,6 +2586,7 @@ function paymentScheduleMarkup(
                           }
                         </span>
 
+
                         <div
                           class="row"
                           style="margin-top:6px;"
@@ -2235,6 +2597,7 @@ function paymentScheduleMarkup(
                           >
                             Save
                           </button>
+
 
                           <button
                             type="button"
@@ -2257,6 +2620,7 @@ function paymentScheduleMarkup(
         }
       </div>
 
+
       <div class="payment-add-schedule">
         <div class="row">
           <label>
@@ -2267,6 +2631,7 @@ function paymentScheduleMarkup(
               data-new-payment-label
             >
           </label>
+
 
           <label>
             Amount
@@ -2279,6 +2644,7 @@ function paymentScheduleMarkup(
             >
           </label>
 
+
           <label>
             Due date
             <input
@@ -2286,6 +2652,7 @@ function paymentScheduleMarkup(
               data-new-payment-date
             >
           </label>
+
 
           <button
             type="button"
@@ -2295,6 +2662,7 @@ function paymentScheduleMarkup(
           >
             Use remaining balance
           </button>
+
 
           <button
             type="button"
@@ -2306,6 +2674,7 @@ function paymentScheduleMarkup(
       </div>
     </div>
 
+
     <div
       class="payment-history"
       style="margin-top:14px;"
@@ -2313,6 +2682,7 @@ function paymentScheduleMarkup(
       <h3>
         Payment history
       </h3>
+
 
       <div class="payment-history-list">
         ${
@@ -2325,9 +2695,11 @@ function paymentScheduleMarkup(
                         ${formatMoney(payment.amount)}
                       </strong>
 
+
                       <span>
                         ${(payment.payment_method || "").replaceAll("_", " ")}
                       </span>
+
 
                       <span class="meta">
                         ${
@@ -2354,19 +2726,24 @@ function paymentScheduleMarkup(
 }
 
 
+
+
 function reservationCard(r) {
   const status =
     r.status ||
     "pending";
+
 
   const totals =
     paymentTotals(
       r
     );
 
+
   let paymentStatus =
     r.payment_status ||
     "waiting";
+
 
   if (
     totals.totalDue > 0
@@ -2387,11 +2764,13 @@ function reservationCard(r) {
     }
   }
 
+
   const showAccept =
     status ===
       "pending" ||
     status ===
       "requested";
+
 
   const showDecline =
     status ===
@@ -2399,11 +2778,13 @@ function reservationCard(r) {
     status ===
       "requested";
 
+
   const showCancel =
     status ===
       "pending_payment" ||
     status ===
       "booked";
+
 
   const canTakePayment =
     status !==
@@ -2413,6 +2794,7 @@ function reservationCard(r) {
     status !==
       "waitlisted" &&
     totals.balance > 0;
+
 
   return `
     <article
@@ -2424,20 +2806,26 @@ function reservationCard(r) {
           ${r.guest_name || "Guest"}
         </h2>
 
+
         <div class="meta">
           <strong>
             ${r.property_name}
           </strong>
 
+
           <br>
+
 
           ${formatDate(r.arrival_date)}
           –
           ${formatDate(r.departure_date)}
 
+
           <br>
 
+
           ${r.guest_email || ""}
+
 
           ${
             r.guest_phone
@@ -2445,10 +2833,13 @@ function reservationCard(r) {
               : ""
           }
 
+
           <br>
+
 
           ${r.adults || 0}
           guest(s)
+
 
           ${
             r.dogs
@@ -2456,11 +2847,13 @@ function reservationCard(r) {
               : ""
           }
 
+
           ${
             r.booking_source
               ? `<br>Source: ${r.booking_source.replaceAll("_", " ")}`
               : ""
           }
+
 
           ${
             r.brokerage_name
@@ -2468,11 +2861,13 @@ function reservationCard(r) {
               : ""
           }
 
+
           ${
             r.agent_name
               ? `<br>Agent: ${r.agent_name}`
               : ""
           }
+
 
           ${
             r.agent_phone
@@ -2480,11 +2875,13 @@ function reservationCard(r) {
               : ""
           }
 
+
           ${
             r.agent_email
               ? `<br>${r.agent_email}`
               : ""
           }
+
 
           ${
             r.owner_notes
@@ -2493,14 +2890,17 @@ function reservationCard(r) {
           }
         </div>
 
+
         <span class="badge">
           ${status.replaceAll("_", " ")}
         </span>
+
 
         <span class="badge">
           payment:
           ${paymentStatus.replaceAll("_", " ")}
         </span>
+
 
         ${
           r.hold_expires_at &&
@@ -2515,6 +2915,7 @@ function reservationCard(r) {
             : ""
         }
 
+
         <div class="payment-summary">
           <div class="payment-summary-grid">
             <div class="payment-summary-item">
@@ -2526,6 +2927,7 @@ function reservationCard(r) {
               </div>
             </div>
 
+
             <div class="payment-summary-item">
               <div class="payment-summary-label">
                 Paid so far
@@ -2534,6 +2936,7 @@ function reservationCard(r) {
                 ${formatMoney(totals.paid)}
               </div>
             </div>
+
 
             <div class="payment-summary-item">
               <div class="payment-summary-label">
@@ -2544,6 +2947,7 @@ function reservationCard(r) {
               </div>
             </div>
           </div>
+
 
           ${
             canTakePayment
@@ -2561,6 +2965,7 @@ function reservationCard(r) {
                     >
                   </label>
 
+
                   <label>
                     Method
                     <select data-method>
@@ -2570,6 +2975,7 @@ function reservationCard(r) {
                       <option value="check">Check</option>
                     </select>
                   </label>
+
 
                   <button
                     type="button"
@@ -2588,9 +2994,11 @@ function reservationCard(r) {
                 : ""
           }
 
+
           ${paymentScheduleMarkup(r)}
         </div>
       </div>
+
 
       <div class="actions">
         ${
@@ -2606,6 +3014,7 @@ function reservationCard(r) {
             : ""
         }
 
+
         ${
           showDecline
             ? `
@@ -2617,6 +3026,7 @@ function reservationCard(r) {
             `
             : ""
         }
+
 
         ${
           showCancel
@@ -2636,6 +3046,8 @@ function reservationCard(r) {
 }
 
 
+
+
 function activeReservation(
   reservation
 ) {
@@ -2646,6 +3058,8 @@ function activeReservation(
     reservation.status
   );
 }
+
+
 
 
 function pendingReservation(
@@ -2660,6 +3074,8 @@ function pendingReservation(
 }
 
 
+
+
 function reservationNights(
   reservation
 ) {
@@ -2669,6 +3085,7 @@ function reservationNights(
   ) {
     return 0;
   }
+
 
   return Math.max(
     0,
@@ -2692,6 +3109,8 @@ function reservationNights(
 }
 
 
+
+
 function renderDashboardStats() {
   const booked =
     currentReservations.filter(
@@ -2702,6 +3121,7 @@ function renderDashboardStats() {
         reservation.status ===
           "booked"
     );
+
 
   const nightsBooked =
     booked.reduce(
@@ -2716,10 +3136,12 @@ function renderDashboardStats() {
       0
     );
 
+
   const pendingCount =
     currentReservations.filter(
       pendingReservation
     ).length;
+
 
   const cleaningCount =
     currentCleanings.filter(
@@ -2729,6 +3151,7 @@ function renderDashboardStats() {
         cleaning.status ===
           "confirmed"
     ).length;
+
 
   const rentalIncome =
     currentReservations
@@ -2754,6 +3177,7 @@ function renderDashboardStats() {
         0
       );
 
+
   dashboardStats.innerHTML = `
     <article class="stat-card">
       <div class="stat-icon">▣</div>
@@ -2770,6 +3194,7 @@ function renderDashboardStats() {
       </div>
     </article>
 
+
     <article class="stat-card">
       <div class="stat-icon">✓</div>
       <div>
@@ -2785,6 +3210,7 @@ function renderDashboardStats() {
       </div>
     </article>
 
+
     <article class="stat-card">
       <div class="stat-icon">♨</div>
       <div>
@@ -2799,6 +3225,7 @@ function renderDashboardStats() {
         </div>
       </div>
     </article>
+
 
     <article class="stat-card">
       <div class="stat-icon">$</div>
@@ -2818,9 +3245,11 @@ function renderDashboardStats() {
     </article>
   `;
 
+
   if (pendingCount) {
     sidebarPendingCount.hidden =
       false;
+
 
     sidebarPendingCount.textContent =
       pendingCount;
@@ -2828,18 +3257,23 @@ function renderDashboardStats() {
     sidebarPendingCount.hidden =
       true;
 
+
     sidebarPendingCount.textContent =
       "";
   }
 }
 
 
+
+
 function renderDashboardCalendar() {
   const year =
     calendarDate.getFullYear();
 
+
   const month =
     calendarDate.getMonth();
+
 
   const monthTitle =
     calendarDate.toLocaleDateString(
@@ -2850,12 +3284,14 @@ function renderDashboardCalendar() {
       }
     );
 
+
   const firstDay =
     new Date(
       year,
       month,
       1
     );
+
 
   const daysInMonth =
     new Date(
@@ -2864,10 +3300,12 @@ function renderDashboardCalendar() {
       0
     ).getDate();
 
+
   const properties =
     currentProperties.map(
       property => {
         let cells = "";
+
 
         for (
           let blank = 0;
@@ -2881,6 +3319,7 @@ function renderDashboardCalendar() {
             ></div>
           `;
         }
+
 
         for (
           let day = 1;
@@ -2896,17 +3335,20 @@ function renderDashboardCalendar() {
               )
             );
 
+
           const items =
             calendarItemsForDay(
               property.id,
               dateString
             );
 
+
           const paymentItems =
             paymentDueItemsForDay(
               property.id,
               dateString
             );
+
 
           cells += `
             <div
@@ -2917,6 +3359,7 @@ function renderDashboardCalendar() {
               >
                 ${day}
               </div>
+
 
               ${
                 [
@@ -2954,6 +3397,7 @@ function renderDashboardCalendar() {
           `;
         }
 
+
         return `
           <div
             class="dashboard-calendar-property"
@@ -2961,6 +3405,7 @@ function renderDashboardCalendar() {
             <h3>
               ${property.name}
             </h3>
+
 
             <div
               class="dashboard-mini-grid"
@@ -2973,12 +3418,14 @@ function renderDashboardCalendar() {
     )
     .join("");
 
+
   dashboardCalendar.innerHTML = `
     <div
       class="dashboard-calendar-preview-title"
     >
       ${monthTitle}
     </div>
+
 
     <div
       class="dashboard-calendar-properties"
@@ -2987,6 +3434,8 @@ function renderDashboardCalendar() {
     </div>
   `;
 }
+
+
 
 
 function pendingMiniCard(
@@ -3008,6 +3457,7 @@ function pendingMiniCard(
           </div>
         </div>
 
+
         <div class="amount">
           ${
             reservation.amount_due
@@ -3019,15 +3469,19 @@ function pendingMiniCard(
         </div>
       </div>
 
+
       <div class="meta">
         ${formatDate(reservation.arrival_date)}
         –
         ${formatDate(reservation.departure_date)}
 
+
         <br>
+
 
         ${reservation.adults || 0}
         guest(s)
+
 
         ${
           reservation.dogs
@@ -3035,6 +3489,7 @@ function pendingMiniCard(
             : ""
         }
       </div>
+
 
       <div
         class="pending-mini-actions"
@@ -3052,6 +3507,8 @@ function pendingMiniCard(
 }
 
 
+
+
 function renderDashboardPending() {
   const pending =
     currentReservations
@@ -3059,6 +3516,7 @@ function renderDashboardPending() {
         pendingReservation
       )
       .slice(0, 3);
+
 
   dashboardPendingList.innerHTML =
     pending.length
@@ -3073,10 +3531,12 @@ function renderDashboardPending() {
         </div>
       `;
 
+
   const allPending =
     currentReservations.filter(
       pendingReservation
     );
+
 
   pendingReservationList.innerHTML =
     allPending.length
@@ -3093,9 +3553,12 @@ function renderDashboardPending() {
 }
 
 
+
+
 function upcomingEvents() {
   const today =
     new Date();
+
 
   today.setHours(
     0,
@@ -3104,7 +3567,9 @@ function upcomingEvents() {
     0
   );
 
+
   const events = [];
+
 
   currentReservations
     .filter(
@@ -3129,6 +3594,7 @@ function upcomingEvents() {
               reservation.arrival_date
             );
 
+
           if (date >= today) {
             events.push({
               type:
@@ -3146,6 +3612,7 @@ function upcomingEvents() {
           }
         }
 
+
         if (
           reservation.departure_date
         ) {
@@ -3153,6 +3620,7 @@ function upcomingEvents() {
             parseDate(
               reservation.departure_date
             );
+
 
           if (date >= today) {
             events.push({
@@ -3170,6 +3638,7 @@ function upcomingEvents() {
             });
           }
         }
+
 
         scheduleAllocations(
           reservation
@@ -3204,6 +3673,7 @@ function upcomingEvents() {
       }
     );
 
+
   return events
     .sort(
       (a, b) => {
@@ -3211,15 +3681,18 @@ function upcomingEvents() {
           parseDate(a.date) -
           parseDate(b.date);
 
+
         if (dateDiff !== 0) {
           return dateDiff;
         }
+
 
         const order = {
           checkout: 1,
           payment: 2,
           checkin: 3
         };
+
 
         return (
           order[a.type] -
@@ -3231,9 +3704,12 @@ function upcomingEvents() {
 }
 
 
+
+
 function renderDashboardUpcoming() {
   const events =
     upcomingEvents();
+
 
   dashboardUpcoming.innerHTML =
     events.length
@@ -3245,6 +3721,7 @@ function renderDashboardUpcoming() {
                   event.date
                 );
 
+
               const month =
                 date.toLocaleDateString(
                   "en-US",
@@ -3254,8 +3731,10 @@ function renderDashboardUpcoming() {
                   }
                 );
 
+
               const day =
                 date.getDate();
+
 
               return `
                 <article
@@ -3275,17 +3754,20 @@ function renderDashboardUpcoming() {
                     }
                   </span>
 
+
                   <div
                     class="event-date"
                   >
                     ${month} ${day}
                   </div>
 
+
                   <div
                     class="event-property"
                   >
                     ${event.property}
                   </div>
+
 
                   <div
                     class="event-meta"
@@ -3312,12 +3794,16 @@ function renderDashboardUpcoming() {
 }
 
 
+
+
 function renderDashboard() {
   renderDashboardStats();
   renderDashboardCalendar();
   renderDashboardPending();
   renderDashboardUpcoming();
 }
+
+
 
 
 function showOwnerView(
@@ -3354,6 +3840,7 @@ function showOwnerView(
     ]
   };
 
+
   document
     .querySelectorAll(
       "[data-owner-panel]"
@@ -3367,6 +3854,7 @@ function showOwnerView(
         );
       }
     );
+
 
   document
     .querySelectorAll(
@@ -3382,6 +3870,7 @@ function showOwnerView(
       }
     );
 
+
   const [
     title,
     subtitle
@@ -3389,11 +3878,14 @@ function showOwnerView(
     titles[view] ||
     titles.dashboard;
 
+
   ownerPageTitle.textContent =
     title;
 
+
   ownerPageSubtitle.textContent =
     subtitle;
+
 
   window.scrollTo({
     top: 0,
@@ -3402,16 +3894,20 @@ function showOwnerView(
 }
 
 
+
+
 async function refresh() {
   try {
     portalMessage.className = "";
     portalMessage.textContent = "";
+
 
     await loadReservations();
     await loadCleanings();
     await loadRatePeriods();
     await loadPayments();
     await loadPaymentSchedule();
+
 
     reservationList.innerHTML =
       currentReservations.length
@@ -3426,11 +3922,13 @@ async function refresh() {
           </div>
         `;
 
+
     renderOwnerCalendar();
     renderCleaningDashboard();
     renderPropertySettings();
     renderRatePeriods();
     renderDashboard();
+
 
   } catch (err) {
     message(
@@ -3440,6 +3938,8 @@ async function refresh() {
     );
   }
 }
+
+
 
 
 function toggleBrokerageFields() {
@@ -3458,12 +3958,16 @@ function toggleBrokerageFields() {
 }
 
 
+
+
 function showPortal() {
   loginView.hidden =
     true;
 
+
   portalView.hidden =
     false;
+
 
   loadProperties()
     .then(
@@ -3477,31 +3981,41 @@ function showPortal() {
 }
 
 
+
+
 function signOut() {
   token = "";
+
 
   sessionStorage.removeItem(
     "dts_token"
   );
 
+
   portalView.hidden =
     true;
+
 
   loginView.hidden =
     false;
 }
 
 
+
+
 loginForm.addEventListener(
   "submit",
   async event => {
 
+
     event.preventDefault();
+
 
     const form =
       new FormData(
         loginForm
       );
+
 
     try {
       await login(
@@ -3509,7 +4023,9 @@ loginForm.addEventListener(
         form.get("password")
       );
 
+
       showPortal();
+
 
     } catch (err) {
       message(
@@ -3522,16 +4038,22 @@ loginForm.addEventListener(
 );
 
 
+
+
 logoutButton.addEventListener(
   "click",
   signOut
 );
 
 
+
+
 bookingSource.addEventListener(
   "change",
   toggleBrokerageFields
 );
+
+
 
 
 calendarPrev.addEventListener(
@@ -3544,9 +4066,12 @@ calendarPrev.addEventListener(
         1
       );
 
+
     renderOwnerCalendar();
   }
 );
+
+
 
 
 calendarNext.addEventListener(
@@ -3559,9 +4084,12 @@ calendarNext.addEventListener(
         1
       );
 
+
     renderOwnerCalendar();
   }
 );
+
+
 
 
 calendarToday.addEventListener(
@@ -3570,6 +4098,7 @@ calendarToday.addEventListener(
     const today =
       new Date();
 
+
     calendarDate =
       new Date(
         today.getFullYear(),
@@ -3577,27 +4106,36 @@ calendarToday.addEventListener(
         1
       );
 
+
     renderOwnerCalendar();
   }
 );
+
+
 
 
 manualReservationForm.addEventListener(
   "submit",
   async event => {
 
+
     event.preventDefault();
+
 
     manualReservationMessage.className =
       "";
 
+
     manualReservationMessage.textContent =
       "";
+
 
     const form =
       new FormData(
         manualReservationForm
       );
+
+
 
 
     const source =
@@ -3606,10 +4144,14 @@ manualReservationForm.addEventListener(
       );
 
 
+
+
     const amountDue =
       form.get(
         "amount_due"
       );
+
+
 
 
     const paymentStatus =
@@ -3618,30 +4160,38 @@ manualReservationForm.addEventListener(
       );
 
 
+
+
     const reservation = {
+
 
       property_id:
         form.get(
           "property_id"
         ),
 
+
       booking_source:
         source,
+
 
       guest_name:
         form.get(
           "guest_name"
         ),
 
+
       guest_email:
         form.get(
           "guest_email"
         ) || null,
 
+
       guest_phone:
         form.get(
           "guest_phone"
         ) || null,
+
 
       adults:
         Number(
@@ -3650,15 +4200,18 @@ manualReservationForm.addEventListener(
           ) || 1
         ),
 
+
       arrival_date:
         form.get(
           "arrival_date"
         ),
 
+
       departure_date:
         form.get(
           "departure_date"
         ),
+
 
       amount_due:
         amountDue
@@ -3667,11 +4220,14 @@ manualReservationForm.addEventListener(
             )
           : null,
 
+
       payment_status:
         paymentStatus,
 
+
       status:
         "booked",
+
 
       brokerage_name:
         source ===
@@ -3681,6 +4237,7 @@ manualReservationForm.addEventListener(
             ) || null
           : null,
 
+
       agent_name:
         source ===
           "brokerage"
@@ -3688,6 +4245,7 @@ manualReservationForm.addEventListener(
               "agent_name"
             ) || null
           : null,
+
 
       agent_phone:
         source ===
@@ -3697,6 +4255,7 @@ manualReservationForm.addEventListener(
             ) || null
           : null,
 
+
       agent_email:
         source ===
           "brokerage"
@@ -3705,6 +4264,7 @@ manualReservationForm.addEventListener(
             ) || null
           : null,
 
+
       owner_notes:
         form.get(
           "owner_notes"
@@ -3712,11 +4272,16 @@ manualReservationForm.addEventListener(
     };
 
 
+
+
     try {
+
 
       await createReservation(
         reservation
       );
+
+
 
 
       message(
@@ -3725,17 +4290,26 @@ manualReservationForm.addEventListener(
       );
 
 
+
+
       manualReservationForm
         .reset();
+
+
 
 
       toggleBrokerageFields();
 
 
+
+
       await refresh();
 
 
+
+
     } catch (err) {
+
 
       message(
         manualReservationMessage,
@@ -3743,24 +4317,32 @@ manualReservationForm.addEventListener(
         true
       );
 
+
     }
   }
 );
+
+
 
 
 reservationList.addEventListener(
   "click",
   async event => {
 
+
     const button =
       event.target.closest(
         "button[data-action]"
       );
 
 
+
+
     if (!button) {
       return;
     }
+
+
 
 
     const card =
@@ -3769,18 +4351,27 @@ reservationList.addEventListener(
       );
 
 
+
+
     const id =
       card.dataset.id;
+
+
 
 
     const action =
       button.dataset.action;
 
 
+
+
     try {
+
 
       button.disabled =
         true;
+
+
 
 
       if (
@@ -3788,11 +4379,13 @@ reservationList.addEventListener(
         "accept"
       ) {
 
+
         await updateReservation(
           id,
           {
             status:
               "pending_payment",
+
 
             hold_expires_at:
               new Date(
@@ -3806,12 +4399,17 @@ reservationList.addEventListener(
         );
 
 
+
+
         message(
           portalMessage,
           "Accepted. The 24-hour payment hold has started."
         );
 
+
       }
+
+
 
 
       if (
@@ -3819,11 +4417,13 @@ reservationList.addEventListener(
         "decline"
       ) {
 
+
         await updateReservation(
           id,
           {
             status:
               "declined",
+
 
             hold_expires_at:
               null
@@ -3831,12 +4431,17 @@ reservationList.addEventListener(
         );
 
 
+
+
         message(
           portalMessage,
           "Reservation request declined."
         );
 
+
       }
+
+
 
 
       if (
@@ -3844,18 +4449,24 @@ reservationList.addEventListener(
         "cancel"
       ) {
 
+
         const confirmed =
           window.confirm(
             "Cancel this reservation and reopen the dates?"
           );
 
 
+
+
         if (!confirmed) {
           button.disabled =
             false;
 
+
           return;
         }
+
+
 
 
         await updateReservation(
@@ -3864,10 +4475,13 @@ reservationList.addEventListener(
             status:
               "cancelled",
 
+
             hold_expires_at:
               null
           }
         );
+
+
 
 
         message(
@@ -3875,7 +4489,10 @@ reservationList.addEventListener(
           "Reservation cancelled. The dates are available again."
         );
 
+
       }
+
+
 
 
       if (
@@ -3883,12 +4500,15 @@ reservationList.addEventListener(
         "paid"
       ) {
 
+
         const amount =
           card
             .querySelector(
               "[data-amount]"
             )
             .value;
+
+
 
 
         const method =
@@ -3899,16 +4519,22 @@ reservationList.addEventListener(
             .value;
 
 
+
+
         if (
           !amount ||
           Number(amount) <= 0
         ) {
 
+
           throw new Error(
             "Enter the payment amount first."
           );
 
+
         }
+
+
 
 
         await addPayment(
@@ -3918,18 +4544,26 @@ reservationList.addEventListener(
         );
 
 
+
+
         message(
           portalMessage,
           `Payment recorded as ${method.replaceAll("_", " ")}.`
         );
 
+
       }
+
+
 
 
       await refresh();
 
 
+
+
     } catch (err) {
+
 
       message(
         portalMessage,
@@ -3938,29 +4572,40 @@ reservationList.addEventListener(
       );
 
 
+
+
     } finally {
+
 
       button.disabled =
         false;
 
+
     }
   }
 );
+
+
 
 
 pendingReservationList.addEventListener(
   "click",
   async event => {
 
+
     const button =
       event.target.closest(
         "button[data-action]"
       );
 
 
+
+
     if (!button) {
       return;
     }
+
+
 
 
     const card =
@@ -3969,18 +4614,27 @@ pendingReservationList.addEventListener(
       );
 
 
+
+
     const id =
       card.dataset.id;
+
+
 
 
     const action =
       button.dataset.action;
 
 
+
+
     try {
+
 
       button.disabled =
         true;
+
+
 
 
       if (
@@ -3988,11 +4642,13 @@ pendingReservationList.addEventListener(
         "accept"
       ) {
 
+
         await updateReservation(
           id,
           {
             status:
               "pending_payment",
+
 
             hold_expires_at:
               new Date(
@@ -4006,12 +4662,17 @@ pendingReservationList.addEventListener(
         );
 
 
+
+
         message(
           portalMessage,
           "Accepted. The 24-hour payment hold has started."
         );
 
+
       }
+
+
 
 
       if (
@@ -4019,11 +4680,13 @@ pendingReservationList.addEventListener(
         "decline"
       ) {
 
+
         await updateReservation(
           id,
           {
             status:
               "declined",
+
 
             hold_expires_at:
               null
@@ -4031,12 +4694,17 @@ pendingReservationList.addEventListener(
         );
 
 
+
+
         message(
           portalMessage,
           "Reservation request declined."
         );
 
+
       }
+
+
 
 
       if (
@@ -4044,18 +4712,24 @@ pendingReservationList.addEventListener(
         "cancel"
       ) {
 
+
         const confirmed =
           window.confirm(
             "Cancel this reservation and reopen the dates?"
           );
 
 
+
+
         if (!confirmed) {
           button.disabled =
             false;
 
+
           return;
         }
+
+
 
 
         await updateReservation(
@@ -4064,10 +4738,13 @@ pendingReservationList.addEventListener(
             status:
               "cancelled",
 
+
             hold_expires_at:
               null
           }
         );
+
+
 
 
         message(
@@ -4075,7 +4752,10 @@ pendingReservationList.addEventListener(
           "Reservation cancelled. The dates are available again."
         );
 
+
       }
+
+
 
 
       if (
@@ -4083,12 +4763,15 @@ pendingReservationList.addEventListener(
         "paid"
       ) {
 
+
         const amount =
           card
             .querySelector(
               "[data-amount]"
             )
             .value;
+
+
 
 
         const method =
@@ -4099,16 +4782,22 @@ pendingReservationList.addEventListener(
             .value;
 
 
+
+
         if (
           !amount ||
           Number(amount) <= 0
         ) {
 
+
           throw new Error(
             "Enter the payment amount first."
           );
 
+
         }
+
+
 
 
         await addPayment(
@@ -4118,18 +4807,26 @@ pendingReservationList.addEventListener(
         );
 
 
+
+
         message(
           portalMessage,
           `Payment recorded as ${method.replaceAll("_", " ")}.`
         );
 
+
       }
+
+
 
 
       await refresh();
 
 
+
+
     } catch (err) {
+
 
       message(
         portalMessage,
@@ -4138,19 +4835,26 @@ pendingReservationList.addEventListener(
       );
 
 
+
+
     } finally {
+
 
       button.disabled =
         false;
+
 
     }
   }
 );
 
 
+
+
 cleaningList.addEventListener(
   "click",
   async event => {
+
 
     const button =
       event.target.closest(
@@ -4158,9 +4862,13 @@ cleaningList.addEventListener(
       );
 
 
+
+
     if (!button) {
       return;
     }
+
+
 
 
     const card =
@@ -4169,24 +4877,34 @@ cleaningList.addEventListener(
       );
 
 
+
+
     const id =
       card.dataset.cleaningId;
+
+
 
 
     const action =
       button.dataset.cleaningAction;
 
 
+
+
     try {
+
 
       button.disabled =
         true;
+
+
 
 
       if (
         action ===
         "save-cleaner"
       ) {
+
 
         const cleanerName =
           card
@@ -4195,6 +4913,8 @@ cleaningList.addEventListener(
             )
             .value
             .trim();
+
+
 
 
         const cleanerEmail =
@@ -4206,12 +4926,15 @@ cleaningList.addEventListener(
             .trim();
 
 
+
+
         await updateCleaning(
           id,
           {
             cleaner_name:
               cleanerName ||
               null,
+
 
             cleaner_email:
               cleanerEmail ||
@@ -4220,12 +4943,17 @@ cleaningList.addEventListener(
         );
 
 
+
+
         message(
           cleaningMessage,
           "Cleaner information saved."
         );
 
+
       }
+
+
 
 
       if (
@@ -4233,11 +4961,13 @@ cleaningList.addEventListener(
         "confirm"
       ) {
 
+
         await updateCleaning(
           id,
           {
             status:
               "confirmed",
+
 
             confirmed_at:
               new Date()
@@ -4246,12 +4976,17 @@ cleaningList.addEventListener(
         );
 
 
+
+
         message(
           cleaningMessage,
           "Cleaning confirmed."
         );
 
+
       }
+
+
 
 
       if (
@@ -4259,11 +4994,13 @@ cleaningList.addEventListener(
         "complete"
       ) {
 
+
         await updateCleaning(
           id,
           {
             status:
               "completed",
+
 
             completed_at:
               new Date()
@@ -4272,18 +5009,26 @@ cleaningList.addEventListener(
         );
 
 
+
+
         message(
           cleaningMessage,
           "Cleaning marked completed."
         );
 
+
       }
+
+
 
 
       await refresh();
 
 
+
+
     } catch (err) {
+
 
       message(
         cleaningMessage,
@@ -4292,14 +5037,22 @@ cleaningList.addEventListener(
       );
 
 
+
+
     } finally {
+
 
       button.disabled =
         false;
 
+
     }
   }
 );
+
+
+
+
 
 
 
@@ -4312,35 +5065,43 @@ propertySettingsList.addEventListener(
         "button[data-property-settings-action]"
       );
 
+
     if (!button) {
       return;
     }
+
 
     const card =
       button.closest(
         "[data-property-settings-id]"
       );
 
+
     const id =
       card.dataset.propertySettingsId;
+
 
     const cleaningFee =
       card.querySelector(
         "[data-property-cleaning-fee]"
       ).value;
 
+
     const petFee =
       card.querySelector(
         "[data-property-pet-fee]"
       ).value;
+
 
     const maxDogs =
       card.querySelector(
         "[data-property-max-dogs]"
       ).value;
 
+
     try {
       button.disabled = true;
+
 
       if (
         cleaningFee === "" ||
@@ -4351,6 +5112,7 @@ propertySettingsList.addEventListener(
         );
       }
 
+
       if (
         petFee === "" ||
         Number(petFee) < 0
@@ -4360,6 +5122,7 @@ propertySettingsList.addEventListener(
         );
       }
 
+
       if (
         maxDogs === "" ||
         Number(maxDogs) < 0
@@ -4368,6 +5131,7 @@ propertySettingsList.addEventListener(
           "Enter a valid maximum number of dogs."
         );
       }
+
 
       await updateProperty(
         id,
@@ -4381,13 +5145,16 @@ propertySettingsList.addEventListener(
         }
       );
 
+
       message(
         propertySettingsMessage,
         "Property fees saved."
       );
 
+
       await loadProperties();
       renderPropertySettings();
+
 
     } catch (err) {
       message(
@@ -4402,11 +5169,31 @@ propertySettingsList.addEventListener(
 );
 
 
+
+
+document.addEventListener(
+  "wheel",
+  event => {
+    if (
+      document.activeElement === event.target &&
+      event.target.matches(
+        '[data-rate-weekly], [data-rate-nightly], [name="weekly_price"], [name="nightly_price"]'
+      )
+    ) {
+      event.target.blur();
+    }
+  },
+  { passive: true }
+);
+
+
+
 rateStayRule.addEventListener(
   "change",
   () => {
     const minimum =
       ratePeriodForm.elements.minimum_nights;
+
 
     if (
       rateStayRule.value ===
@@ -4422,27 +5209,35 @@ rateStayRule.addEventListener(
 );
 
 
+
+
 ratePeriodForm.addEventListener(
   "submit",
   async event => {
     event.preventDefault();
 
+
     ratePeriodMessage.className = "";
     ratePeriodMessage.textContent = "";
+
 
     const form =
       new FormData(
         ratePeriodForm
       );
 
+
     const startDate =
       form.get("start_date");
+
 
     const endDate =
       form.get("end_date");
 
+
     const stayRule =
       form.get("stay_rule");
+
 
     try {
       validateRateDates(
@@ -4459,14 +5254,18 @@ ratePeriodForm.addEventListener(
       return;
     }
 
+
     const weekly =
       form.get("weekly_price");
+
 
     const nightly =
       form.get("nightly_price");
 
+
     const blocked =
       form.get("blocked") === "on";
+
 
     if (
       !blocked &&
@@ -4481,6 +5280,7 @@ ratePeriodForm.addEventListener(
       return;
     }
 
+
     try {
       await createRatePeriod({
         property_id:
@@ -4490,13 +5290,9 @@ ratePeriodForm.addEventListener(
         end_date:
           endDate,
         weekly_price:
-          weekly
-            ? Number(weekly)
-            : null,
+          wholeDollarRate(weekly),
         nightly_price:
-          nightly
-            ? Number(nightly)
-            : null,
+          wholeDollarRate(nightly),
         stay_rule:
           stayRule,
         minimum_nights:
@@ -4510,17 +5306,21 @@ ratePeriodForm.addEventListener(
           null
       });
 
+
       message(
         ratePeriodMessage,
         "Rate period saved."
       );
 
+
       ratePeriodForm.reset();
       ratePeriodForm.elements.minimum_nights.value =
         "7";
 
+
       await loadRatePeriods();
       renderRatePeriods();
+
 
     } catch (err) {
       message(
@@ -4533,6 +5333,8 @@ ratePeriodForm.addEventListener(
 );
 
 
+
+
 ratePeriodsList.addEventListener(
   "click",
   async event => {
@@ -4541,23 +5343,29 @@ ratePeriodsList.addEventListener(
         "button[data-rate-action]"
       );
 
+
     if (!button) {
       return;
     }
+
 
     const card =
       button.closest(
         "[data-rate-id]"
       );
 
+
     const id =
       card.dataset.rateId;
+
 
     const action =
       button.dataset.rateAction;
 
+
     try {
       button.disabled = true;
+
 
       if (action === "delete") {
         const confirmed =
@@ -4565,12 +5373,15 @@ ratePeriodsList.addEventListener(
             "Delete this rate period?"
           );
 
+
         if (!confirmed) {
           button.disabled = false;
           return;
         }
 
+
         await deleteRatePeriod(id);
+
 
         message(
           ratePeriodMessage,
@@ -4578,21 +5389,25 @@ ratePeriodsList.addEventListener(
         );
       }
 
+
       if (action === "save") {
         const startDate =
           card.querySelector(
             "[data-rate-start]"
           ).value;
 
+
         const endDate =
           card.querySelector(
             "[data-rate-end]"
           ).value;
 
+
         const stayRule =
           card.querySelector(
             "[data-rate-stay-rule]"
           ).value;
+
 
         validateRateDates(
           stayRule,
@@ -4600,20 +5415,24 @@ ratePeriodsList.addEventListener(
           endDate
         );
 
+
         const weekly =
           card.querySelector(
             "[data-rate-weekly]"
           ).value;
+
 
         const nightly =
           card.querySelector(
             "[data-rate-nightly]"
           ).value;
 
+
         const blocked =
           card.querySelector(
             "[data-rate-blocked]"
           ).checked;
+
 
         if (
           !blocked &&
@@ -4624,6 +5443,7 @@ ratePeriodsList.addEventListener(
             "Enter a weekly or nightly price, or block the dates."
           );
         }
+
 
         await updateRatePeriod(
           id,
@@ -4637,13 +5457,9 @@ ratePeriodsList.addEventListener(
             end_date:
               endDate,
             weekly_price:
-              weekly
-                ? Number(weekly)
-                : null,
+              wholeDollarRate(weekly),
             nightly_price:
-              nightly
-                ? Number(nightly)
-                : null,
+              wholeDollarRate(nightly),
             stay_rule:
               stayRule,
             minimum_nights:
@@ -4662,14 +5478,17 @@ ratePeriodsList.addEventListener(
           }
         );
 
+
         message(
           ratePeriodMessage,
           "Rate period updated."
         );
       }
 
+
       await loadRatePeriods();
       renderRatePeriods();
+
 
     } catch (err) {
       message(
@@ -4682,6 +5501,10 @@ ratePeriodsList.addEventListener(
     }
   }
 );
+
+
+
+
 
 
 
@@ -4704,6 +5527,8 @@ document.addEventListener(
 );
 
 
+
+
 document.addEventListener(
   "click",
   event => {
@@ -4712,17 +5537,21 @@ document.addEventListener(
         "[data-use-remaining]"
       );
 
+
     if (!useRemaining) {
       return;
     }
+
 
     const card =
       useRemaining.closest(
         "[data-id]"
       );
 
+
     const reservationId =
       card.dataset.id;
+
 
     const reservation =
       currentReservations.find(
@@ -4731,14 +5560,17 @@ document.addEventListener(
           reservationId
       );
 
+
     if (!reservation) {
       return;
     }
+
 
     const visibleScheduled =
       visibleScheduledTotal(
         card
       );
+
 
     const remaining =
       Math.max(
@@ -4750,19 +5582,24 @@ document.addEventListener(
         visibleScheduled
       );
 
+
     const amountInput =
       card.querySelector(
         "[data-new-payment-amount]"
       );
 
+
     if (amountInput) {
       amountInput.value =
         remaining.toFixed(2);
+
 
       amountInput.focus();
     }
   }
 );
+
+
 
 
 document.addEventListener(
@@ -4773,18 +5610,22 @@ document.addEventListener(
         "[data-payment-schedule-action]"
       );
 
+
     if (scheduleAction) {
       const row =
         scheduleAction.closest(
           "[data-payment-schedule-id]"
         );
 
+
       const id =
         row.dataset.paymentScheduleId;
+
 
       try {
         scheduleAction.disabled =
           true;
+
 
         if (
           scheduleAction.dataset.paymentScheduleAction ===
@@ -4800,6 +5641,7 @@ document.addEventListener(
             return;
           }
 
+
           await deletePaymentScheduleItem(
             id
           );
@@ -4809,6 +5651,7 @@ document.addEventListener(
               "[data-payment-label]"
             ).value.trim();
 
+
           const amount =
             Number(
               row.querySelector(
@@ -4816,10 +5659,12 @@ document.addEventListener(
               ).value
             );
 
+
           const dueDate =
             row.querySelector(
               "[data-payment-due-date]"
             ).value;
+
 
           if (
             !label ||
@@ -4832,13 +5677,16 @@ document.addEventListener(
             );
           }
 
+
           const card =
             row.closest(
               "[data-id]"
             );
 
+
           const reservationId =
             card.dataset.id;
+
 
           const reservation =
             currentReservations.find(
@@ -4846,6 +5694,7 @@ document.addEventListener(
                 item.id ===
                 reservationId
             );
+
 
           const otherScheduled =
             scheduleForReservation(
@@ -4868,6 +5717,7 @@ document.addEventListener(
                 0
               );
 
+
           const maxAllowed =
             Math.max(
               0,
@@ -4878,6 +5728,7 @@ document.addEventListener(
               otherScheduled
             );
 
+
           if (
             amount >
             maxAllowed
@@ -4886,6 +5737,7 @@ document.addEventListener(
               `That installment is too large. The maximum for this installment is ${formatMoney(maxAllowed)}.`
             );
           }
+
 
           await updatePaymentScheduleItem(
             id,
@@ -4899,7 +5751,9 @@ document.addEventListener(
           );
         }
 
+
         await refresh();
+
 
       } catch (err) {
         message(
@@ -4912,13 +5766,16 @@ document.addEventListener(
           false;
       }
 
+
       return;
     }
+
 
     const addSchedule =
       event.target.closest(
         'button[data-action="add-payment-schedule"]'
       );
+
 
     if (addSchedule) {
       const card =
@@ -4926,13 +5783,16 @@ document.addEventListener(
           "[data-id]"
         );
 
+
       const reservationId =
         card.dataset.id;
+
 
       const label =
         card.querySelector(
           "[data-new-payment-label]"
         ).value.trim();
+
 
       const amount =
         Number(
@@ -4941,14 +5801,17 @@ document.addEventListener(
           ).value
         );
 
+
       const dueDate =
         card.querySelector(
           "[data-new-payment-date]"
         ).value;
 
+
       try {
         addSchedule.disabled =
           true;
+
 
         if (
           !label ||
@@ -4961,6 +5824,7 @@ document.addEventListener(
           );
         }
 
+
         const reservation =
           currentReservations.find(
             item =>
@@ -4968,10 +5832,12 @@ document.addEventListener(
               reservationId
           );
 
+
         const remaining =
           unscheduledAmount(
             reservation
           );
+
 
         if (
           amount >
@@ -4981,6 +5847,7 @@ document.addEventListener(
             `That installment is larger than the remaining unscheduled amount of ${formatMoney(remaining)}.`
           );
         }
+
 
         await createPaymentScheduleItem({
           reservation_id:
@@ -4994,7 +5861,9 @@ document.addEventListener(
             3
         });
 
+
         await refresh();
+
 
       } catch (err) {
         message(
@@ -5007,10 +5876,13 @@ document.addEventListener(
           false;
       }
 
+
       return;
     }
   }
 );
+
+
 
 
 document.addEventListener(
@@ -5021,6 +5893,7 @@ document.addEventListener(
         "[data-owner-view]"
       );
 
+
     if (viewButton) {
       showOwnerView(
         viewButton.dataset.ownerView
@@ -5028,18 +5901,22 @@ document.addEventListener(
       return;
     }
 
+
     const reviewButton =
       event.target.closest(
         "[data-dashboard-review]"
       );
+
 
     if (reviewButton) {
       showOwnerView(
         "pending"
       );
 
+
       const id =
         reviewButton.dataset.dashboardReview;
+
 
       window.setTimeout(
         () => {
@@ -5048,6 +5925,7 @@ document.addEventListener(
               .querySelector(
                 `[data-id="${id}"]`
               );
+
 
           if (card) {
             card.scrollIntoView({
@@ -5064,7 +5942,12 @@ document.addEventListener(
 
 
 
+
+
+
 toggleBrokerageFields();
+
+
 
 
 if (token) {
