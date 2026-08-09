@@ -1947,6 +1947,158 @@ function scheduleAllocations(
 }
 
 
+
+function scheduledTotal(
+  reservationId
+) {
+  return scheduleForReservation(
+    reservationId
+  ).reduce(
+    (
+      total,
+      item
+    ) =>
+      total +
+      Number(
+        item.amount_due ||
+        0
+      ),
+    0
+  );
+}
+
+
+function unscheduledAmount(
+  reservation
+) {
+  return Math.max(
+    0,
+    Number(
+      reservation.amount_due ||
+      0
+    ) -
+    scheduledTotal(
+      reservation.id
+    )
+  );
+}
+
+
+function visibleScheduledTotal(
+  card
+) {
+  return Array.from(
+    card.querySelectorAll(
+      "[data-payment-due-amount]"
+    )
+  ).reduce(
+    (
+      total,
+      input
+    ) =>
+      total +
+      Number(
+        input.value ||
+        0
+      ),
+    0
+  );
+}
+
+
+function refreshScheduleArithmetic(
+  card
+) {
+  if (!card) {
+    return;
+  }
+
+  const reservationId =
+    card.dataset.id;
+
+  const reservation =
+    currentReservations.find(
+      item =>
+        item.id ===
+        reservationId
+    );
+
+  if (!reservation) {
+    return;
+  }
+
+  const totalDue =
+    Number(
+      reservation.amount_due ||
+      0
+    );
+
+  const scheduled =
+    visibleScheduledTotal(
+      card
+    );
+
+  const remaining =
+    totalDue -
+    scheduled;
+
+  const scheduledEl =
+    card.querySelector(
+      "[data-scheduled-total]"
+    );
+
+  const unscheduledEl =
+    card.querySelector(
+      "[data-unscheduled-total]"
+    );
+
+  const warningEl =
+    card.querySelector(
+      "[data-schedule-warning]"
+    );
+
+  if (scheduledEl) {
+    scheduledEl.textContent =
+      formatMoney(
+        scheduled
+      );
+  }
+
+  if (unscheduledEl) {
+    unscheduledEl.textContent =
+      formatMoney(
+        Math.max(
+          0,
+          remaining
+        )
+      );
+  }
+
+  if (warningEl) {
+    if (remaining < 0) {
+      warningEl.textContent =
+        `Scheduled payments exceed the reservation total by ${formatMoney(Math.abs(remaining))}.`;
+    } else if (remaining === 0) {
+      warningEl.textContent =
+        "Payment schedule matches the reservation total.";
+    } else {
+      warningEl.textContent =
+        `${formatMoney(remaining)} still needs to be scheduled.`;
+    }
+  }
+
+  const useRemaining =
+    card.querySelector(
+      "[data-use-remaining]"
+    );
+
+  if (useRemaining) {
+    useRemaining.disabled =
+      remaining <= 0;
+  }
+}
+
+
 function paymentScheduleMarkup(
   reservation
 ) {
@@ -1970,11 +2122,63 @@ function paymentScheduleMarkup(
           )
       );
 
+  const scheduled =
+    scheduledTotal(
+      reservation.id
+    );
+
+  const unscheduled =
+    Math.max(
+      0,
+      Number(
+        reservation.amount_due ||
+        0
+      ) -
+      scheduled
+    );
+
   return `
     <div class="payment-schedule">
       <h3>
         Payment schedule
       </h3>
+
+      <div class="payment-schedule-summary">
+        <div class="payment-summary-item">
+          <div class="payment-summary-label">
+            Scheduled total
+          </div>
+          <div
+            class="payment-summary-value"
+            data-scheduled-total
+          >
+            ${formatMoney(scheduled)}
+          </div>
+        </div>
+
+        <div class="payment-summary-item">
+          <div class="payment-summary-label">
+            Still unscheduled
+          </div>
+          <div
+            class="payment-summary-value"
+            data-unscheduled-total
+          >
+            ${formatMoney(unscheduled)}
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="payment-schedule-warning"
+        data-schedule-warning
+      >
+        ${
+          unscheduled > 0
+            ? `${formatMoney(unscheduled)} still needs to be scheduled.`
+            : "Payment schedule matches the reservation total."
+        }
+      </div>
 
       <div class="payment-schedule-list">
         ${
@@ -2082,6 +2286,15 @@ function paymentScheduleMarkup(
               data-new-payment-date
             >
           </label>
+
+          <button
+            type="button"
+            class="use-remaining-btn"
+            data-use-remaining
+            ${unscheduled <= 0 ? "disabled" : ""}
+          >
+            Use remaining balance
+          </button>
 
           <button
             type="button"
@@ -4472,6 +4685,86 @@ ratePeriodsList.addEventListener(
 
 
 
+
+document.addEventListener(
+  "input",
+  event => {
+    if (
+      event.target.matches(
+        "[data-payment-due-amount]"
+      )
+    ) {
+      refreshScheduleArithmetic(
+        event.target.closest(
+          "[data-id]"
+        )
+      );
+    }
+  }
+);
+
+
+document.addEventListener(
+  "click",
+  event => {
+    const useRemaining =
+      event.target.closest(
+        "[data-use-remaining]"
+      );
+
+    if (!useRemaining) {
+      return;
+    }
+
+    const card =
+      useRemaining.closest(
+        "[data-id]"
+      );
+
+    const reservationId =
+      card.dataset.id;
+
+    const reservation =
+      currentReservations.find(
+        item =>
+          item.id ===
+          reservationId
+      );
+
+    if (!reservation) {
+      return;
+    }
+
+    const visibleScheduled =
+      visibleScheduledTotal(
+        card
+      );
+
+    const remaining =
+      Math.max(
+        0,
+        Number(
+          reservation.amount_due ||
+          0
+        ) -
+        visibleScheduled
+      );
+
+    const amountInput =
+      card.querySelector(
+        "[data-new-payment-amount]"
+      );
+
+    if (amountInput) {
+      amountInput.value =
+        remaining.toFixed(2);
+
+      amountInput.focus();
+    }
+  }
+);
+
+
 document.addEventListener(
   "click",
   async event => {
@@ -4536,6 +4829,61 @@ document.addEventListener(
           ) {
             throw new Error(
               "Enter a label, amount, and due date."
+            );
+          }
+
+          const card =
+            row.closest(
+              "[data-id]"
+            );
+
+          const reservationId =
+            card.dataset.id;
+
+          const reservation =
+            currentReservations.find(
+              item =>
+                item.id ===
+                reservationId
+            );
+
+          const otherScheduled =
+            scheduleForReservation(
+              reservationId
+            )
+              .filter(
+                item =>
+                  item.id !== id
+              )
+              .reduce(
+                (
+                  total,
+                  item
+                ) =>
+                  total +
+                  Number(
+                    item.amount_due ||
+                    0
+                  ),
+                0
+              );
+
+          const maxAllowed =
+            Math.max(
+              0,
+              Number(
+                reservation.amount_due ||
+                0
+              ) -
+              otherScheduled
+            );
+
+          if (
+            amount >
+            maxAllowed
+          ) {
+            throw new Error(
+              `That installment is too large. The maximum for this installment is ${formatMoney(maxAllowed)}.`
             );
           }
 
@@ -4610,6 +4958,27 @@ document.addEventListener(
         ) {
           throw new Error(
             "Enter a label, amount, and due date."
+          );
+        }
+
+        const reservation =
+          currentReservations.find(
+            item =>
+              item.id ===
+              reservationId
+          );
+
+        const remaining =
+          unscheduledAmount(
+            reservation
+          );
+
+        if (
+          amount >
+          remaining
+        ) {
+          throw new Error(
+            `That installment is larger than the remaining unscheduled amount of ${formatMoney(remaining)}.`
           );
         }
 
