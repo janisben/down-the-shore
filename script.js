@@ -47,13 +47,15 @@ function renderHome() {
   const contact =
     document.querySelector("[data-contact]");
 
-  if (brand.contactEmail) {
-    contact.href =
-      `mailto:${brand.contactEmail}`;
-  } else {
-    contact.removeAttribute("href");
-    contact.textContent =
-      "Contact information coming soon";
+  if (contact) {
+    if (brand.contactEmail) {
+      contact.href =
+        `mailto:${brand.contactEmail}`;
+    } else {
+      contact.removeAttribute("href");
+      contact.textContent =
+        "Contact Janis";
+    }
   }
 
   const grid =
@@ -451,7 +453,6 @@ function ratePeriodForStay(
     return null;
   }
 
-  // Prefer the most specific period if periods overlap.
   matching.sort(
     (a, b) =>
       nightsBetween(
@@ -877,90 +878,255 @@ async function submitReservation(
 
 function injectCalendarStyles() {}
 
-
 function weeklyPriceLabel(period) {
-  if (!period || period.stay_rule !== "weekly" || period.weekly_price == null) {
+  if (
+    !period ||
+    period.stay_rule !== "weekly" ||
+    period.weekly_price == null
+  ) {
     return "";
   }
-  return formatMoney(period.weekly_price);
+
+  return formatMoney(
+    period.weekly_price
+  );
 }
 
 function publishedRateSummary(ratePeriods) {
-  const open = ratePeriods.filter(period => !period.blocked);
-  const weekly = open.filter(period => period.stay_rule === "weekly" && period.weekly_price != null);
-  const flexible = open.filter(period => period.stay_rule === "flexible" && period.nightly_price != null);
+  const open =
+    ratePeriods.filter(
+      period => !period.blocked
+    );
+
+  const weekly =
+    open.filter(
+      period =>
+        period.stay_rule === "weekly" &&
+        period.weekly_price != null
+    );
+
+  const flexible =
+    open.filter(
+      period =>
+        period.stay_rule === "flexible" &&
+        period.nightly_price != null
+    );
+
   const parts = [];
 
   if (weekly.length) {
-    const prices = weekly.map(period => Number(period.weekly_price));
-    const low = Math.min(...prices);
-    const high = Math.max(...prices);
+    const prices =
+      weekly.map(
+        period =>
+          Number(
+            period.weekly_price
+          )
+      );
+
+    const low =
+      Math.min(...prices);
+
+    const high =
+      Math.max(...prices);
+
     parts.push(`
       <div class="rate-summary-line">
-        <strong>Weekly stays: ${low === high ? formatMoney(low) : `${formatMoney(low)}–${formatMoney(high)}`}</strong>
+        <strong>
+          Weekly stays:
+          ${
+            low === high
+              ? formatMoney(low)
+              : `${formatMoney(low)}–${formatMoney(high)}`
+          }
+        </strong>
         Saturday check-in at 2:00 PM · Saturday checkout at 10:00 AM.
       </div>
     `);
   }
 
   if (flexible.length) {
-    const prices = flexible.map(period => Number(period.nightly_price));
-    const low = Math.min(...prices);
-    const high = Math.max(...prices);
-    const minimum = Math.min(...flexible.map(period => Number(period.minimum_nights || 1)));
+    const prices =
+      flexible.map(
+        period =>
+          Number(
+            period.nightly_price
+          )
+      );
+
+    const low =
+      Math.min(...prices);
+
+    const high =
+      Math.max(...prices);
+
+    const minimum =
+      Math.min(
+        ...flexible.map(
+          period =>
+            Number(
+              period.minimum_nights ||
+              1
+            )
+        )
+      );
+
     parts.push(`
       <div class="rate-summary-line">
-        <strong>Selected short-stay openings: ${low === high ? `${formatMoney(low)}/night` : `${formatMoney(low)}–${formatMoney(high)}/night`}</strong>
+        <strong>
+          Selected short-stay openings:
+          ${
+            low === high
+              ? `${formatMoney(low)}/night`
+              : `${formatMoney(low)}–${formatMoney(high)}/night`
+          }
+        </strong>
         Minimum stay varies by date; currently as low as ${minimum} night${minimum === 1 ? "" : "s"}.
       </div>
     `);
   }
 
-  return parts.join("") || `
-    <div class="rate-summary-line">
-      <strong>No published rates right now.</strong>
-      Check back soon for newly opened dates.
-    </div>
-  `;
+  return (
+    parts.join("") ||
+    `
+      <div class="rate-summary-line">
+        <strong>No published rates right now.</strong>
+        Check back soon for newly opened dates.
+      </div>
+    `
+  );
 }
 
-function renderWeeklyAvailabilityList(ratePeriods, availability, onChoose) {
-  const container = document.querySelector("[data-weekly-rate-list]");
-  const section = document.querySelector("[data-weekly-list-section]");
-  if (!container || !section) return;
+function renderWeeklyAvailabilityList(
+  ratePeriods,
+  availability,
+  onChoose
+) {
+  const container =
+    document.querySelector(
+      "[data-weekly-rate-list]"
+    );
 
-  const items = ratePeriods
-    .filter(period => !period.blocked && period.stay_rule === "weekly" && period.weekly_price != null)
-    .map(period => ({
-      period,
-      isBooked: rangeContainsStatus(period.start_date, period.end_date, availability, "booked"),
-      isPending: rangeContainsStatus(period.start_date, period.end_date, availability, "pending")
-    }))
-    .filter(item => !item.isBooked);
+  const section =
+    document.querySelector(
+      "[data-weekly-list-section]"
+    );
 
-  if (!items.length) {
-    section.hidden = true;
+  if (
+    !container ||
+    !section
+  ) {
     return;
   }
 
-  section.hidden = false;
-  container.innerHTML = items.map(item => `
-    <article class="weekly-rate-item ${item.isPending ? "pending" : ""}">
-      <div>
-        <div class="weekly-rate-dates">${formatShortDate(item.period.start_date)} – ${formatShortDate(item.period.end_date)}</div>
-        <div class="weekly-rate-meta">Saturday to Saturday · ${item.isPending ? "pending hold — waitlist available" : "available"}</div>
-      </div>
-      <div class="weekly-rate-price">${formatMoney(item.period.weekly_price)}</div>
-      <button class="weekly-rate-action" type="button" data-weekly-select="${item.period.id}">Select week</button>
-    </article>
-  `).join("");
+  const items =
+    ratePeriods
+      .filter(
+        period =>
+          !period.blocked &&
+          period.stay_rule === "weekly" &&
+          period.weekly_price != null
+      )
+      .map(
+        period => ({
+          period,
 
-  container.querySelectorAll("[data-weekly-select]").forEach(button => {
-    button.addEventListener("click", () => {
-      const period = ratePeriods.find(item => String(item.id) === String(button.dataset.weeklySelect));
-      if (period) onChoose(period);
-    });
-  });
+          isBooked:
+            rangeContainsStatus(
+              period.start_date,
+              period.end_date,
+              availability,
+              "booked"
+            ),
+
+          isPending:
+            rangeContainsStatus(
+              period.start_date,
+              period.end_date,
+              availability,
+              "pending"
+            )
+        })
+      )
+      .filter(
+        item =>
+          !item.isBooked
+      );
+
+  if (!items.length) {
+    section.hidden =
+      true;
+
+    return;
+  }
+
+  section.hidden =
+    false;
+
+  container.innerHTML =
+    items
+      .map(
+        item => `
+          <article
+            class="weekly-rate-item ${item.isPending ? "pending" : ""}"
+          >
+            <div>
+              <div class="weekly-rate-dates">
+                ${formatShortDate(item.period.start_date)}
+                –
+                ${formatShortDate(item.period.end_date)}
+              </div>
+
+              <div class="weekly-rate-meta">
+                Saturday to Saturday ·
+                ${
+                  item.isPending
+                    ? "pending hold — waitlist available"
+                    : "available"
+                }
+              </div>
+            </div>
+
+            <div class="weekly-rate-price">
+              ${formatMoney(item.period.weekly_price)}
+            </div>
+
+            <button
+              class="weekly-rate-action"
+              type="button"
+              data-weekly-select="${item.period.id}"
+            >
+              Select week
+            </button>
+          </article>
+        `
+      )
+      .join("");
+
+  container
+    .querySelectorAll(
+      "[data-weekly-select]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            const period =
+              ratePeriods.find(
+                item =>
+                  String(item.id) ===
+                  String(
+                    button.dataset.weeklySelect
+                  )
+              );
+
+            if (period) {
+              onChoose(period);
+            }
+          }
+        );
+      }
+    );
 }
 
 function renderMonth(
@@ -1066,7 +1232,10 @@ function renderMonth(
     }
 
     const classes =
-      ["calendar-day", status];
+      [
+        "calendar-day",
+        status
+      ];
 
     if (
       period &&
@@ -1081,28 +1250,41 @@ function renderMonth(
     }
 
     if (
-      dateString === selectedArrival ||
-      dateString === selectedDeparture
+      dateString ===
+        selectedArrival ||
+      dateString ===
+        selectedDeparture
     ) {
-      classes.push("selected");
+      classes.push(
+        "selected"
+      );
     }
 
     if (
       selectedArrival &&
       selectedDeparture &&
       parseDate(dateString) >
-        parseDate(selectedArrival) &&
+        parseDate(
+          selectedArrival
+        ) &&
       parseDate(dateString) <
-        parseDate(selectedDeparture)
+        parseDate(
+          selectedDeparture
+        )
     ) {
-      classes.push("in-range");
+      classes.push(
+        "in-range"
+      );
     }
 
     const disabled =
       (
-        status === "booked" ||
-        status === "blocked" ||
-        status === "unpriced"
+        status ===
+          "booked" ||
+        status ===
+          "blocked" ||
+        status ===
+          "unpriced"
       )
         ? "disabled"
         : "";
@@ -1111,22 +1293,26 @@ function renderMonth(
       "Available";
 
     if (
-      status === "pending"
+      status ===
+      "pending"
     ) {
       title =
         "Pending — you may join the waitlist";
     } else if (
-      status === "booked"
+      status ===
+      "booked"
     ) {
       title =
         "Booked";
     } else if (
-      status === "blocked"
+      status ===
+      "blocked"
     ) {
       title =
         "Not available";
     } else if (
-      status === "unpriced"
+      status ===
+      "unpriced"
     ) {
       title =
         "Not currently open for online booking";
@@ -1159,11 +1345,18 @@ function renderMonth(
         ${disabled}
       >
         <span>${day}</span>
+
         ${
           period &&
-          period.stay_rule === "weekly" &&
-          dateString === period.start_date
-            ? `<span class="weekly-price">${weeklyPriceLabel(period)}</span>`
+          period.stay_rule ===
+            "weekly" &&
+          dateString ===
+            period.start_date
+            ? `
+              <span class="weekly-price">
+                ${weeklyPriceLabel(period)}
+              </span>
+            `
             : ""
         }
       </button>
@@ -1204,22 +1397,29 @@ async function renderProperty() {
 
   const property =
     data.properties.find(
-      item => item.id === id
+      item =>
+        item.id === id
     ) ||
     data.properties[0];
 
   const owner =
-    data.owners[property.owner];
+    data.owners[
+      property.owner
+    ];
 
   document.title =
     `${property.name} | ${data.brand.name}`;
 
   document
-    .querySelectorAll("[data-brand]")
-    .forEach(el => {
-      el.textContent =
-        data.brand.name;
-    });
+    .querySelectorAll(
+      "[data-brand]"
+    )
+    .forEach(
+      el => {
+        el.textContent =
+          data.brand.name;
+      }
+    );
 
   const hero =
     document.querySelector(
@@ -1331,7 +1531,9 @@ async function renderProperty() {
     form.elements.dogs;
 
   form.elements.guests.max =
-    String(property.sleeps);
+    String(
+      property.sleeps
+    );
 
   form.elements.arrival.readOnly =
     true;
@@ -1360,14 +1562,22 @@ async function renderProperty() {
     );
 
   const publishedRateSummaryEl =
-    document.querySelector("[data-published-rate-summary]");
+    document.querySelector(
+      "[data-published-rate-summary]"
+    );
 
-  if (publishedRateSummaryEl) {
+  if (
+    publishedRateSummaryEl
+  ) {
     publishedRateSummaryEl.innerHTML =
-      publishedRateSummary(ratePeriods);
+      publishedRateSummary(
+        ratePeriods
+      );
   }
 
-  if (!property.dogFriendly) {
+  if (
+    !property.dogFriendly
+  ) {
     dogCountField.style.display =
       "none";
 
@@ -1385,15 +1595,19 @@ async function renderProperty() {
 
     Array.from(
       dogSelect.options
-    ).forEach(option => {
-      if (
-        Number(option.value) >
-        maxDogs
-      ) {
-        option.disabled =
-          true;
+    ).forEach(
+      option => {
+        if (
+          Number(
+            option.value
+          ) >
+          maxDogs
+        ) {
+          option.disabled =
+            true;
+        }
       }
-    });
+    );
 
     dogSelect.addEventListener(
       "change",
@@ -1425,21 +1639,31 @@ async function renderProperty() {
     "";
 
   const calendarMount =
-    document.querySelector("[data-calendar-mount]");
+    document.querySelector(
+      "[data-calendar-mount]"
+    );
 
   const calendarWrap =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   calendarWrap.className =
     "availability-wrap";
 
-  calendarMount.appendChild(calendarWrap);
+  calendarMount.appendChild(
+    calendarWrap
+  );
 
   const quoteMount =
-    document.querySelector("[data-quote-mount]");
+    document.querySelector(
+      "[data-quote-mount]"
+    );
 
   const quoteBox =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
   quoteBox.className =
     "quote-box";
@@ -1447,7 +1671,9 @@ async function renderProperty() {
   quoteBox.hidden =
     true;
 
-  quoteMount.replaceWith(quoteBox);
+  quoteMount.replaceWith(
+    quoteBox
+  );
 
   function currentQuote() {
     if (
@@ -1466,6 +1692,7 @@ async function renderProperty() {
 
     return {
       period,
+
       quote:
         calculateQuote(
           propertyRecord,
@@ -1502,7 +1729,9 @@ async function renderProperty() {
         false;
 
       quoteBox.innerHTML = `
-        <h3>Your stay total</h3>
+        <h3>
+          Your stay total
+        </h3>
 
         <div class="quote-row">
           <span>
@@ -1513,13 +1742,17 @@ async function renderProperty() {
                 : `${quote.nights} night${quote.nights === 1 ? "" : "s"} · ${formatMoney(period.nightly_price)}/night`
             }
           </span>
+
           <strong>
             ${formatMoney(quote.rental)}
           </strong>
         </div>
 
         <div class="quote-row">
-          <span>Cleaning fee</span>
+          <span>
+            Cleaning fee
+          </span>
+
           <strong>
             ${formatMoney(quote.cleaning)}
           </strong>
@@ -1532,6 +1765,7 @@ async function renderProperty() {
                 <span>
                   Pet fee · ${quote.dogs} dog${quote.dogs === 1 ? "" : "s"}
                 </span>
+
                 <strong>
                   ${formatMoney(quote.petFee)}
                 </strong>
@@ -1541,7 +1775,10 @@ async function renderProperty() {
         }
 
         <div class="quote-row quote-total">
-          <span>Total</span>
+          <span>
+            Total
+          </span>
+
           <strong>
             ${formatMoney(quote.total)}
           </strong>
@@ -1557,24 +1794,47 @@ async function renderProperty() {
     }
   }
 
-  function selectWeeklyPeriod(period) {
-    selectedArrival = period.start_date;
-    selectedDeparture = period.end_date;
-    form.elements.arrival.value = selectedArrival;
-    form.elements.departure.value = selectedDeparture;
+  function selectWeeklyPeriod(
+    period
+  ) {
+    selectedArrival =
+      period.start_date;
 
-    calendarStart = new Date(
-      parseDate(selectedArrival).getFullYear(),
-      parseDate(selectedArrival).getMonth(),
-      1
-    );
+    selectedDeparture =
+      period.end_date;
+
+    form.elements.arrival.value =
+      selectedArrival;
+
+    form.elements.departure.value =
+      selectedDeparture;
+
+    calendarStart =
+      new Date(
+        parseDate(
+          selectedArrival
+        ).getFullYear(),
+
+        parseDate(
+          selectedArrival
+        ).getMonth(),
+
+        1
+      );
 
     drawCalendar();
 
-    document.getElementById("booking").scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
+    document
+      .getElementById(
+        "booking"
+      )
+      .scrollIntoView({
+        behavior:
+          "smooth",
+
+        block:
+          "start"
+      });
   }
 
   function drawCalendar() {
@@ -1702,11 +1962,12 @@ async function renderProperty() {
             "weekly"
           ) {
             messageBox.textContent =
-              `Saturday check-in at 2:00 PM · Saturday checkout at 10:00 AM.`;
+              "Saturday check-in at 2:00 PM · Saturday checkout at 10:00 AM.";
           } else {
             messageBox.textContent =
               `Selected: ${formatShortDate(selectedArrival)} through ${formatShortDate(selectedDeparture)} · ${period.minimum_nights || 1}-night minimum.`;
           }
+
         } catch (error) {
           messageBox.className =
             "calendar-message pending-note";
@@ -1715,6 +1976,7 @@ async function renderProperty() {
             error.message;
         }
       }
+
     } else {
       messageBox.textContent =
         "Choose an available arrival date. Saturday-to-Saturday weeks are marked by their Saturday start date.";
@@ -1756,87 +2018,77 @@ async function renderProperty() {
       .querySelectorAll(
         "[data-calendar-date]"
       )
-      .forEach(button => {
+      .forEach(
+        button => {
 
-        button.addEventListener(
-          "click",
-          () => {
+          button.addEventListener(
+            "click",
+            () => {
 
-            const date =
-              button.dataset.calendarDate;
+              const date =
+                button.dataset
+                  .calendarDate;
 
-            const status =
-              button.dataset.calendarStatus;
+              const status =
+                button.dataset
+                  .calendarStatus;
 
-            if (
-              status === "booked" ||
-              status === "blocked" ||
-              status === "unpriced"
-            ) {
-              return;
-            }
-
-            const rate =
-              nonBlockedRateForDate(
-                date,
-                ratePeriods
-              );
-
-            if (!rate) {
-              return;
-            }
-
-            // Weekly periods are intentionally simple:
-            // click the Saturday start and the full week is selected.
-            if (
-              rate.stay_rule ===
-              "weekly"
-            ) {
               if (
-                date !==
-                rate.start_date
+                status ===
+                  "booked" ||
+                status ===
+                  "blocked" ||
+                status ===
+                  "unpriced"
               ) {
-                selectedArrival =
-                  "";
-
-                selectedDeparture =
-                  "";
-
-                form.elements.arrival.value =
-                  "";
-
-                form.elements.departure.value =
-                  "";
-
-                drawCalendar();
                 return;
               }
 
-              selectWeeklyPeriod(rate);
-              return;
-            }
+              const rate =
+                nonBlockedRateForDate(
+                  date,
+                  ratePeriods
+                );
 
-            // Flexible periods use the first click as arrival
-            // and the second click as departure.
-            if (
-              !selectedArrival ||
-              selectedDeparture
-            ) {
-              selectedArrival =
-                date;
+              if (!rate) {
+                return;
+              }
 
-              selectedDeparture =
-                "";
-
-              form.elements.arrival.value =
-                date;
-
-              form.elements.departure.value =
-                "";
-            } else {
               if (
-                parseDate(date) <=
-                parseDate(selectedArrival)
+                rate.stay_rule ===
+                "weekly"
+              ) {
+                if (
+                  date !==
+                  rate.start_date
+                ) {
+                  selectedArrival =
+                    "";
+
+                  selectedDeparture =
+                    "";
+
+                  form.elements.arrival.value =
+                    "";
+
+                  form.elements.departure.value =
+                    "";
+
+                  drawCalendar();
+
+                  return;
+                }
+
+                selectWeeklyPeriod(
+                  rate
+                );
+
+                return;
+              }
+
+              if (
+                !selectedArrival ||
+                selectedDeparture
               ) {
                 selectedArrival =
                   date;
@@ -1849,16 +2101,14 @@ async function renderProperty() {
 
                 form.elements.departure.value =
                   "";
-              } else {
-                const hitsBooked =
-                  rangeContainsStatus(
-                    selectedArrival,
-                    date,
-                    availability,
-                    "booked"
-                  );
 
-                if (hitsBooked) {
+              } else {
+                if (
+                  parseDate(date) <=
+                  parseDate(
+                    selectedArrival
+                  )
+                ) {
                   selectedArrival =
                     date;
 
@@ -1870,20 +2120,46 @@ async function renderProperty() {
 
                   form.elements.departure.value =
                     "";
-                } else {
-                  selectedDeparture =
-                    date;
 
-                  form.elements.departure.value =
-                    date;
+                } else {
+                  const hitsBooked =
+                    rangeContainsStatus(
+                      selectedArrival,
+                      date,
+                      availability,
+                      "booked"
+                    );
+
+                  if (
+                    hitsBooked
+                  ) {
+                    selectedArrival =
+                      date;
+
+                    selectedDeparture =
+                      "";
+
+                    form.elements.arrival.value =
+                      date;
+
+                    form.elements.departure.value =
+                      "";
+
+                  } else {
+                    selectedDeparture =
+                      date;
+
+                    form.elements.departure.value =
+                      date;
+                  }
                 }
               }
-            }
 
-            drawCalendar();
-          }
-        );
-      });
+              drawCalendar();
+            }
+          );
+        }
+      );
 
     renderWeeklyAvailabilityList(
       ratePeriods,
@@ -1916,7 +2192,9 @@ async function renderProperty() {
 
       try {
         const formData =
-          new FormData(form);
+          new FormData(
+            form
+          );
 
         const response =
           await submitReservation(
@@ -1935,9 +2213,12 @@ async function renderProperty() {
             response.quote.total
           );
 
-        if (response.isWaitlist) {
+        if (
+          response.isWaitlist
+        ) {
           result.innerHTML =
             `<strong>You’re on the waitlist.</strong><br>Your requested stay total is ${total}. These dates currently have a pending 24-hour hold. Janis has received your request and can contact you if the dates become available.`;
+
         } else {
           result.innerHTML =
             `<strong>Your dates have been received.</strong><br>Your stay total is ${total}. Your request is pending until Janis confirms the dates, lease, and payment details.`;
@@ -1964,16 +2245,21 @@ async function renderProperty() {
             propertyId
           );
 
-        if (publishedRateSummaryEl) {
+        if (
+          publishedRateSummaryEl
+        ) {
           publishedRateSummaryEl.innerHTML =
-            publishedRateSummary(ratePeriods);
+            publishedRateSummary(
+              ratePeriods
+            );
         }
 
         drawCalendar();
 
       } catch (error) {
-
-        console.error(error);
+        console.error(
+          error
+        );
 
         result.className =
           "booking-result error";
@@ -1982,7 +2268,6 @@ async function renderProperty() {
           error.message;
 
       } finally {
-
         submitButton.disabled =
           false;
 
