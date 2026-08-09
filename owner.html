@@ -1193,32 +1193,20 @@ button.danger {
 
 <section class="card login" id="loginView">
   <div class="eyebrow">OWNER PORTAL</div>
-
   <h1>Down the Shore</h1>
 
-  <form id="loginForm">
+  <form id="loginForm" method="post" action="#" onsubmit="return false;">
     <label>
       Email
-      <input
-        name="email"
-        required=""
-        type="email"
-      />
+      <input name="email" required type="email"/>
     </label>
 
     <label>
       Password
-      <input
-        name="password"
-        required=""
-        type="password"
-      />
+      <input name="password" required type="password"/>
     </label>
 
-    <button
-      class="button"
-      type="submit"
-    >
+    <button class="button" type="submit">
       Sign in
     </button>
   </form>
@@ -1226,161 +1214,72 @@ button.danger {
   <div id="loginMessage"></div>
 </section>
 
-<section
-  hidden=""
-  id="portalView"
->
+<section hidden id="portalView">
 
 <div class="owner-shell">
 
 <aside class="owner-sidebar">
 
 <div class="owner-logo">
-
-<div
-  aria-hidden="true"
-  class="owner-logo-mark"
->
-<svg
-  role="img"
-  viewbox="0 0 64 64"
->
-<path
-  d="M10 30 32 12l22 18"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="3"
-></path>
-
-<path
-  d="M16 27v25h32V27"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="3"
-></path>
-
-<path
-  d="M25 52V36h14v16"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="3"
-></path>
-
-<path
-  d="M20 23V13h8v4"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="3"
-></path>
-
-<path
-  d="M11 56h42"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="3"
-></path>
+<div aria-hidden="true" class="owner-logo-mark">
+<svg role="img" viewBox="0 0 64 64">
+<path d="M10 30 32 12l22 18" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path d="M16 27v25h32V27" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path d="M25 52V36h14v16" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path d="M20 23V13h8v4" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path d="M11 56h42" fill="none" stroke="currentColor" stroke-width="3"></path>
 </svg>
 </div>
 
 <div>
-  <div class="owner-logo-title">
-    Down the Shore
-  </div>
-
-  <div class="owner-logo-subtitle">
-    OWNER PORTAL
-  </div>
+<div class="owner-logo-title">Down the Shore</div>
+<div class="owner-logo-subtitle">OWNER PORTAL</div>
+</div>
 </div>
 
-</div>
+<nav aria-label="Owner portal" class="owner-nav">
 
-<nav
-  aria-label="Owner portal"
-  class="owner-nav"
->
-
-<button
-  class="owner-nav-link active"
-  data-owner-view="dashboard"
-  type="button"
->
+<button class="owner-nav-link active" data-owner-view="dashboard" type="button">
 <span class="nav-icon">⌂</span>
 <span>Dashboard</span>
 </button>
 
-<button
-  class="owner-nav-link"
-  data-owner-view="calendar"
-  type="button"
->
+<button class="owner-nav-link" data-owner-view="calendar" type="button">
 <span class="nav-icon">▣</span>
 <span>Calendar</span>
 </button>
 
-<button
-  class="owner-nav-link"
-  data-owner-view="pending"
-  type="button"
->
+<button class="owner-nav-link" data-owner-view="pending" type="button">
 <span class="nav-icon">✓</span>
 <span>Pending Requests</span>
-
-<span
-  class="nav-count"
-  hidden=""
-  id="sidebarPendingCount"
-></span>
+<span class="nav-count" hidden id="sidebarPendingCount"></span>
 </button>
 
-<div class="owner-nav-label">
-  MANAGE
-</div>
+<div class="owner-nav-label">MANAGE</div>
 
-<button
-  class="owner-nav-link"
-  data-owner-view="reservations"
-  type="button"
->
+<button class="owner-nav-link" data-owner-view="reservations" type="button">
 <span class="nav-icon">▤</span>
 <span>Reservations</span>
 </button>
 
-<button
-  class="owner-nav-link"
-  data-owner-view="add-reservation"
-  type="button"
->
+<button class="owner-nav-link" data-owner-view="add-reservation" type="button">
 <span class="nav-icon">＋</span>
 <span>Add Reservation</span>
 </button>
 
-<button
-  class="owner-nav-link"
-  data-owner-view="pricing"
-  type="button"
->
+<button class="owner-nav-link" data-owner-view="pricing" type="button">
 <span class="nav-icon">$</span>
 <span>Pricing &amp; Fees</span>
 </button>
 
-<button
-  class="owner-nav-link"
-  data-owner-view="cleaning"
-  type="button"
->
+<button class="owner-nav-link" data-owner-view="cleaning" type="button">
 <span class="nav-icon">♨</span>
 <span>Cleaning Dashboard</span>
 </button>
 
-<div class="owner-nav-label">
-  ACCOUNT
-</div>
+<div class="owner-nav-label">ACCOUNT</div>
 
-<button
-  class="owner-nav-link"
-  id="logoutButton"
-  type="button"
->
+<button class="owner-nav-link" id="logoutButton" type="button">
 <span class="nav-icon">↪</span>
 <span>Logout</span>
 </button>
@@ -1391,317 +1290,155 @@ button.danger {
 <main class="owner-main">
 
 <header class="owner-topbar">
-
 <div>
-  <h1 id="ownerPageTitle">
-    Welcome back, Janis!
-  </h1>
-
-  <p id="ownerPageSubtitle">
-    Here’s what’s happening at your shore homes.
-  </p>
+<h1 id="ownerPageTitle">Welcome back, Janis!</h1>
+<p id="ownerPageSubtitle">Here’s what’s happening at your shore homes.</p>
 </div>
 
 <div class="owner-profile">
-
-<div class="owner-avatar">
-  JB
-</div>
-
+<div class="owner-avatar">JB</div>
 <div>
-  <strong>Janis Benstock</strong>
-  <span>Owner</span>
+<strong>Janis Benstock</strong>
+<span>Owner</span>
 </div>
-
 </div>
-
 </header>
 
 <div id="portalMessage"></div>
 
-<section
-  class="owner-panel active"
-  data-owner-panel="dashboard"
->
+<section class="owner-panel active" data-owner-panel="dashboard">
 
-<div
-  class="dashboard-stats"
-  id="dashboardStats"
-></div>
+<div class="dashboard-stats" id="dashboardStats"></div>
 
 <div class="dashboard-grid">
 
-<section
-  class="dashboard-card dashboard-calendar-card"
->
-
+<section class="dashboard-card dashboard-calendar-card">
 <div class="dashboard-card-head">
-
 <div>
-  <span class="section-kicker">
-    CALENDAR OVERVIEW
-  </span>
-
-  <h2>
-    Property calendar
-  </h2>
+<span class="section-kicker">CALENDAR OVERVIEW</span>
+<h2>Property calendar</h2>
 </div>
 
-<button
-  class="text-action"
-  data-owner-view="calendar"
-  type="button"
->
-  View full calendar
+<button class="text-action" data-owner-view="calendar" type="button">
+View full calendar
 </button>
-
 </div>
 
 <div id="dashboardCalendar"></div>
-
 </section>
 
 <section class="dashboard-card">
-
 <div class="dashboard-card-head">
-
 <div>
-  <span class="section-kicker">
-    NEEDS REVIEW
-  </span>
-
-  <h2>
-    Pending requests
-  </h2>
+<span class="section-kicker">NEEDS REVIEW</span>
+<h2>Pending requests</h2>
 </div>
 
-<button
-  class="text-action"
-  data-owner-view="pending"
-  type="button"
->
-  View all
+<button class="text-action" data-owner-view="pending" type="button">
+View all
 </button>
-
 </div>
 
-<div
-  class="dashboard-pending-list"
-  id="dashboardPendingList"
-></div>
-
+<div class="dashboard-pending-list" id="dashboardPendingList"></div>
 </section>
 
 </div>
 
 <section class="dashboard-card upcoming-card">
-
 <div class="dashboard-card-head">
-
 <div>
-  <span class="section-kicker">
-    UPCOMING
-  </span>
-
-  <h2>
-    Upcoming events
-  </h2>
+<span class="section-kicker">UPCOMING</span>
+<h2>Upcoming events</h2>
 </div>
 
-<button
-  class="text-action"
-  data-owner-view="calendar"
-  type="button"
->
-  View calendar
+<button class="text-action" data-owner-view="calendar" type="button">
+View calendar
 </button>
-
 </div>
 
-<div
-  class="upcoming-events"
-  id="dashboardUpcoming"
-></div>
-
+<div class="upcoming-events" id="dashboardUpcoming"></div>
 </section>
 
 </section>
 
-<section
-  class="owner-panel"
-  data-owner-panel="calendar"
->
+<section class="owner-panel" data-owner-panel="calendar">
 
 <div class="panel-heading">
-
 <div>
-  <span class="section-kicker">
-    MASTER CALENDAR
-  </span>
-
-  <h2>
-    Calendar
-  </h2>
+<span class="section-kicker">MASTER CALENDAR</span>
+<h2>Calendar</h2>
 </div>
-
 </div>
 
 <div id="calendarPanelMount">
 
-<section
-  class="card"
-  id="ownerCalendarSection"
->
+<section class="card" id="ownerCalendarSection">
 
-<div
-  class="row embedded-section-heading"
-  style="
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:18px;
-  "
->
-
+<div class="row embedded-section-heading" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
 <div>
-  <div class="eyebrow">
-    MASTER CALENDAR
-  </div>
-
-  <h2 style="margin:4px 0 0;">
-    Property calendar
-  </h2>
+<div class="eyebrow">MASTER CALENDAR</div>
+<h2 style="margin:4px 0 0;">Property calendar</h2>
 </div>
 
 <div class="row">
-
-<button
-  id="calendarPrev"
-  type="button"
->
-  ← Previous
-</button>
-
-<button
-  id="calendarToday"
-  type="button"
->
-  Today
-</button>
-
-<button
-  id="calendarNext"
-  type="button"
->
-  Next →
-</button>
-
+<button id="calendarPrev" type="button">← Previous</button>
+<button id="calendarToday" type="button">Today</button>
+<button id="calendarNext" type="button">Next →</button>
 </div>
-
 </div>
 
 <div id="ownerCalendar"></div>
 
 <div class="owner-calendar-legend">
-
-<span class="legend-chip available">
-  Available
-</span>
-
-<span class="legend-chip pending">
-  Pending / hold
-</span>
-
-<span class="legend-chip booked">
-  Booked
-</span>
-
-<span class="legend-chip waitlisted">
-  Waitlist
-</span>
-
+<span class="legend-chip available">Available</span>
+<span class="legend-chip pending">Pending / hold</span>
+<span class="legend-chip booked">Booked</span>
+<span class="legend-chip waitlisted">Waitlist</span>
 </div>
 
 </section>
-
 </div>
-
 </section>
 
-<section
-  class="owner-panel"
-  data-owner-panel="pending"
->
+<section class="owner-panel" data-owner-panel="pending">
 
 <div class="panel-heading">
-
 <div>
-  <span class="section-kicker">
-    RESERVATIONS
-  </span>
-
-  <h2>
-    Pending requests
-  </h2>
+<span class="section-kicker">RESERVATIONS</span>
+<h2>Pending requests</h2>
 </div>
-
 </div>
 
 <div id="pendingReservationList"></div>
 
 </section>
 
-<section
-  class="owner-panel"
-  data-owner-panel="reservations"
->
+<section class="owner-panel" data-owner-panel="reservations">
 
 <div class="panel-heading">
-
 <div>
-  <span class="section-kicker">
-    RESERVATIONS
-  </span>
-
-  <h2>
-    Reservations
-  </h2>
+<span class="section-kicker">RESERVATIONS</span>
+<h2>Reservations</h2>
 </div>
 
-<button
-  class="primary-dashboard-btn"
-  data-owner-view="add-reservation"
-  type="button"
->
-  + Add reservation
+<button class="primary-dashboard-btn" data-owner-view="add-reservation" type="button">
++ Add reservation
 </button>
-
 </div>
 
 <div id="allReservationsMount">
-
 <div id="reservationList"></div>
-
 </div>
 
 </section>
 
-<section
-  class="owner-panel"
-  data-owner-panel="add-reservation"
->
+<section class="owner-panel" data-owner-panel="add-reservation">
 
 <div class="panel-heading">
-
 <div>
-  <span class="section-kicker">
-    RESERVATIONS
-  </span>
-
-  <h2>
-    Add reservation manually
-  </h2>
+<span class="section-kicker">RESERVATIONS</span>
+<h2>Add reservation manually</h2>
 </div>
-
 </div>
 
 <div id="manualReservationMount">
@@ -1709,7 +1446,7 @@ button.danger {
 <section class="card manual-form">
 
 <h2 class="embedded-section-heading">
-  Add reservation manually
+Add reservation manually
 </h2>
 
 <form id="manualReservationForm">
@@ -1718,165 +1455,95 @@ button.danger {
 
 <label>
 Property
-<select
-  id="manualProperty"
-  name="property_id"
-  required=""
->
-<option value="">
-  Choose property
-</option>
+<select id="manualProperty" name="property_id" required>
+<option value="">Choose property</option>
 </select>
 </label>
 
 <label>
 Booking source
-<select
-  id="bookingSource"
-  name="booking_source"
-  required=""
->
-<option value="direct_manual">
-  Direct / manual
-</option>
-
-<option value="brokerage">
-  Real estate company
-</option>
+<select id="bookingSource" name="booking_source" required>
+<option value="direct_manual">Direct / manual</option>
+<option value="brokerage">Real estate company</option>
 </select>
 </label>
 
 <label>
 Guest last name
-<input
-  name="guest_name"
-  required=""
-  type="text"
-/>
+<input name="guest_name" required type="text"/>
 </label>
 
 <label>
 Guest email
-<input
-  name="guest_email"
-  type="email"
-/>
+<input name="guest_email" type="email"/>
 </label>
 
 <label>
 Guest phone
-<input
-  name="guest_phone"
-  type="tel"
-/>
+<input name="guest_phone" type="tel"/>
 </label>
 
 <label>
 Number of guests
-<input
-  min="1"
-  name="adults"
-  type="number"
-  value="1"
-/>
+<input min="1" name="adults" type="number" value="1"/>
 </label>
 
 <label>
 Arrival
-<input
-  name="arrival_date"
-  required=""
-  type="date"
-/>
+<input name="arrival_date" required type="date"/>
 </label>
 
 <label>
 Departure
-<input
-  name="departure_date"
-  required=""
-  type="date"
-/>
+<input name="departure_date" required type="date"/>
 </label>
 
 <label>
 Amount due
-<input
-  min="0"
-  name="amount_due"
-  step="0.01"
-  type="number"
-/>
+<input min="0" name="amount_due" step="0.01" type="number"/>
 </label>
 
 <label>
 Payment status
 <select name="payment_status">
-
-<option value="waiting">
-  Waiting for payment
-</option>
-
-<option value="paid">
-  Already paid
-</option>
-
+<option value="waiting">Waiting for payment</option>
+<option value="paid">Already paid</option>
 </select>
 </label>
 
-<div
-  class="brokerage-fields"
-  id="brokerageFields"
->
+<div class="brokerage-fields" id="brokerageFields">
 
 <label>
 Brokerage
-<input
-  name="brokerage_name"
-  type="text"
-/>
+<input name="brokerage_name" type="text"/>
 </label>
 
 <label>
 Agent name
-<input
-  name="agent_name"
-  type="text"
-/>
+<input name="agent_name" type="text"/>
 </label>
 
 <label>
 Agent phone
-<input
-  name="agent_phone"
-  type="tel"
-/>
+<input name="agent_phone" type="tel"/>
 </label>
 
 <label>
 Agent email
-<input
-  name="agent_email"
-  type="email"
-/>
+<input name="agent_email" type="email"/>
 </label>
 
 </div>
 
 <label class="full">
 Owner notes
-<textarea
-  name="owner_notes"
-  rows="3"
-></textarea>
+<textarea name="owner_notes" rows="3"></textarea>
 </label>
 
 </div>
 
 <div style="margin-top:16px;">
-<button type="submit">
-  Save reservation
-</button>
+<button type="submit">Save reservation</button>
 </div>
 
 </form>
@@ -1886,273 +1553,264 @@ Owner notes
 </section>
 
 </div>
-
 </section>
 
-<section
-  class="owner-panel"
-  data-owner-panel="pricing"
->
+<section class="owner-panel" data-owner-panel="pricing">
 
 <div class="panel-heading">
-
 <div>
-  <span class="section-kicker">
-    PRICING
-  </span>
-
-  <h2>
-    Pricing &amp; fees
-  </h2>
+<span class="section-kicker">PRICING</span>
+<h2>Pricing &amp; fees</h2>
 </div>
-
 </div>
 
 <div id="propertySettingsMount">
 
-<section
-  class="card"
-  id="propertySettingsSection"
->
+<section class="card" id="propertySettingsSection">
 
 <div class="embedded-section-heading">
-
-<div class="eyebrow">
-  PROPERTY FEES
-</div>
-
-<h2 style="margin:4px 0 8px;">
-  Cleaning &amp; pet fees
-</h2>
+<div class="eyebrow">PROPERTY FEES</div>
+<h2 style="margin:4px 0 8px;">Cleaning &amp; pet fees</h2>
 
 <div class="meta">
-  Change these anytime. The customer booking site will use these values when calculating totals.
+Change these anytime. The customer booking site will use these values when calculating totals.
 </div>
-
 </div>
 
 <div id="propertySettingsMessage"></div>
-
-<div
-  class="property-settings-list"
-  id="propertySettingsList"
-></div>
+<div class="property-settings-list" id="propertySettingsList"></div>
 
 </section>
-
 </div>
 
 <div id="ratesMount">
 
-<section
-  class="card"
-  id="ratesSection"
->
+<section class="card" id="ratesSection">
 
 <div class="embedded-section-heading">
-
-<div class="eyebrow">
-  RATES &amp; AVAILABILITY
-</div>
-
-<h2 style="margin:4px 0 8px;">
-  Pricing and stay rules
-</h2>
+<div class="eyebrow">RATES &amp; AVAILABILITY</div>
+<h2 style="margin:4px 0 8px;">Pricing and stay rules</h2>
 
 <div class="meta">
-  Set weekly prices, flexible shorter stays, minimum nights, or block dates.
-  Add a new period whenever you want to change pricing for specific dates.
+Set weekly prices, flexible shorter stays, minimum nights, or block dates.
+Add a new period whenever you want to change pricing for specific dates.
+</div>
 </div>
 
-</div>
-
-<form
-  class="rates-form"
-  id="ratePeriodForm"
-  style="margin-top:18px;"
->
+<form class="rates-form" id="ratePeriodForm" style="margin-top:18px;">
 
 <div class="form-grid">
 
 <label>
 Property
-<select
-  id="rateProperty"
-  name="property_id"
-  required=""
->
-<option value="">
-  Choose property
-</option>
+<select id="rateProperty" name="property_id" required>
+<option value="">Choose property</option>
 </select>
 </label>
 
 <label>
 Stay rule
-<select
-  id="rateStayRule"
-  name="stay_rule"
->
-<option value="weekly">
-  Weekly only
-</option>
-
-<option value="flexible">
-  Flexible / shorter stays
-</option>
+<select id="rateStayRule" name="stay_rule">
+<option value="weekly">Weekly only</option>
+<option value="flexible">Flexible / shorter stays</option>
 </select>
 </label>
 
 <label>
 Start date
-<input
-  name="start_date"
-  required=""
-  type="date"
-/>
+<input name="start_date" required type="date"/>
 </label>
 
 <label>
 End date
-<input
-  name="end_date"
-  required=""
-  type="date"
-/>
+<input name="end_date" required type="date"/>
 </label>
 
 <label>
 Weekly price
-<input
-  min="0"
-  name="weekly_price"
-  placeholder="Example: 2200"
-  step="0.01"
-  type="number"
-/>
+<input min="0" name="weekly_price" placeholder="Example: 2200" step="0.01" type="number"/>
 </label>
 
 <label>
 Nightly price
-<input
-  min="0"
-  name="nightly_price"
-  placeholder="For flexible stays"
-  step="0.01"
-  type="number"
-/>
+<input min="0" name="nightly_price" placeholder="For flexible stays" step="0.01" type="number"/>
 </label>
 
 <label>
 Minimum nights
-<input
-  min="1"
-  name="minimum_nights"
-  type="number"
-  value="7"
-/>
+<input min="1" name="minimum_nights" type="number" value="7"/>
 </label>
 
 <label class="rate-blocked-row">
-<input
-  name="blocked"
-  type="checkbox"
-/>
+<input name="blocked" type="checkbox"/>
 Block these dates
 </label>
 
 <label class="full">
 Notes
-<textarea
-  name="notes"
-  placeholder="Optional owner note"
-  rows="2"
-></textarea>
+<textarea name="notes" placeholder="Optional owner note" rows="2"></textarea>
 </label>
 
 </div>
 
 <div style="margin-top:14px;">
-<button type="submit">
-  Add rate period
-</button>
+<button type="submit">Add rate period</button>
 </div>
 
 </form>
 
 <div id="ratePeriodMessage"></div>
-
-<div
-  class="rates-list"
-  id="ratePeriodsList"
-></div>
+<div class="rates-list" id="ratePeriodsList"></div>
 
 </section>
-
 </div>
 
 </section>
 
-<section
-  class="owner-panel"
-  data-owner-panel="cleaning"
->
+<section class="owner-panel" data-owner-panel="cleaning">
 
 <div class="panel-heading">
-
 <div>
-  <span class="section-kicker">
-    CLEANING
-  </span>
-
-  <h2>
-    Cleaning dashboard
-  </h2>
+<span class="section-kicker">CLEANING</span>
+<h2>Cleaning dashboard</h2>
 </div>
-
 </div>
 
 <div id="cleaningMount">
 
-<section
-  class="card"
-  id="cleaningDashboardSection"
->
+<section class="card" id="cleaningDashboardSection">
 
 <div class="embedded-section-heading">
-
-<div class="eyebrow">
-  CLEANING
-</div>
-
-<h2 style="margin:4px 0 16px;">
-  Cleaning dashboard
-</h2>
-
+<div class="eyebrow">CLEANING</div>
+<h2 style="margin:4px 0 16px;">Cleaning dashboard</h2>
 </div>
 
 <div id="cleaningMessage"></div>
-
-<div
-  class="cleaning-list"
-  id="cleaningList"
-></div>
+<div class="cleaning-list" id="cleaningList"></div>
 
 </section>
-
 </div>
 
 </section>
 
 </main>
-
 </div>
-
 </section>
-
 </div>
 
 <script src="site-data.js"></script>
+
+<script>
+(function () {
+  const form = document.getElementById("loginForm");
+  const messageBox = document.getElementById("loginMessage");
+
+  if (!form) return;
+
+  form.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const submitButton =
+      form.querySelector('button[type="submit"]');
+
+    const formData =
+      new FormData(form);
+
+    const email =
+      String(formData.get("email") || "").trim();
+
+    const password =
+      String(formData.get("password") || "");
+
+    if (!email || !password) {
+      messageBox.className = "notice error";
+      messageBox.textContent =
+        "Enter your email and password.";
+      return false;
+    }
+
+    try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Signing in…";
+      }
+
+      messageBox.className = "";
+      messageBox.textContent = "";
+
+      const cfg =
+        window.SITE_DATA &&
+        window.SITE_DATA.supabase;
+
+      if (
+        !cfg ||
+        !cfg.url ||
+        !cfg.publishableKey
+      ) {
+        throw new Error(
+          "Site login configuration is missing."
+        );
+      }
+
+      const response =
+        await fetch(
+          `${cfg.url}/auth/v1/token?grant_type=password`,
+          {
+            method: "POST",
+            headers: {
+              apikey: cfg.publishableKey,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              email,
+              password
+            })
+          }
+        );
+
+      const body =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !body.access_token
+      ) {
+        throw new Error(
+          body.msg ||
+          body.error_description ||
+          "Could not sign in."
+        );
+      }
+
+      sessionStorage.setItem(
+        "dts_token",
+        body.access_token
+      );
+
+      window.location.replace(
+        "owner.html"
+      );
+
+    } catch (error) {
+      messageBox.className =
+        "notice error";
+
+      messageBox.textContent =
+        error.message ||
+        "Could not sign in.";
+
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Sign in";
+      }
+    }
+
+    return false;
+  }, true);
+})();
+</script>
+
 <script src="owner.js"></script>
 <script src="owner-approval-email.js"></script>
 <script src="owner-reservations-ui.js"></script>
