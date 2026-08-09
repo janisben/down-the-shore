@@ -1,102 +1,54 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="View property details and request a direct booking.">
-  <title>Property | Down the Shore</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Down the Shore</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="index.html" data-brand>Down the Shore</a>
-    <nav class="nav" aria-label="Main navigation">
-      <a href="index.html#homes">All homes</a>
-      <a class="nav-cta" href="#booking">Request dates</a>
-    </nav>
-  </header>
-
-  <main>
-    <section class="page-hero" data-page-hero>
-      <div>
-        <div class="eyebrow" data-property-status></div>
-        <h1 data-property-name></h1>
-        <p data-property-tagline></p>
-      </div>
-    </section>
-
-    <section class="section">
-      <a class="back-link text-link" href="index.html#homes">← Back to all homes</a>
-      <div class="property-layout">
-        <article class="property-body">
-          <div class="eyebrow">The home</div>
-          <h2 data-property-summary></h2>
-          <div class="fact-row" data-facts></div>
-          <p data-property-description></p>
-
-          <h2>Amenities</h2>
-          <ul class="amenities" data-amenities></ul>
-
-          <h2>Rates & policies</h2>
-          <p data-rates-note></p>
-        </article>
-
-        <aside class="booking-panel" id="booking">
-          <div class="eyebrow">Direct booking request</div>
-          <h2>Ask about your dates</h2>
-          <p>Your request will go directly to <strong data-owner-name></strong>, the owner of this home.</p>
-
-          <form class="form-grid" data-booking-form>
-            <label>Arrival
-              <input type="date" name="arrival" required>
-            </label>
-            <label>Departure
-              <input type="date" name="departure" required>
-            </label>
-            <label>Number of guests
-              <input type="number" name="guests" min="1" required>
-            </label>
-            <label data-dog-count-field>Number of dogs
-              <select name="dogs">
-                <option value="0">No dogs</option>
-                <option value="1">1 dog</option>
-                <option value="2">2 dogs</option>
-              </select>
-            </label>
-            <label data-dog-names-field style="display:none">Dog name(s)
-              <input type="text" name="dog_names" placeholder="Because they are guests, too">
-            </label>
-            <label>Your name
-              <input type="text" name="name" required>
-            </label>
-            <label>Email
-              <input type="email" name="email" required>
-            </label>
-            <label>Phone
-              <input type="tel" name="phone">
-            </label>
-            <label>Anything else we should know?
-              <textarea name="message"></textarea>
-            </label>
-            <button class="button" type="submit" data-submit-button>Send booking request</button>
-            <div class="form-note" data-form-note>Your dates will be saved as a pending request. No payment is collected on this screen yet.</div>
-            <div class="booking-result" data-booking-result role="status" aria-live="polite"></div>
-          </form>
-        </aside>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div>© <span id="year"></span> <span data-brand>Down the Shore</span></div>
-    <div><a href="index.html#homes">View all homes</a></div>
-  </footer>
-
-  <script src="site-data.js"></script>
-  <script src="script.js"></script>
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-    renderProperty();
-  </script>
-</body>
-</html>
+<header class="site-header">
+  <a class="brand" href="index.html" data-brand>Down the Shore</a>
+  <nav class="nav"><a href="index.html#homes">Homes</a><a href="#details">Details</a><a class="nav-cta" href="#booking">Check availability</a></nav>
+</header>
+<main>
+<section class="page-hero" data-page-hero><div class="page-hero-inner"><div class="eyebrow" data-property-status></div><h1 data-property-name></h1><p data-property-tagline></p></div></section>
+<section class="section property-section" id="details">
+<a class="back-link text-link" href="index.html#homes">← Back to all homes</a>
+<div class="property-layout">
+<article class="property-body">
+  <div class="eyebrow">The home</div><h2 data-property-summary></h2><div class="fact-row" data-facts></div><p class="property-description" data-property-description></p>
+  <div class="property-info-grid">
+    <section class="detail-card"><div class="eyebrow">Amenities</div><ul class="amenities" data-amenities></ul></section>
+    <section class="detail-card"><div class="eyebrow">Rates & policies</div><p data-rates-note></p><div class="published-rate-summary" data-published-rate-summary></div></section>
+  </div>
+  <section class="weekly-list-section" data-weekly-list-section>
+    <div class="section-mini-heading"><div><div class="eyebrow">Published availability</div><h2>Available weeks</h2></div><p>Prefer a list? These are the currently published Saturday-to-Saturday weeks.</p></div>
+    <div class="weekly-rate-list" data-weekly-rate-list></div>
+  </section>
+</article>
+<aside class="booking-panel" id="booking">
+  <div class="eyebrow">Direct booking request</div><h2>Ask about your dates</h2>
+  <p>Your request will go directly to <strong data-owner-name></strong>, the owner of this home.</p>
+  <p class="broker-disclosure">*Owner is a New Jersey licensed real estate broker.</p>
+  <div data-calendar-mount></div>
+  <div class="quote-box quote-placeholder" data-quote-mount><div class="quote-placeholder-title">Your stay total</div><p>Select an available week or short-stay period to see the full price before you request it.</p></div>
+  <form class="form-grid" data-booking-form>
+    <div class="date-fields"><label>Arrival<input type="date" name="arrival" required readonly></label><label>Departure<input type="date" name="departure" required readonly></label></div>
+    <label>Number of guests<input type="number" name="guests" min="1" required></label>
+    <label data-dog-count-field>Number of dogs<select name="dogs"><option value="0">No dogs</option><option value="1">1 dog</option><option value="2">2 dogs</option></select></label>
+    <label data-dog-names-field style="display:none">Dog name(s)<input type="text" name="dog_names" placeholder="Because they are guests, too"></label>
+    <label>Your name<input type="text" name="name" required></label>
+    <label>Email<input type="email" name="email" required></label>
+    <label>Phone<input type="tel" name="phone"></label>
+    <label>Anything else we should know?<textarea name="message"></textarea></label>
+    <button class="button booking-submit" type="submit" data-submit-button>Send booking request</button>
+    <div class="form-note" data-form-note>No payment is collected when you send this request. Your dates remain a request until Janis accepts them and provides the lease and payment instructions.</div>
+    <div class="booking-result" data-booking-result role="status" aria-live="polite"></div>
+  </form>
+</aside>
+</div></section></main>
+<footer class="site-footer"><div>© <span id="footerYear"></span> <span data-brand>Down the Shore</span></div><div><a href="index.html#homes">All homes</a></div></footer>
+<script src="site-data.js"></script><script src="script.js"></script>
+<script>document.getElementById("footerYear").textContent=new Date().getFullYear();renderProperty();</script>
+</body></html>
