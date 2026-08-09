@@ -735,6 +735,112 @@ function calculateQuote(
   };
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+async function sendBookingEmail({
+  to,
+  propertyName,
+  guestName,
+  arrival,
+  departure,
+  total,
+  isWaitlist
+}) {
+  const subject =
+    isWaitlist
+      ? `Waitlist request received — ${propertyName}`
+      : `Booking request received — ${propertyName}`;
+
+  const statusCopy =
+    isWaitlist
+      ? "These dates currently have a pending hold. Your request has been added to the waitlist."
+      : "Your dates have been received and are pending owner approval.";
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#24231f;max-width:640px;margin:0 auto;">
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;">
+        Down the Shore
+      </h1>
+
+      <p>Hi ${escapeHtml(guestName)},</p>
+
+      <p>${statusCopy}</p>
+
+      <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
+        <p style="margin:0 0 8px;"><strong>${escapeHtml(propertyName)}</strong></p>
+        <p style="margin:0 0 8px;">
+          ${escapeHtml(formatShortDate(arrival))} – ${escapeHtml(formatShortDate(departure))}
+        </p>
+        <p style="margin:0;"><strong>Stay total: ${escapeHtml(formatMoney(total))}</strong></p>
+      </div>
+
+      <p>
+        No payment has been collected yet. Janis will review the request and,
+        if accepted, will send the lease and payment instructions.
+      </p>
+
+      <p>
+        Thank you,<br>
+        Janis<br>
+        Down the Shore
+      </p>
+
+      <p style="font-size:12px;color:#716f68;margin-top:28px;">
+        Owner is a New Jersey licensed real estate broker.
+      </p>
+    </div>
+  `;
+
+  const response =
+    await fetch(
+      "/api/send-email",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          to,
+          subject,
+          html
+        })
+      }
+    );
+
+  let details = null;
+
+  try {
+    details =
+      await response.json();
+  } catch {
+    details = null;
+  }
+
+  if (!response.ok) {
+    console.error(
+      "Booking email failed:",
+      details || response.statusText
+    );
+
+    return {
+      sent: false,
+      details
+    };
+  }
+
+  return {
+    sent: true,
+    details
+  };
+}
+
 async function submitReservation(
   property,
   propertyRecord,
@@ -869,10 +975,22 @@ async function submitReservation(
     );
   }
 
+  const emailResult =
+    await sendBookingEmail({
+      to: payload.guest_email,
+      propertyName: property.name,
+      guestName: payload.guest_name,
+      arrival,
+      departure,
+      total: quote.total,
+      isWaitlist
+    });
+
   return {
     isWaitlist,
     quote,
-    period
+    period,
+    emailSent: emailResult.sent
   };
 }
 
@@ -890,9 +1008,7 @@ function weeklyPriceLabel(period) {
   return formatMoney(
     period.weekly_price
   );
-}
-
-function publishedRateSummary(ratePeriods) {
+}function publishedRateSummary(ratePeriods) {
   const open =
     ratePeriods.filter(
       period => !period.blocked
@@ -918,9 +1034,7 @@ function publishedRateSummary(ratePeriods) {
     const prices =
       weekly.map(
         period =>
-          Number(
-            period.weekly_price
-          )
+          Number(period.weekly_price)
       );
 
     const low =
@@ -948,9 +1062,7 @@ function publishedRateSummary(ratePeriods) {
     const prices =
       flexible.map(
         period =>
-          Number(
-            period.nightly_price
-          )
+          Number(period.nightly_price)
       );
 
     const low =
@@ -964,8 +1076,7 @@ function publishedRateSummary(ratePeriods) {
         ...flexible.map(
           period =>
             Number(
-              period.minimum_nights ||
-              1
+              period.minimum_nights || 1
             )
         )
       );
@@ -1011,10 +1122,7 @@ function renderWeeklyAvailabilityList(
       "[data-weekly-list-section]"
     );
 
-  if (
-    !container ||
-    !section
-  ) {
+  if (!container || !section) {
     return;
   }
 
@@ -1048,19 +1156,15 @@ function renderWeeklyAvailabilityList(
         })
       )
       .filter(
-        item =>
-          !item.isBooked
+        item => !item.isBooked
       );
 
   if (!items.length) {
-    section.hidden =
-      true;
-
+    section.hidden = true;
     return;
   }
 
-  section.hidden =
-    false;
+  section.hidden = false;
 
   container.innerHTML =
     items
@@ -1143,11 +1247,7 @@ function renderMonth(
     monthDate.getMonth();
 
   const firstDay =
-    new Date(
-      year,
-      month,
-      1
-    );
+    new Date(year, month, 1);
 
   const daysInMonth =
     new Date(
@@ -1182,11 +1282,7 @@ function renderMonth(
     day++
   ) {
     const date =
-      new Date(
-        year,
-        month,
-        day
-      );
+      new Date(year, month, day);
 
     const dateString =
       isoDate(date);
@@ -1213,21 +1309,14 @@ function renderMonth(
       reservationStatus;
 
     if (
-      reservationStatus !==
-      "booked"
+      reservationStatus !== "booked"
     ) {
-      if (
-        rateStatus ===
-        "blocked"
-      ) {
-        status =
-          "blocked";
+      if (rateStatus === "blocked") {
+        status = "blocked";
       } else if (
-        rateStatus ===
-        "unpriced"
+        rateStatus === "unpriced"
       ) {
-        status =
-          "unpriced";
+        status = "unpriced";
       }
     }
 
@@ -1239,97 +1328,68 @@ function renderMonth(
 
     if (
       period &&
-      period.stay_rule ===
-        "weekly" &&
-      dateString ===
-        period.start_date
+      period.stay_rule === "weekly" &&
+      dateString === period.start_date
     ) {
-      classes.push(
-        "weekly-start"
-      );
+      classes.push("weekly-start");
     }
 
     if (
-      dateString ===
-        selectedArrival ||
-      dateString ===
-        selectedDeparture
+      dateString === selectedArrival ||
+      dateString === selectedDeparture
     ) {
-      classes.push(
-        "selected"
-      );
+      classes.push("selected");
     }
 
     if (
       selectedArrival &&
       selectedDeparture &&
       parseDate(dateString) >
-        parseDate(
-          selectedArrival
-        ) &&
+        parseDate(selectedArrival) &&
       parseDate(dateString) <
-        parseDate(
-          selectedDeparture
-        )
+        parseDate(selectedDeparture)
     ) {
-      classes.push(
-        "in-range"
-      );
+      classes.push("in-range");
     }
 
     const disabled =
       (
-        status ===
-          "booked" ||
-        status ===
-          "blocked" ||
-        status ===
-          "unpriced"
+        status === "booked" ||
+        status === "blocked" ||
+        status === "unpriced"
       )
         ? "disabled"
         : "";
 
-    let title =
-      "Available";
+    let title = "Available";
 
-    if (
-      status ===
-      "pending"
-    ) {
+    if (status === "pending") {
       title =
         "Pending — you may join the waitlist";
     } else if (
-      status ===
-      "booked"
+      status === "booked"
     ) {
-      title =
-        "Booked";
+      title = "Booked";
     } else if (
-      status ===
-      "blocked"
+      status === "blocked"
     ) {
-      title =
-        "Not available";
+      title = "Not available";
     } else if (
-      status ===
-      "unpriced"
+      status === "unpriced"
     ) {
       title =
         "Not currently open for online booking";
     } else if (
       period &&
-      period.stay_rule ===
-        "weekly"
+      period.stay_rule === "weekly"
     ) {
       title =
-        dateString ===
-          period.start_date
+        dateString === period.start_date
           ? `Saturday-to-Saturday week · ${formatMoney(period.weekly_price)}`
           : "Part of a Saturday-to-Saturday rental week";
     } else if (
       period &&
-      period.stay_rule ===
-        "flexible"
+      period.stay_rule === "flexible"
     ) {
       title =
         `${formatMoney(period.nightly_price)} per night · ${period.minimum_nights || 1} night minimum`;
@@ -1348,10 +1408,8 @@ function renderMonth(
 
         ${
           period &&
-          period.stay_rule ===
-            "weekly" &&
-          dateString ===
-            period.start_date
+          period.stay_rule === "weekly" &&
+          dateString === period.start_date
             ? `
               <span class="weekly-price">
                 ${weeklyPriceLabel(period)}
@@ -1397,23 +1455,18 @@ async function renderProperty() {
 
   const property =
     data.properties.find(
-      item =>
-        item.id === id
+      item => item.id === id
     ) ||
     data.properties[0];
 
   const owner =
-    data.owners[
-      property.owner
-    ];
+    data.owners[property.owner];
 
   document.title =
     `${property.name} | ${data.brand.name}`;
 
   document
-    .querySelectorAll(
-      "[data-brand]"
-    )
+    .querySelectorAll("[data-brand]")
     .forEach(
       el => {
         el.textContent =
@@ -1531,9 +1584,7 @@ async function renderProperty() {
     form.elements.dogs;
 
   form.elements.guests.max =
-    String(
-      property.sleeps
-    );
+    String(property.sleeps);
 
   form.elements.arrival.readOnly =
     true;
@@ -1566,26 +1617,21 @@ async function renderProperty() {
       "[data-published-rate-summary]"
     );
 
-  if (
-    publishedRateSummaryEl
-  ) {
+  if (publishedRateSummaryEl) {
     publishedRateSummaryEl.innerHTML =
       publishedRateSummary(
         ratePeriods
       );
   }
 
-  if (
-    !property.dogFriendly
-  ) {
+  if (!property.dogFriendly) {
     dogCountField.style.display =
       "none";
 
     dogNamesField.style.display =
       "none";
 
-    dogSelect.value =
-      "0";
+    dogSelect.value = "0";
   } else {
     const maxDogs =
       Number(
@@ -1598,13 +1644,10 @@ async function renderProperty() {
     ).forEach(
       option => {
         if (
-          Number(
-            option.value
-          ) >
+          Number(option.value) >
           maxDogs
         ) {
-          option.disabled =
-            true;
+          option.disabled = true;
         }
       }
     );
@@ -1632,11 +1675,8 @@ async function renderProperty() {
       1
     );
 
-  let selectedArrival =
-    "";
-
-  let selectedDeparture =
-    "";
+  let selectedArrival = "";
+  let selectedDeparture = "";
 
   const calendarMount =
     document.querySelector(
@@ -1644,9 +1684,7 @@ async function renderProperty() {
     );
 
   const calendarWrap =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
   calendarWrap.className =
     "availability-wrap";
@@ -1661,15 +1699,12 @@ async function renderProperty() {
     );
 
   const quoteBox =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
   quoteBox.className =
     "quote-box";
 
-  quoteBox.hidden =
-    true;
+  quoteBox.hidden = true;
 
   quoteMount.replaceWith(
     quoteBox
@@ -1705,11 +1740,8 @@ async function renderProperty() {
   }
 
   function renderQuote() {
-    quoteBox.hidden =
-      true;
-
-    quoteBox.innerHTML =
-      "";
+    quoteBox.hidden = true;
+    quoteBox.innerHTML = "";
 
     if (
       !selectedArrival ||
@@ -1725,8 +1757,7 @@ async function renderProperty() {
       } =
         currentQuote();
 
-      quoteBox.hidden =
-        false;
+      quoteBox.hidden = false;
 
       quoteBox.innerHTML = `
         <h3>
@@ -1736,8 +1767,7 @@ async function renderProperty() {
         <div class="quote-row">
           <span>
             ${
-              period.stay_rule ===
-                "weekly"
+              period.stay_rule === "weekly"
                 ? `Weekly rental · ${formatShortDate(selectedArrival)} – ${formatShortDate(selectedDeparture)}`
                 : `${quote.nights} night${quote.nights === 1 ? "" : "s"} · ${formatMoney(period.nightly_price)}/night`
             }
@@ -1786,9 +1816,7 @@ async function renderProperty() {
       `;
 
     } catch (error) {
-      quoteBox.hidden =
-        false;
-
+      quoteBox.hidden = false;
       quoteBox.textContent =
         error.message;
     }
@@ -1825,15 +1853,10 @@ async function renderProperty() {
     drawCalendar();
 
     document
-      .getElementById(
-        "booking"
-      )
+      .getElementById("booking")
       .scrollIntoView({
-        behavior:
-          "smooth",
-
-        block:
-          "start"
+        behavior: "smooth",
+        block: "start"
       });
   }
 
@@ -2034,12 +2057,9 @@ async function renderProperty() {
                   .calendarStatus;
 
               if (
-                status ===
-                  "booked" ||
-                status ===
-                  "blocked" ||
-                status ===
-                  "unpriced"
+                status === "booked" ||
+                status === "blocked" ||
+                status === "unpriced"
               ) {
                 return;
               }
@@ -2062,11 +2082,8 @@ async function renderProperty() {
                   date !==
                   rate.start_date
                 ) {
-                  selectedArrival =
-                    "";
-
-                  selectedDeparture =
-                    "";
+                  selectedArrival = "";
+                  selectedDeparture = "";
 
                   form.elements.arrival.value =
                     "";
@@ -2075,7 +2092,6 @@ async function renderProperty() {
                     "";
 
                   drawCalendar();
-
                   return;
                 }
 
@@ -2130,9 +2146,7 @@ async function renderProperty() {
                       "booked"
                     );
 
-                  if (
-                    hitsBooked
-                  ) {
+                  if (hitsBooked) {
                     selectedArrival =
                       date;
 
@@ -2181,8 +2195,7 @@ async function renderProperty() {
       result.className =
         "booking-result";
 
-      result.textContent =
-        "";
+      result.textContent = "";
 
       submitButton.disabled =
         true;
@@ -2192,9 +2205,7 @@ async function renderProperty() {
 
       try {
         const formData =
-          new FormData(
-            form
-          );
+          new FormData(form);
 
         const response =
           await submitReservation(
@@ -2213,15 +2224,13 @@ async function renderProperty() {
             response.quote.total
           );
 
-        if (
-          response.isWaitlist
-        ) {
+        if (response.isWaitlist) {
           result.innerHTML =
-            `<strong>You’re on the waitlist.</strong><br>Your requested stay total is ${total}. These dates currently have a pending 24-hour hold. Janis has received your request and can contact you if the dates become available.`;
+            `<strong>You’re on the waitlist.</strong><br>Your requested stay total is ${total}. These dates currently have a pending 24-hour hold. Janis has received your request and can contact you if the dates become available.${response.emailSent ? "<br><br>A confirmation email is on its way." : "<br><br>Your request was saved, but the confirmation email could not be sent."}`;
 
         } else {
           result.innerHTML =
-            `<strong>Your dates have been received.</strong><br>Your stay total is ${total}. Your request is pending until Janis confirms the dates, lease, and payment details.`;
+            `<strong>Your dates have been received.</strong><br>Your stay total is ${total}. Your request is pending until Janis confirms the dates, lease, and payment details.${response.emailSent ? "<br><br>A confirmation email is on its way." : "<br><br>Your request was saved, but the confirmation email could not be sent."}`;
         }
 
         form.reset();
@@ -2229,11 +2238,8 @@ async function renderProperty() {
         dogNamesField.style.display =
           "none";
 
-        selectedArrival =
-          "";
-
-        selectedDeparture =
-          "";
+        selectedArrival = "";
+        selectedDeparture = "";
 
         availability =
           await getAvailability(
@@ -2257,9 +2263,7 @@ async function renderProperty() {
         drawCalendar();
 
       } catch (error) {
-        console.error(
-          error
-        );
+        console.error(error);
 
         result.className =
           "booking-result error";
