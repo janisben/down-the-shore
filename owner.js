@@ -85,6 +85,12 @@ const rateProperty =
 const rateStayRule =
   document.getElementById("rateStayRule");
 
+const propertySettingsList =
+  document.getElementById("propertySettingsList");
+
+const propertySettingsMessage =
+  document.getElementById("propertySettingsMessage");
+
 
 const headers = (extra = {}) => ({
   apikey: cfg.publishableKey,
@@ -180,7 +186,7 @@ async function loadProperties() {
   const properties =
     await fetchTable(
       "properties",
-      "?select=id,name&order=name"
+      "?select=id,name,cleaning_fee,pet_fee,max_dogs&order=name"
     );
 
   currentProperties =
@@ -211,6 +217,34 @@ async function loadProperties() {
 }
 
 
+
+async function updateProperty(
+  id,
+  changes
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/properties?id=eq.${id}`,
+      {
+        method: "PATCH",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+        body:
+          JSON.stringify(changes)
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
 async function loadReservations() {
   const [
     reservations,
@@ -224,7 +258,7 @@ async function loadReservations() {
 
       fetchTable(
         "properties",
-        "?select=id,name"
+        "?select=id,name,cleaning_fee,pet_fee,max_dogs"
       )
     ]);
 
@@ -1394,6 +1428,89 @@ function ratePeriodCard(period) {
 }
 
 
+
+function propertySettingsCard(
+  property
+) {
+  return `
+    <article
+      class="property-settings-card"
+      data-property-settings-id="${property.id}"
+    >
+      <div class="property-settings-grid">
+
+        <div>
+          <strong>${property.name}</strong>
+        </div>
+
+        <label>
+          Cleaning fee
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value="${property.cleaning_fee ?? ""}"
+            data-property-cleaning-fee
+          >
+        </label>
+
+        <label>
+          Pet fee per dog
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value="${property.pet_fee ?? ""}"
+            data-property-pet-fee
+          >
+        </label>
+
+        <label>
+          Maximum dogs
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value="${property.max_dogs ?? 0}"
+            data-property-max-dogs
+          >
+        </label>
+
+      </div>
+
+      <div
+        class="row"
+        style="margin-top:12px;"
+      >
+        <button
+          type="button"
+          data-property-settings-action="save"
+        >
+          Save fees
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+
+function renderPropertySettings() {
+  if (!currentProperties.length) {
+    propertySettingsList.innerHTML = `
+      <div class="meta">
+        No properties found.
+      </div>
+    `;
+    return;
+  }
+
+  propertySettingsList.innerHTML =
+    currentProperties
+      .map(propertySettingsCard)
+      .join("");
+}
+
+
 function renderRatePeriods() {
   if (!currentRatePeriods.length) {
     ratePeriodsList.innerHTML = `
@@ -1756,6 +1873,7 @@ async function refresh() {
 
     renderOwnerCalendar();
     renderCleaningDashboard();
+    renderPropertySettings();
     renderRatePeriods();
 
   } catch (err) {
@@ -2422,6 +2540,105 @@ cleaningList.addEventListener(
   }
 );
 
+
+
+
+propertySettingsList.addEventListener(
+  "click",
+  async event => {
+    const button =
+      event.target.closest(
+        "button[data-property-settings-action]"
+      );
+
+    if (!button) {
+      return;
+    }
+
+    const card =
+      button.closest(
+        "[data-property-settings-id]"
+      );
+
+    const id =
+      card.dataset.propertySettingsId;
+
+    const cleaningFee =
+      card.querySelector(
+        "[data-property-cleaning-fee]"
+      ).value;
+
+    const petFee =
+      card.querySelector(
+        "[data-property-pet-fee]"
+      ).value;
+
+    const maxDogs =
+      card.querySelector(
+        "[data-property-max-dogs]"
+      ).value;
+
+    try {
+      button.disabled = true;
+
+      if (
+        cleaningFee === "" ||
+        Number(cleaningFee) < 0
+      ) {
+        throw new Error(
+          "Enter a valid cleaning fee."
+        );
+      }
+
+      if (
+        petFee === "" ||
+        Number(petFee) < 0
+      ) {
+        throw new Error(
+          "Enter a valid pet fee."
+        );
+      }
+
+      if (
+        maxDogs === "" ||
+        Number(maxDogs) < 0
+      ) {
+        throw new Error(
+          "Enter a valid maximum number of dogs."
+        );
+      }
+
+      await updateProperty(
+        id,
+        {
+          cleaning_fee:
+            Number(cleaningFee),
+          pet_fee:
+            Number(petFee),
+          max_dogs:
+            Number(maxDogs)
+        }
+      );
+
+      message(
+        propertySettingsMessage,
+        "Property fees saved."
+      );
+
+      await loadProperties();
+      renderPropertySettings();
+
+    } catch (err) {
+      message(
+        propertySettingsMessage,
+        err.message,
+        true
+      );
+    } finally {
+      button.disabled = false;
+    }
+  }
+);
 
 
 rateStayRule.addEventListener(
