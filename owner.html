@@ -151,9 +151,52 @@
     }
 
     #ownerCalendarSection,
+    #propertySettingsSection,
     #ratesSection,
     #cleaningDashboardSection {
       margin-bottom: 30px;
+    }
+
+    #propertySettingsSection button {
+      padding: 9px 12px;
+      height: auto;
+      min-height: 0;
+      width: auto;
+    }
+
+    .property-settings-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .property-settings-card {
+      border: 1px solid #ddd;
+      padding: 16px;
+      background: #faf8f4;
+    }
+
+    .property-settings-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .property-settings-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .property-settings-grid input {
+      padding: 9px;
+      border: 1px solid #ccc;
+      font: inherit;
+      box-sizing: border-box;
+      width: 100%;
     }
 
     #ratesSection button {
@@ -379,7 +422,8 @@
       .res,
       .form-grid,
       .brokerage-fields.show,
-      .rate-card-grid {
+      .rate-card-grid,
+      .property-settings-grid {
         grid-template-columns: 1fr;
       }
 
@@ -549,6 +593,23 @@
         <div id="manualReservationMessage"></div>
       </section>
 
+
+      <section class="card" id="propertySettingsSection">
+
+        <div>
+          <div class="eyebrow">PROPERTY FEES</div>
+          <h2 style="margin:4px 0 8px;">
+            Cleaning &amp; pet fees
+          </h2>
+          <div class="meta">
+            Change these anytime. The customer booking site will use these values when calculating totals.
+          </div>
+        </div>
+
+        <div id="propertySettingsMessage"></div>
+        <div id="propertySettingsList" class="property-settings-list"></div>
+
+      </section>
 
       <section class="card" id="ratesSection">
 
