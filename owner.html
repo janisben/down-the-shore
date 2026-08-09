@@ -88,6 +88,29 @@ button { cursor:pointer; }
 .event-type { display:inline-block; font-size:10px; letter-spacing:.1em; font-weight:800; padding:4px 7px; border-radius:6px; margin-bottom:10px; }
 .event-type.checkin { background:var(--green-soft); color:#35643e; }
 .event-type.checkout { background:var(--purple-soft); color:#594878; }
+.event-type.payment { background:var(--gold-soft); color:#725600; }
+.payment-summary { margin-top:14px; padding:14px; background:#f9fbfd; border:1px solid var(--line); border-radius:10px; }
+.payment-summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.payment-summary-item { padding:10px; background:#fff; border:1px solid var(--line); border-radius:8px; }
+.payment-summary-label { font-size:11px; color:var(--muted); }
+.payment-summary-value { font-size:18px; font-weight:700; color:var(--navy); margin-top:3px; }
+.payment-schedule, .payment-history { margin-top:14px; }
+.payment-schedule h3, .payment-history h3 { margin:0 0 10px; font-size:16px; color:var(--navy); }
+.payment-schedule-list, .payment-history-list { display:grid; gap:8px; }
+.payment-schedule-row { display:grid; grid-template-columns:1.2fr .9fr .9fr auto; gap:8px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.payment-history-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; align-items:center; padding:10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.payment-schedule-row input, .payment-schedule-row select { width:100%; padding:8px; border:1px solid #cfd5dd; border-radius:7px; }
+.payment-installment-status { font-size:11px; font-weight:700; padding:4px 7px; border-radius:6px; display:inline-block; }
+.payment-installment-status.paid { background:var(--green-soft); color:#35643e; }
+.payment-installment-status.partial { background:var(--gold-soft); color:#725600; }
+.payment-installment-status.due { background:var(--rose-soft); color:#87362f; }
+.payment-installment-status.upcoming { background:var(--blue-soft); color:#285e91; }
+.payment-add-schedule { margin-top:10px; padding:12px; border:1px dashed #cfd5dd; border-radius:8px; background:#fbfcfd; }
+.payment-add-schedule .row { align-items:end; }
+.payment-add-schedule label, .payment-log-row label { display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:600; }
+.payment-add-schedule input, .payment-log-row input, .payment-log-row select { padding:8px; border:1px solid #cfd5dd; border-radius:7px; }
+.payment-log-row { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
+.owner-calendar-item.payment_due { background:var(--gold-soft); color:#725600; }
 .event-date { font-size:24px; font-weight:700; color:var(--navy); }
 .event-property { margin-top:6px; font-weight:700; }
 .event-meta { color:var(--muted); font-size:12px; line-height:1.45; margin-top:4px; }
@@ -194,6 +217,7 @@ button.danger { color:#8a2c24; }
   .owner-topbar { align-items:flex-start; }
   .owner-profile { display:none; }
   .dashboard-stats, .upcoming-events, .property-settings-grid, .rate-card-grid, .form-grid, .brokerage-fields.show, .res { grid-template-columns:1fr; }
+  .payment-summary-grid, .payment-schedule-row, .payment-history-row { grid-template-columns:1fr; }
   .owner-calendar-grid { grid-template-columns:repeat(7,minmax(40px,1fr)); overflow-x:auto; }
   .owner-calendar-day { min-height:60px; padding:4px; }
   .full { grid-column:auto; }
@@ -311,7 +335,7 @@ button.danger { color:#8a2c24; }
 <div class="dashboard-card-head">
 <div>
 <span class="section-kicker">UPCOMING</span>
-<h2>Check-ins &amp; Check-outs</h2>
+<h2>Upcoming events</h2>
 </div>
 <button class="text-action" data-owner-view="calendar" type="button">View calendar</button>
 </div>
