@@ -229,6 +229,7 @@ button.danger { color:#8a2c24; }
 }
 </style>
 </head>
+
 <body>
 <div class="wrap">
 <section class="card login" id="loginView">
@@ -249,6 +250,7 @@ button.danger { color:#8a2c24; }
 </form>
 <div id="loginMessage"></div>
 </section>
+
 <section hidden="" id="portalView">
 <div class="owner-shell">
 <aside class="owner-sidebar">
@@ -267,6 +269,7 @@ button.danger { color:#8a2c24; }
 <div class="owner-logo-subtitle">OWNER PORTAL</div>
 </div>
 </div>
+
 <nav aria-label="Owner portal" class="owner-nav">
 <button class="owner-nav-link active" data-owner-view="dashboard" type="button">
 <span class="nav-icon">⌂</span><span>Dashboard</span>
@@ -278,7 +281,9 @@ button.danger { color:#8a2c24; }
 <span class="nav-icon">✓</span><span>Pending Requests</span>
 <span class="nav-count" hidden="" id="sidebarPendingCount"></span>
 </button>
+
 <div class="owner-nav-label">MANAGE</div>
+
 <button class="owner-nav-link" data-owner-view="reservations" type="button">
 <span class="nav-icon">▤</span><span>Reservations</span>
 </button>
@@ -291,12 +296,15 @@ button.danger { color:#8a2c24; }
 <button class="owner-nav-link" data-owner-view="cleaning" type="button">
 <span class="nav-icon">♨</span><span>Cleaning Dashboard</span>
 </button>
+
 <div class="owner-nav-label">ACCOUNT</div>
+
 <button class="owner-nav-link" id="logoutButton" type="button">
 <span class="nav-icon">↪</span><span>Logout</span>
 </button>
 </nav>
 </aside>
+
 <main class="owner-main">
 <header class="owner-topbar">
 <div>
@@ -311,9 +319,12 @@ button.danger { color:#8a2c24; }
 </div>
 </div>
 </header>
+
 <div id="portalMessage"></div>
+
 <section class="owner-panel active" data-owner-panel="dashboard">
 <div class="dashboard-stats" id="dashboardStats"></div>
+
 <div class="dashboard-grid">
 <section class="dashboard-card dashboard-calendar-card">
 <div class="dashboard-card-head">
@@ -325,6 +336,7 @@ button.danger { color:#8a2c24; }
 </div>
 <div id="dashboardCalendar"></div>
 </section>
+
 <section class="dashboard-card">
 <div class="dashboard-card-head">
 <div>
@@ -336,6 +348,7 @@ button.danger { color:#8a2c24; }
 <div class="dashboard-pending-list" id="dashboardPendingList"></div>
 </section>
 </div>
+
 <section class="dashboard-card upcoming-card">
 <div class="dashboard-card-head">
 <div>
@@ -347,240 +360,304 @@ button.danger { color:#8a2c24; }
 <div class="upcoming-events" id="dashboardUpcoming"></div>
 </section>
 </section>
+
 <section class="owner-panel" data-owner-panel="calendar">
 <div class="panel-heading">
-<div><span class="section-kicker">MASTER CALENDAR</span><h2>Calendar</h2></div>
+<div>
+<span class="section-kicker">MASTER CALENDAR</span>
+<h2>Calendar</h2>
 </div>
-<div id="calendarPanelMount"><section class="card" id="ownerCalendarSection">
+</div>
+
+<div id="calendarPanelMount">
+<section class="card" id="ownerCalendarSection">
 <div class="row embedded-section-heading" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
 <div>
 <div class="eyebrow">MASTER CALENDAR</div>
-<h2 style="margin:4px 0 0;">
-              Property calendar
-            </h2>
+<h2 style="margin:4px 0 0;">Property calendar</h2>
 </div>
 <div class="row">
-<button id="calendarPrev" type="button">
-              ← Previous
-            </button>
-<button id="calendarToday" type="button">
-              Today
-            </button>
-<button id="calendarNext" type="button">
-              Next →
-            </button>
+<button id="calendarPrev" type="button">← Previous</button>
+<button id="calendarToday" type="button">Today</button>
+<button id="calendarNext" type="button">Next →</button>
 </div>
 </div>
+
 <div id="ownerCalendar"></div>
+
 <div class="owner-calendar-legend">
 <span class="legend-chip available">Available</span>
 <span class="legend-chip pending">Pending / hold</span>
 <span class="legend-chip booked">Booked</span>
 <span class="legend-chip waitlisted">Waitlist</span>
 </div>
-</section></div>
 </section>
+</div>
+</section>
+
 <section class="owner-panel" data-owner-panel="pending">
 <div class="panel-heading">
-<div><span class="section-kicker">RESERVATIONS</span><h2>Pending requests</h2></div>
+<div>
+<span class="section-kicker">RESERVATIONS</span>
+<h2>Pending requests</h2>
+</div>
 </div>
 <div id="pendingReservationList"></div>
 </section>
+
 <section class="owner-panel" data-owner-panel="reservations">
 <div class="panel-heading">
-<div><span class="section-kicker">RESERVATIONS</span><h2>All reservations</h2></div>
+<div>
+<span class="section-kicker">RESERVATIONS</span>
+<h2>All reservations</h2>
+</div>
 <button class="primary-dashboard-btn" data-owner-view="add-reservation" type="button">+ Add reservation</button>
 </div>
-<div id="allReservationsMount"><div id="reservationList"></div></div>
+<div id="allReservationsMount">
+<div id="reservationList"></div>
+</div>
 </section>
+
 <section class="owner-panel" data-owner-panel="add-reservation">
 <div class="panel-heading">
-<div><span class="section-kicker">RESERVATIONS</span><h2>Add reservation manually</h2></div>
+<div>
+<span class="section-kicker">RESERVATIONS</span>
+<h2>Add reservation manually</h2>
 </div>
-<div id="manualReservationMount"><section class="card manual-form">
+</div>
+
+<div id="manualReservationMount">
+<section class="card manual-form">
 <h2 class="embedded-section-heading">Add reservation manually</h2>
+
 <form id="manualReservationForm">
 <div class="form-grid">
+
 <label>
-              Property
-              <select id="manualProperty" name="property_id" required="">
+Property
+<select id="manualProperty" name="property_id" required="">
 <option value="">Choose property</option>
 </select>
 </label>
+
 <label>
-              Booking source
-              <select id="bookingSource" name="booking_source" required="">
+Booking source
+<select id="bookingSource" name="booking_source" required="">
 <option value="direct_manual">Direct / manual</option>
 <option value="brokerage">Real estate company</option>
 </select>
 </label>
+
 <label>
-              Guest last name
-              <input name="guest_name" required="" type="text"/>
+Guest last name
+<input name="guest_name" required="" type="text"/>
 </label>
+
 <label>
-              Guest email
-              <input name="guest_email" type="email"/>
+Guest email
+<input name="guest_email" type="email"/>
 </label>
+
 <label>
-              Guest phone
-              <input name="guest_phone" type="tel"/>
+Guest phone
+<input name="guest_phone" type="tel"/>
 </label>
+
 <label>
-              Number of guests
-              <input min="1" name="adults" type="number" value="1"/>
+Number of guests
+<input min="1" name="adults" type="number" value="1"/>
 </label>
+
 <label>
-              Arrival
-              <input name="arrival_date" required="" type="date"/>
+Arrival
+<input name="arrival_date" required="" type="date"/>
 </label>
+
 <label>
-              Departure
-              <input name="departure_date" required="" type="date"/>
+Departure
+<input name="departure_date" required="" type="date"/>
 </label>
+
 <label>
-              Amount due
-              <input min="0" name="amount_due" step="0.01" type="number"/>
+Amount due
+<input min="0" name="amount_due" step="0.01" type="number"/>
 </label>
+
 <label>
-              Payment status
-              <select name="payment_status">
+Payment status
+<select name="payment_status">
 <option value="waiting">Waiting for payment</option>
 <option value="paid">Already paid</option>
 </select>
 </label>
+
 <div class="brokerage-fields" id="brokerageFields">
 <label>
-                Brokerage
-                <input name="brokerage_name" type="text"/>
+Brokerage
+<input name="brokerage_name" type="text"/>
 </label>
+
 <label>
-                Agent name
-                <input name="agent_name" type="text"/>
+Agent name
+<input name="agent_name" type="text"/>
 </label>
+
 <label>
-                Agent phone
-                <input name="agent_phone" type="tel"/>
+Agent phone
+<input name="agent_phone" type="tel"/>
 </label>
+
 <label>
-                Agent email
-                <input name="agent_email" type="email"/>
+Agent email
+<input name="agent_email" type="email"/>
 </label>
 </div>
+
 <label class="full">
-              Owner notes
-              <textarea name="owner_notes" rows="3"></textarea>
+Owner notes
+<textarea name="owner_notes" rows="3"></textarea>
 </label>
+
 </div>
+
 <div style="margin-top:16px;">
-<button type="submit">
-              Save reservation
-            </button>
+<button type="submit">Save reservation</button>
 </div>
 </form>
+
 <div id="manualReservationMessage"></div>
-</section></div>
 </section>
+</div>
+</section>
+
 <section class="owner-panel" data-owner-panel="pricing">
 <div class="panel-heading">
-<div><span class="section-kicker">PRICING</span><h2>Pricing &amp; fees</h2></div>
+<div>
+<span class="section-kicker">PRICING</span>
+<h2>Pricing &amp; fees</h2>
 </div>
-<div id="propertySettingsMount"><section class="card" id="propertySettingsSection">
+</div>
+
+<div id="propertySettingsMount">
+<section class="card" id="propertySettingsSection">
 <div class="embedded-section-heading">
 <div class="eyebrow">PROPERTY FEES</div>
-<h2 style="margin:4px 0 8px;">
-            Cleaning &amp; pet fees
-          </h2>
+<h2 style="margin:4px 0 8px;">Cleaning &amp; pet fees</h2>
 <div class="meta">
-            Change these anytime. The customer booking site will use these values when calculating totals.
-          </div>
+Change these anytime. The customer booking site will use these values when calculating totals.
 </div>
+</div>
+
 <div id="propertySettingsMessage"></div>
 <div class="property-settings-list" id="propertySettingsList"></div>
-</section></div>
-<div id="ratesMount"><section class="card" id="ratesSection">
+</section>
+</div>
+
+<div id="ratesMount">
+<section class="card" id="ratesSection">
 <div class="embedded-section-heading">
 <div class="eyebrow">RATES &amp; AVAILABILITY</div>
-<h2 style="margin:4px 0 8px;">
-            Pricing and stay rules
-          </h2>
+<h2 style="margin:4px 0 8px;">Pricing and stay rules</h2>
 <div class="meta">
-            Set weekly prices, flexible shorter stays, minimum nights, or block dates.
-            Add a new period whenever you want to change pricing for specific dates.
-          </div>
+Set weekly prices, flexible shorter stays, minimum nights, or block dates.
+Add a new period whenever you want to change pricing for specific dates.
 </div>
+</div>
+
 <form class="rates-form" id="ratePeriodForm" style="margin-top:18px;">
 <div class="form-grid">
+
 <label>
-              Property
-              <select id="rateProperty" name="property_id" required="">
+Property
+<select id="rateProperty" name="property_id" required="">
 <option value="">Choose property</option>
 </select>
 </label>
+
 <label>
-              Stay rule
-              <select id="rateStayRule" name="stay_rule">
+Stay rule
+<select id="rateStayRule" name="stay_rule">
 <option value="weekly">Weekly only</option>
 <option value="flexible">Flexible / shorter stays</option>
 </select>
 </label>
+
 <label>
-              Start date
-              <input name="start_date" required="" type="date"/>
+Start date
+<input name="start_date" required="" type="date"/>
 </label>
+
 <label>
-              End date
-              <input name="end_date" required="" type="date"/>
+End date
+<input name="end_date" required="" type="date"/>
 </label>
+
 <label>
-              Weekly price
-              <input min="0" name="weekly_price" placeholder="Example: 2200" step="0.01" type="number"/>
+Weekly price
+<input min="0" name="weekly_price" placeholder="Example: 2200" step="0.01" type="number"/>
 </label>
+
 <label>
-              Nightly price
-              <input min="0" name="nightly_price" placeholder="For flexible stays" step="0.01" type="number"/>
+Nightly price
+<input min="0" name="nightly_price" placeholder="For flexible stays" step="0.01" type="number"/>
 </label>
+
 <label>
-              Minimum nights
-              <input min="1" name="minimum_nights" type="number" value="7"/>
+Minimum nights
+<input min="1" name="minimum_nights" type="number" value="7"/>
 </label>
+
 <label class="rate-blocked-row">
 <input name="blocked" type="checkbox"/>
-              Block these dates
-            </label>
-<label class="full">
-              Notes
-              <textarea name="notes" placeholder="Optional owner note" rows="2"></textarea>
+Block these dates
 </label>
+
+<label class="full">
+Notes
+<textarea name="notes" placeholder="Optional owner note" rows="2"></textarea>
+</label>
+
 </div>
+
 <div style="margin-top:14px;">
 <button type="submit">Add rate period</button>
 </div>
 </form>
+
 <div id="ratePeriodMessage"></div>
 <div class="rates-list" id="ratePeriodsList"></div>
-</section></div>
 </section>
+</div>
+</section>
+
 <section class="owner-panel" data-owner-panel="cleaning">
 <div class="panel-heading">
-<div><span class="section-kicker">CLEANING</span><h2>Cleaning dashboard</h2></div>
+<div>
+<span class="section-kicker">CLEANING</span>
+<h2>Cleaning dashboard</h2>
 </div>
-<div id="cleaningMount"><section class="card" id="cleaningDashboardSection">
+</div>
+
+<div id="cleaningMount">
+<section class="card" id="cleaningDashboardSection">
 <div class="embedded-section-heading">
 <div class="eyebrow">CLEANING</div>
-<h2 style="margin:4px 0 16px;">
-            Cleaning dashboard
-          </h2>
+<h2 style="margin:4px 0 16px;">Cleaning dashboard</h2>
 </div>
+
 <div id="cleaningMessage"></div>
 <div class="cleaning-list" id="cleaningList"></div>
-</section></div>
 </section>
+</div>
+</section>
+
 </main>
 </div>
 </section>
 </div>
+
 <script src="site-data.js"></script>
 <script src="owner.js"></script>
+<script src="owner-approval-email.js"></script>
 </body>
 </html>
