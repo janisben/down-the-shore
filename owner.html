@@ -94,6 +94,10 @@ button { cursor:pointer; }
 .payment-summary-item { padding:10px; background:#fff; border:1px solid var(--line); border-radius:8px; }
 .payment-summary-label { font-size:11px; color:var(--muted); }
 .payment-summary-value { font-size:18px; font-weight:700; color:var(--navy); margin-top:3px; }
+.payment-schedule-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:10px 0 12px; }
+.payment-schedule-summary .payment-summary-item { background:#fffdf7; }
+.payment-schedule-warning { margin-top:8px; font-size:12px; color:#87362f; font-weight:600; }
+.use-remaining-btn { background:var(--gold-soft) !important; color:#725600 !important; border-color:#e0c275 !important; }
 .payment-schedule, .payment-history { margin-top:14px; }
 .payment-schedule h3, .payment-history h3 { margin:0 0 10px; font-size:16px; color:var(--navy); }
 .payment-schedule-list, .payment-history-list { display:grid; gap:8px; }
@@ -218,6 +222,7 @@ button.danger { color:#8a2c24; }
   .owner-profile { display:none; }
   .dashboard-stats, .upcoming-events, .property-settings-grid, .rate-card-grid, .form-grid, .brokerage-fields.show, .res { grid-template-columns:1fr; }
   .payment-summary-grid, .payment-schedule-row, .payment-history-row { grid-template-columns:1fr; }
+  .payment-schedule-summary { grid-template-columns:1fr; }
   .owner-calendar-grid { grid-template-columns:repeat(7,minmax(40px,1fr)); overflow-x:auto; }
   .owner-calendar-day { min-height:60px; padding:4px; }
   .full { grid-column:auto; }
