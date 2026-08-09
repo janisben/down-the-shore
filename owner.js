@@ -14,6 +14,8 @@ let currentReservations = [];
 let currentProperties = [];
 let currentCleanings = [];
 let currentRatePeriods = [];
+let currentPayments = [];
+let currentPaymentSchedule = [];
 
 
 const loginView =
@@ -401,6 +403,110 @@ async function loadRatePeriods() {
 }
 
 
+
+async function loadPayments() {
+  currentPayments =
+    await fetchTable(
+      "payments",
+      "?select=*&order=received_at.asc"
+    );
+
+  return currentPayments;
+}
+
+
+async function loadPaymentSchedule() {
+  currentPaymentSchedule =
+    await fetchTable(
+      "payment_schedule",
+      "?select=*&order=due_date.asc"
+    );
+
+  return currentPaymentSchedule;
+}
+
+
+async function createPaymentScheduleItem(
+  data
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/payment_schedule`,
+      {
+        method: "POST",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+        body:
+          JSON.stringify(data)
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
+async function updatePaymentScheduleItem(
+  id,
+  changes
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/payment_schedule?id=eq.${id}`,
+      {
+        method: "PATCH",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+        body:
+          JSON.stringify({
+            ...changes,
+            updated_at:
+              new Date().toISOString()
+          })
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
+async function deletePaymentScheduleItem(
+  id
+) {
+  const res =
+    await fetch(
+      `${cfg.url}/rest/v1/payment_schedule?id=eq.${id}`,
+      {
+        method: "DELETE",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          })
+      }
+    );
+
+  if (!res.ok) {
+    throw new Error(
+      await res.text()
+    );
+  }
+}
+
+
 async function createRatePeriod(
   data
 ) {
@@ -580,28 +686,76 @@ async function addPayment(
   const now =
     new Date().toISOString();
 
+  const reservation =
+    currentReservations.find(
+      item => item.id === id
+    );
+
+  if (!reservation) {
+    throw new Error(
+      "Reservation not found."
+    );
+  }
+
+  const numericAmount =
+    Number(amount);
+
+  const alreadyPaid =
+    paymentsForReservation(id)
+      .reduce(
+        (
+          total,
+          payment
+        ) =>
+          total +
+          Number(
+            payment.amount ||
+            0
+          ),
+        0
+      );
+
+  const totalDue =
+    Number(
+      reservation.amount_due ||
+      0
+    );
+
+  const balanceBefore =
+    Math.max(
+      0,
+      totalDue -
+      alreadyPaid
+    );
+
+  if (
+    numericAmount >
+    balanceBefore &&
+    balanceBefore > 0
+  ) {
+    throw new Error(
+      `That payment is larger than the remaining balance of ${formatMoney(balanceBefore)}.`
+    );
+  }
+
   const res =
     await fetch(
       `${cfg.url}/rest/v1/payments`,
       {
         method: "POST",
-
         headers:
           headers({
             Prefer:
               "return=minimal"
           }),
-
         body:
           JSON.stringify({
-            reservation_id: id,
-
+            reservation_id:
+              id,
             amount:
-              Number(amount),
-
+              numericAmount,
             payment_method:
               method,
-
             received_at:
               now
           })
@@ -614,26 +768,38 @@ async function addPayment(
     );
   }
 
+  const paidAfter =
+    alreadyPaid +
+    numericAmount;
+
+  const balanceAfter =
+    Math.max(
+      0,
+      totalDue -
+      paidAfter
+    );
+
   await updateReservation(
     id,
     {
       payment_status:
-        "paid",
-
+        balanceAfter <= 0
+          ? "paid"
+          : "partial",
       payment_method:
         method,
-
       amount_received:
-        Number(amount),
-
+        paidAfter,
       payment_received_at:
         now,
-
       hold_expires_at:
-        null,
-
+        paidAfter > 0
+          ? null
+          : reservation.hold_expires_at,
       status:
-        "booked"
+        paidAfter > 0
+          ? "booked"
+          : reservation.status
     }
   );
 }
@@ -938,6 +1104,70 @@ function calendarItemLabel(
 }
 
 
+
+function paymentDueItemsForDay(
+  propertyId,
+  dateString
+) {
+  const reservationMap =
+    Object.fromEntries(
+      currentReservations.map(
+        reservation => [
+          reservation.id,
+          reservation
+        ]
+      )
+    );
+
+  return currentPaymentSchedule
+    .filter(
+      item => {
+        const reservation =
+          reservationMap[
+            item.reservation_id
+          ];
+
+        if (
+          !reservation ||
+          reservation.property_id !==
+            propertyId ||
+          !activeReservation(
+            reservation
+          ) ||
+          item.due_date !==
+            dateString
+        ) {
+          return false;
+        }
+
+        const allocation =
+          scheduleAllocations(
+            reservation
+          ).find(
+            scheduled =>
+              scheduled.id ===
+              item.id
+          );
+
+        return (
+          allocation &&
+          allocation.remaining > 0
+        );
+      }
+    )
+    .map(
+      item => ({
+        schedule:
+          item,
+        reservation:
+          reservationMap[
+            item.reservation_id
+          ]
+      })
+    );
+}
+
+
 function renderPropertyCalendar(
   property
 ) {
@@ -997,6 +1227,12 @@ function renderPropertyCalendar(
         dateString
       );
 
+    const paymentItems =
+      paymentDueItemsForDay(
+        property.id,
+        dateString
+      );
+
     const itemHtml =
       items
         .map(
@@ -1009,6 +1245,19 @@ function renderPropertyCalendar(
                 item.reservation,
                 item.status
               )}
+            </span>
+          `
+        )
+        .join("") +
+
+      paymentItems
+        .map(
+          item => `
+            <span
+              class="owner-calendar-item payment_due"
+              title="${item.reservation.guest_name || "Guest"} · ${item.schedule.label || "Payment"}"
+            >
+              💵 ${item.reservation.guest_name || "Guest"}
             </span>
           `
         )
@@ -1553,15 +1802,377 @@ function renderRatePeriods() {
 }
 
 
+
+function paymentsForReservation(
+  reservationId
+) {
+  return currentPayments.filter(
+    payment =>
+      payment.reservation_id ===
+      reservationId
+  );
+}
+
+
+function scheduleForReservation(
+  reservationId
+) {
+  return currentPaymentSchedule
+    .filter(
+      item =>
+        item.reservation_id ===
+        reservationId
+    )
+    .sort(
+      (a, b) =>
+        parseDate(a.due_date) -
+        parseDate(b.due_date)
+    );
+}
+
+
+function paymentTotals(
+  reservation
+) {
+  const totalDue =
+    Number(
+      reservation.amount_due ||
+      0
+    );
+
+  const paid =
+    paymentsForReservation(
+      reservation.id
+    )
+      .reduce(
+        (
+          total,
+          payment
+        ) =>
+          total +
+          Number(
+            payment.amount ||
+            0
+          ),
+        0
+      );
+
+  return {
+    totalDue,
+    paid,
+    balance:
+      Math.max(
+        0,
+        totalDue -
+        paid
+      )
+  };
+}
+
+
+function scheduleAllocations(
+  reservation
+) {
+  let remainingPaid =
+    paymentTotals(
+      reservation
+    ).paid;
+
+  const today =
+    new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return scheduleForReservation(
+    reservation.id
+  ).map(
+    item => {
+      const due =
+        Number(
+          item.amount_due ||
+          0
+        );
+
+      const applied =
+        Math.min(
+          remainingPaid,
+          due
+        );
+
+      remainingPaid =
+        Math.max(
+          0,
+          remainingPaid -
+          applied
+        );
+
+      const remaining =
+        Math.max(
+          0,
+          due -
+          applied
+        );
+
+      let status =
+        "upcoming";
+
+      if (remaining <= 0) {
+        status =
+          "paid";
+      } else if (applied > 0) {
+        status =
+          "partial";
+      } else if (
+        parseDate(
+          item.due_date
+        ) <= today
+      ) {
+        status =
+          "due";
+      }
+
+      return {
+        ...item,
+        applied,
+        remaining,
+        status
+      };
+    }
+  );
+}
+
+
+function paymentScheduleMarkup(
+  reservation
+) {
+  const schedule =
+    scheduleAllocations(
+      reservation
+    );
+
+  const history =
+    paymentsForReservation(
+      reservation.id
+    )
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(
+            b.received_at
+          ) -
+          new Date(
+            a.received_at
+          )
+      );
+
+  return `
+    <div class="payment-schedule">
+      <h3>
+        Payment schedule
+      </h3>
+
+      <div class="payment-schedule-list">
+        ${
+          schedule.length
+            ? schedule
+                .map(
+                  item => `
+                    <div
+                      class="payment-schedule-row"
+                      data-payment-schedule-id="${item.id}"
+                    >
+                      <input
+                        type="text"
+                        value="${item.label || "Payment"}"
+                        data-payment-label
+                      >
+
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value="${Number(item.amount_due || 0)}"
+                        data-payment-due-amount
+                      >
+
+                      <input
+                        type="date"
+                        value="${item.due_date}"
+                        data-payment-due-date
+                      >
+
+                      <div>
+                        <span
+                          class="payment-installment-status ${item.status}"
+                        >
+                          ${
+                            item.status === "paid"
+                              ? "Paid"
+                              : item.status === "partial"
+                                ? `${formatMoney(item.remaining)} left`
+                                : item.status === "due"
+                                  ? "Due"
+                                  : "Upcoming"
+                          }
+                        </span>
+
+                        <div
+                          class="row"
+                          style="margin-top:6px;"
+                        >
+                          <button
+                            type="button"
+                            data-payment-schedule-action="save"
+                          >
+                            Save
+                          </button>
+
+                          <button
+                            type="button"
+                            class="danger"
+                            data-payment-schedule-action="delete"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `
+                )
+                .join("")
+            : `
+              <div class="meta">
+                No payment installments scheduled yet.
+              </div>
+            `
+        }
+      </div>
+
+      <div class="payment-add-schedule">
+        <div class="row">
+          <label>
+            Label
+            <input
+              type="text"
+              placeholder="Deposit, final balance…"
+              data-new-payment-label
+            >
+          </label>
+
+          <label>
+            Amount
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              placeholder="Amount"
+              data-new-payment-amount
+            >
+          </label>
+
+          <label>
+            Due date
+            <input
+              type="date"
+              data-new-payment-date
+            >
+          </label>
+
+          <button
+            type="button"
+            data-action="add-payment-schedule"
+          >
+            Add due date
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="payment-history"
+      style="margin-top:14px;"
+    >
+      <h3>
+        Payment history
+      </h3>
+
+      <div class="payment-history-list">
+        ${
+          history.length
+            ? history
+                .map(
+                  payment => `
+                    <div class="payment-history-row">
+                      <strong>
+                        ${formatMoney(payment.amount)}
+                      </strong>
+
+                      <span>
+                        ${(payment.payment_method || "").replaceAll("_", " ")}
+                      </span>
+
+                      <span class="meta">
+                        ${
+                          payment.received_at
+                            ? new Date(
+                                payment.received_at
+                              ).toLocaleString()
+                            : ""
+                        }
+                      </span>
+                    </div>
+                  `
+                )
+                .join("")
+            : `
+              <div class="meta">
+                No payments logged yet.
+              </div>
+            `
+        }
+      </div>
+    </div>
+  `;
+}
+
+
 function reservationCard(r) {
   const status =
     r.status ||
     "pending";
 
-  const paymentStatus =
+  const totals =
+    paymentTotals(
+      r
+    );
+
+  let paymentStatus =
     r.payment_status ||
     "waiting";
 
+  if (
+    totals.totalDue > 0
+  ) {
+    if (
+      totals.balance <= 0
+    ) {
+      paymentStatus =
+        "paid";
+    } else if (
+      totals.paid > 0
+    ) {
+      paymentStatus =
+        "partial";
+    } else {
+      paymentStatus =
+        "waiting";
+    }
+  }
 
   const showAccept =
     status ===
@@ -1569,13 +2180,11 @@ function reservationCard(r) {
     status ===
       "requested";
 
-
   const showDecline =
     status ===
       "pending" ||
     status ===
       "requested";
-
 
   const showCancel =
     status ===
@@ -1583,55 +2192,35 @@ function reservationCard(r) {
     status ===
       "booked";
 
-
-  const showPaymentForm =
-    paymentStatus !==
-      "paid" &&
-
+  const canTakePayment =
     status !==
       "declined" &&
-
     status !==
       "cancelled" &&
-
     status !==
-      "waitlisted";
-
-
-  const showPaymentSummary =
-    paymentStatus ===
-    "paid";
-
+      "waitlisted" &&
+    totals.balance > 0;
 
   return `
     <article
       class="card res"
       data-id="${r.id}"
     >
-
       <div>
-
         <h2>
           ${r.guest_name || "Guest"}
         </h2>
 
         <div class="meta">
-
           <strong>
             ${r.property_name}
           </strong>
 
           <br>
 
-          ${formatDate(
-            r.arrival_date
-          )}
-
+          ${formatDate(r.arrival_date)}
           –
-
-          ${formatDate(
-            r.departure_date
-          )}
+          ${formatDate(r.departure_date)}
 
           <br>
 
@@ -1685,19 +2274,11 @@ function reservationCard(r) {
           }
 
           ${
-            r.amount_due
-              ? `<br>Amount due: ${formatMoney(r.amount_due)}`
-              : ""
-          }
-
-          ${
             r.owner_notes
               ? `<br>Notes: ${r.owner_notes}`
               : ""
           }
-
         </div>
-
 
         <span class="badge">
           ${status.replaceAll("_", " ")}
@@ -1708,125 +2289,97 @@ function reservationCard(r) {
           ${paymentStatus.replaceAll("_", " ")}
         </span>
 
-
         ${
           r.hold_expires_at &&
           status ===
             "pending_payment"
             ? `
               <div class="meta hold">
-
                 Hold expires:
-
-                ${new Date(
-                  r.hold_expires_at
-                ).toLocaleString()}
-
+                ${new Date(r.hold_expires_at).toLocaleString()}
               </div>
             `
             : ""
         }
 
-
-        ${
-          showPaymentSummary
-            ? `
-              <div class="money">
-
-                <strong>
-                  Payment received
-                </strong>
-
-                <div
-                  class="meta"
-                  style="margin-top:6px;"
-                >
-
-                  ${formatMoney(
-                    r.amount_received
-                  )}
-
-                  ${
-                    r.payment_method
-                      ? ` · ${r.payment_method.replaceAll("_", " ")}`
-                      : ""
-                  }
-
-                  ${
-                    r.payment_received_at
-                      ? `<br>${new Date(
-                          r.payment_received_at
-                        ).toLocaleString()}`
-                      : ""
-                  }
-
-                </div>
-
+        <div class="payment-summary">
+          <div class="payment-summary-grid">
+            <div class="payment-summary-item">
+              <div class="payment-summary-label">
+                Total due
               </div>
-            `
-            : ""
-        }
+              <div class="payment-summary-value">
+                ${formatMoney(totals.totalDue)}
+              </div>
+            </div>
 
+            <div class="payment-summary-item">
+              <div class="payment-summary-label">
+                Paid so far
+              </div>
+              <div class="payment-summary-value">
+                ${formatMoney(totals.paid)}
+              </div>
+            </div>
 
-        ${
-          showPaymentForm
-            ? `
-              <div class="money">
+            <div class="payment-summary-item">
+              <div class="payment-summary-label">
+                Balance
+              </div>
+              <div class="payment-summary-value">
+                ${formatMoney(totals.balance)}
+              </div>
+            </div>
+          </div>
 
-                <strong>
-                  Log payment
-                </strong>
+          ${
+            canTakePayment
+              ? `
+                <div class="payment-log-row">
+                  <label>
+                    Payment amount
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      max="${totals.balance}"
+                      placeholder="Amount"
+                      data-amount
+                    >
+                  </label>
 
-                <div
-                  class="row payment-row"
-                >
-
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Amount"
-                    data-amount
-                  >
-
-                  <select
-                    data-method
-                  >
-                    <option value="zelle">
-                      Zelle
-                    </option>
-
-                    <option value="venmo">
-                      Venmo
-                    </option>
-
-                    <option value="credit_card">
-                      Credit card
-                    </option>
-
-                    <option value="check">
-                      Check
-                    </option>
-                  </select>
+                  <label>
+                    Method
+                    <select data-method>
+                      <option value="zelle">Zelle</option>
+                      <option value="venmo">Venmo</option>
+                      <option value="credit_card">Credit card</option>
+                      <option value="check">Check</option>
+                    </select>
+                  </label>
 
                   <button
+                    type="button"
                     data-action="paid"
                   >
-                    Mark paid
+                    Log payment
                   </button>
-
                 </div>
+              `
+              : totals.totalDue > 0
+                ? `
+                  <div class="notice">
+                    Paid in full
+                  </div>
+                `
+                : ""
+          }
 
-              </div>
-            `
-            : ""
-        }
-
+          ${paymentScheduleMarkup(r)}
+        </div>
       </div>
 
-
       <div class="actions">
-
         ${
           showAccept
             ? `
@@ -1840,7 +2393,6 @@ function reservationCard(r) {
             : ""
         }
 
-
         ${
           showDecline
             ? `
@@ -1852,7 +2404,6 @@ function reservationCard(r) {
             `
             : ""
         }
-
 
         ${
           showCancel
@@ -1866,13 +2417,10 @@ function reservationCard(r) {
             `
             : ""
         }
-
       </div>
-
     </article>
   `;
 }
-
 
 
 function activeReservation(
@@ -2141,6 +2689,12 @@ function renderDashboardCalendar() {
               dateString
             );
 
+          const paymentItems =
+            paymentDueItemsForDay(
+              property.id,
+              dateString
+            );
+
           cells += `
             <div
               class="dashboard-mini-day"
@@ -2152,14 +2706,32 @@ function renderDashboardCalendar() {
               </div>
 
               ${
-                items
+                [
+                  ...items.map(
+                    item => ({
+                      label:
+                        item.reservation.guest_name ||
+                        "Guest",
+                      status:
+                        item.status
+                    })
+                  ),
+                  ...paymentItems.map(
+                    item => ({
+                      label:
+                        `💵 ${item.reservation.guest_name || "Guest"}`,
+                      status:
+                        "pending_payment"
+                    })
+                  )
+                ]
                   .slice(0, 2)
                   .map(
                     item => `
                       <span
                         class="dashboard-mini-item ${item.status}"
                       >
-                        ${item.reservation.guest_name || "Guest"}
+                        ${item.label}
                       </span>
                     `
                   )
@@ -2385,6 +2957,37 @@ function upcomingEvents() {
             });
           }
         }
+
+        scheduleAllocations(
+          reservation
+        )
+          .filter(
+            item =>
+              item.remaining > 0 &&
+              parseDate(
+                item.due_date
+              ) >= today
+          )
+          .forEach(
+            item => {
+              events.push({
+                type:
+                  "payment",
+                date:
+                  item.due_date,
+                property:
+                  reservation.property_name,
+                guest:
+                  reservation.guest_name ||
+                  "Guest",
+                time:
+                  item.label ||
+                  "Payment due",
+                amount:
+                  item.remaining
+              });
+            }
+          );
       }
     );
 
@@ -2399,17 +3002,15 @@ function upcomingEvents() {
           return dateDiff;
         }
 
-        if (
-          a.type === b.type
-        ) {
-          return 0;
-        }
+        const order = {
+          checkout: 1,
+          payment: 2,
+          checkin: 3
+        };
 
-        // On turnover day, checkout happens before check-in.
         return (
-          a.type === "checkout"
-            ? -1
-            : 1
+          order[a.type] -
+          order[b.type]
         );
       }
     )
@@ -2454,7 +3055,10 @@ function renderDashboardUpcoming() {
                       event.type ===
                         "checkin"
                         ? "CHECK-IN"
-                        : "CHECK-OUT"
+                        : event.type ===
+                            "checkout"
+                          ? "CHECK-OUT"
+                          : "PAYMENT DUE"
                     }
                   </span>
 
@@ -2475,7 +3079,12 @@ function renderDashboardUpcoming() {
                   >
                     ${event.guest}
                     <br>
-                    ${event.time}
+                    ${
+                      event.type ===
+                        "payment"
+                        ? `${event.time} · ${formatMoney(event.amount)}`
+                        : event.time
+                    }
                   </div>
                 </article>
               `;
@@ -2484,7 +3093,7 @@ function renderDashboardUpcoming() {
           .join("")
       : `
         <div class="empty-state">
-          No upcoming check-ins or check-outs.
+          No upcoming events.
         </div>
       `;
 }
@@ -2588,6 +3197,8 @@ async function refresh() {
     await loadReservations();
     await loadCleanings();
     await loadRatePeriods();
+    await loadPayments();
+    await loadPaymentSchedule();
 
     reservationList.innerHTML =
       currentReservations.length
@@ -3096,7 +3707,7 @@ reservationList.addEventListener(
 
         message(
           portalMessage,
-          `Payment logged as ${method.replaceAll("_", " ")}.`
+          `Payment recorded as ${method.replaceAll("_", " ")}.`
         );
 
       }
@@ -3296,7 +3907,7 @@ pendingReservationList.addEventListener(
 
         message(
           portalMessage,
-          `Payment logged as ${method.replaceAll("_", " ")}.`
+          `Payment recorded as ${method.replaceAll("_", " ")}.`
         );
 
       }
@@ -3855,6 +4466,179 @@ ratePeriodsList.addEventListener(
       );
     } finally {
       button.disabled = false;
+    }
+  }
+);
+
+
+
+document.addEventListener(
+  "click",
+  async event => {
+    const scheduleAction =
+      event.target.closest(
+        "[data-payment-schedule-action]"
+      );
+
+    if (scheduleAction) {
+      const row =
+        scheduleAction.closest(
+          "[data-payment-schedule-id]"
+        );
+
+      const id =
+        row.dataset.paymentScheduleId;
+
+      try {
+        scheduleAction.disabled =
+          true;
+
+        if (
+          scheduleAction.dataset.paymentScheduleAction ===
+          "delete"
+        ) {
+          if (
+            !window.confirm(
+              "Delete this scheduled payment?"
+            )
+          ) {
+            scheduleAction.disabled =
+              false;
+            return;
+          }
+
+          await deletePaymentScheduleItem(
+            id
+          );
+        } else {
+          const label =
+            row.querySelector(
+              "[data-payment-label]"
+            ).value.trim();
+
+          const amount =
+            Number(
+              row.querySelector(
+                "[data-payment-due-amount]"
+              ).value
+            );
+
+          const dueDate =
+            row.querySelector(
+              "[data-payment-due-date]"
+            ).value;
+
+          if (
+            !label ||
+            !amount ||
+            amount <= 0 ||
+            !dueDate
+          ) {
+            throw new Error(
+              "Enter a label, amount, and due date."
+            );
+          }
+
+          await updatePaymentScheduleItem(
+            id,
+            {
+              label,
+              amount_due:
+                amount,
+              due_date:
+                dueDate
+            }
+          );
+        }
+
+        await refresh();
+
+      } catch (err) {
+        message(
+          portalMessage,
+          err.message,
+          true
+        );
+      } finally {
+        scheduleAction.disabled =
+          false;
+      }
+
+      return;
+    }
+
+    const addSchedule =
+      event.target.closest(
+        'button[data-action="add-payment-schedule"]'
+      );
+
+    if (addSchedule) {
+      const card =
+        addSchedule.closest(
+          "[data-id]"
+        );
+
+      const reservationId =
+        card.dataset.id;
+
+      const label =
+        card.querySelector(
+          "[data-new-payment-label]"
+        ).value.trim();
+
+      const amount =
+        Number(
+          card.querySelector(
+            "[data-new-payment-amount]"
+          ).value
+        );
+
+      const dueDate =
+        card.querySelector(
+          "[data-new-payment-date]"
+        ).value;
+
+      try {
+        addSchedule.disabled =
+          true;
+
+        if (
+          !label ||
+          !amount ||
+          amount <= 0 ||
+          !dueDate
+        ) {
+          throw new Error(
+            "Enter a label, amount, and due date."
+          );
+        }
+
+        await createPaymentScheduleItem({
+          reservation_id:
+            reservationId,
+          label,
+          amount_due:
+            amount,
+          due_date:
+            dueDate,
+          reminder_days_before:
+            3
+        });
+
+        await refresh();
+
+      } catch (err) {
+        message(
+          portalMessage,
+          err.message,
+          true
+        );
+      } finally {
+        addSchedule.disabled =
+          false;
+      }
+
+      return;
     }
   }
 );
