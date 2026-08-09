@@ -1,83 +1,35 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A collection of charming Ocean City, New Jersey vacation homes available for direct booking.">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Down the Shore</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="index.html" data-brand>Down the Shore</a>
-    <nav class="nav" aria-label="Main navigation">
-      <a href="#homes">The homes</a>
-      <a href="#story">Our approach</a>
-      <a class="nav-cta" href="#homes">Find your stay</a>
-    </nav>
-  </header>
-
-  <main>
-    <section class="hero">
-      <div class="hero-inner">
-        <div class="eyebrow" data-eyebrow>Ocean City, New Jersey</div>
-        <h1 data-brand>Down the Shore</h1>
-        <p data-headline>Charming homes for slowing down, getting comfortable, and making memories.</p>
-        <a class="button button-light" href="#homes">Explore the homes</a>
-      </div>
-    </section>
-
-    <section class="section" id="homes">
-      <div class="section-heading">
-        <div class="eyebrow">Choose your stay</div>
-        <h2>Four homes. Each with a story of its own.</h2>
-        <p data-intro></p>
-      </div>
-      <div class="property-grid" data-property-grid></div>
-    </section>
-
-    <section class="section section-cream" id="story">
-      <div class="story-grid">
-        <div class="story-photo" role="img" aria-label="A hanging chair in a quiet outdoor nook"></div>
-        <div class="story-copy">
-          <div class="eyebrow">The feeling of being here</div>
-          <h2>Less rushing. More porch time.</h2>
-          <p>These are not anonymous rental units. They are independently owned homes prepared with care for real time together.</p>
-          <div class="promise-list">
-            <div class="promise">
-              <strong>Comfort without fuss</strong>
-              Everything guests need to settle in, exhale, and enjoy their stay.
-            </div>
-            <div class="promise">
-              <strong>Direct relationships</strong>
-              Guests communicate with the actual owner of the home they choose.
-            </div>
-            <div class="promise">
-              <strong>Memorable little moments</strong>
-              Coffee outside, string lights after dinner, and the places everyone gathers naturally.
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="booking-strip">
-      <h2>Ready to go down the shore?</h2>
-      <p>Choose a home, check its details, and send a direct booking request to the owner.</p>
-      <a class="button button-light" href="#homes">See the collection</a>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div>© <span id="year"></span> <span data-brand>Down the Shore</span></div>
-    <div><span data-domain>downtheshore.me</span> · <a data-contact href="mailto:hello@downtheshore.me">Contact</a></div>
-  </footer>
-
-  <script src="site-data.js"></script>
-  <script src="script.js"></script>
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-    renderHome();
-  </script>
-</body>
-</html>
+<header class="site-header">
+  <a class="brand" href="index.html" data-brand>Down the Shore</a>
+  <nav class="nav"><a href="#homes">Homes</a><a href="#story">Our approach</a><a class="nav-cta" href="#homes">Book direct</a></nav>
+</header>
+<main>
+<section class="hero"><div class="hero-inner"><div class="eyebrow" data-eyebrow></div><h1 data-headline></h1><p data-intro></p><a class="button button-light" href="#homes">Choose your stay</a></div></section>
+<section class="section" id="homes">
+  <div class="section-heading"><div class="eyebrow">Choose your stay</div><h2>Shore homes with a story of their own.</h2><p>A small collection of thoughtfully hosted Ocean City homes, offered directly by their owner.</p></div>
+  <div class="property-grid" data-property-grid></div>
+</section>
+<section class="section section-cream" id="story">
+  <div class="story-grid"><div class="story-photo" role="img" aria-label="A hanging chair in a quiet outdoor nook"></div>
+  <div class="story-copy"><div class="eyebrow">The feeling of being here</div><h2>Less rushing. More porch time.</h2>
+  <p>These are not anonymous rental units. They are independently owned homes prepared with care for real time together.</p>
+  <div class="promise-list">
+    <div class="promise"><strong>Comfort without fuss</strong>Everything guests need to settle in, exhale, and enjoy their stay.</div>
+    <div class="promise"><strong>Direct relationships</strong>Guests communicate directly with Janis, the owner.</div>
+    <div class="promise"><strong>Clear pricing</strong>Published rental prices and fees are shown before you send a booking request.</div>
+  </div></div></div>
+</section>
+<section class="booking-strip"><h2>Ready to go down the shore?</h2><p>Choose a home, see the published price and availability, and send a direct booking request.</p><a class="button button-light" href="#homes">See the homes</a></section>
+</main>
+<footer class="site-footer"><div>© <span id="footerYear"></span> <span data-brand>Down the Shore</span></div><div><span data-domain></span></div></footer>
+<script src="site-data.js"></script><script src="script.js"></script>
+<script>document.getElementById("footerYear").textContent=new Date().getFullYear();renderHome();</script>
+</body></html>
