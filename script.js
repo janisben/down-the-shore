@@ -115,10 +115,10 @@ function supabaseHeaders(prefer = "") {
   return headers;
 }
 
-async function getPropertyUuid(databaseName) {
+async function getPropertyRecord(databaseName) {
   const url =
     `${data.supabase.url}/rest/v1/properties` +
-    `?select=id` +
+    `?select=id,name,cleaning_fee,pet_fee,max_dogs` +
     `&name=eq.${encodeURIComponent(databaseName)}` +
     `&limit=1`;
 
@@ -142,7 +142,7 @@ async function getPropertyUuid(databaseName) {
     );
   }
 
-  return records[0].id;
+  return records[0];
 }
 
 async function getAvailability(propertyId) {
@@ -161,6 +161,27 @@ async function getAvailability(propertyId) {
   if (!response.ok) {
     throw new Error(
       "Availability could not be loaded."
+    );
+  }
+
+  return response.json();
+}
+
+async function getRatePeriods(propertyId) {
+  const response =
+    await fetch(
+      `${data.supabase.url}/rest/v1/rate_periods` +
+      `?select=*` +
+      `&property_id=eq.${propertyId}` +
+      `&order=start_date.asc`,
+      {
+        headers: supabaseHeaders()
+      }
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Rates could not be loaded."
     );
   }
 
@@ -199,6 +220,52 @@ function addDays(date, number) {
   );
 
   return copy;
+}
+
+function nightsBetween(
+  arrival,
+  departure
+) {
+  const millisecondsPerDay =
+    24 * 60 * 60 * 1000;
+
+  return Math.round(
+    (
+      parseDate(departure) -
+      parseDate(arrival)
+    ) /
+    millisecondsPerDay
+  );
+}
+
+function isSaturday(value) {
+  return (
+    parseDate(value).getDay() === 6
+  );
+}
+
+function formatMoney(value) {
+  return Number(
+    value || 0
+  ).toLocaleString(
+    "en-US",
+    {
+      style: "currency",
+      currency: "USD"
+    }
+  );
+}
+
+function formatShortDate(value) {
+  return parseDate(value)
+    .toLocaleDateString(
+      "en-US",
+      {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      }
+    );
 }
 
 function dateInsideReservation(
@@ -276,18 +343,203 @@ function rangeContainsStatus(
   return false;
 }
 
-async function submitReservation(
-  property,
-  propertyId,
-  formData,
-  availability
+function dateInsideRatePeriod(
+  dateString,
+  period
 ) {
-  const arrival =
-    formData.get("arrival");
+  const date =
+    parseDate(dateString);
 
-  const departure =
-    formData.get("departure");
+  const start =
+    parseDate(period.start_date);
 
+  const end =
+    parseDate(period.end_date);
+
+  return (
+    date >= start &&
+    date < end
+  );
+}
+
+function ratePeriodsForDate(
+  dateString,
+  ratePeriods
+) {
+  return ratePeriods.filter(
+    period =>
+      dateInsideRatePeriod(
+        dateString,
+        period
+      )
+  );
+}
+
+function nonBlockedRateForDate(
+  dateString,
+  ratePeriods
+) {
+  const periods =
+    ratePeriodsForDate(
+      dateString,
+      ratePeriods
+    );
+
+  if (
+    periods.some(
+      period => period.blocked
+    )
+  ) {
+    return null;
+  }
+
+  return (
+    periods.find(
+      period => !period.blocked
+    ) ||
+    null
+  );
+}
+
+function rateStatusForDate(
+  dateString,
+  ratePeriods
+) {
+  const periods =
+    ratePeriodsForDate(
+      dateString,
+      ratePeriods
+    );
+
+  if (!periods.length) {
+    return "unpriced";
+  }
+
+  if (
+    periods.some(
+      period => period.blocked
+    )
+  ) {
+    return "blocked";
+  }
+
+  return "priced";
+}
+
+function ratePeriodForStay(
+  arrival,
+  departure,
+  ratePeriods
+) {
+  const matching =
+    ratePeriods.filter(
+      period => {
+        if (period.blocked) {
+          return false;
+        }
+
+        return (
+          parseDate(arrival) >=
+            parseDate(period.start_date) &&
+          parseDate(departure) <=
+            parseDate(period.end_date)
+        );
+      }
+    );
+
+  if (!matching.length) {
+    return null;
+  }
+
+  // Prefer the most specific period if periods overlap.
+  matching.sort(
+    (a, b) =>
+      nightsBetween(
+        a.start_date,
+        a.end_date
+      ) -
+      nightsBetween(
+        b.start_date,
+        b.end_date
+      )
+  );
+
+  return matching[0];
+}
+
+function stayTouchesBlockedRate(
+  arrival,
+  departure,
+  ratePeriods
+) {
+  let current =
+    parseDate(arrival);
+
+  const end =
+    parseDate(departure);
+
+  while (current < end) {
+    const dateString =
+      isoDate(current);
+
+    const periods =
+      ratePeriodsForDate(
+        dateString,
+        ratePeriods
+      );
+
+    if (
+      periods.some(
+        period => period.blocked
+      )
+    ) {
+      return true;
+    }
+
+    current =
+      addDays(current, 1);
+  }
+
+  return false;
+}
+
+function stayTouchesUnpricedDate(
+  arrival,
+  departure,
+  ratePeriods
+) {
+  let current =
+    parseDate(arrival);
+
+  const end =
+    parseDate(departure);
+
+  while (current < end) {
+    const dateString =
+      isoDate(current);
+
+    const period =
+      nonBlockedRateForDate(
+        dateString,
+        ratePeriods
+      );
+
+    if (!period) {
+      return true;
+    }
+
+    current =
+      addDays(current, 1);
+  }
+
+  return false;
+}
+
+function validateStayAgainstRate(
+  arrival,
+  departure,
+  ratePeriods
+) {
   if (!arrival || !departure) {
     throw new Error(
       "Choose your arrival and departure dates."
@@ -304,6 +556,198 @@ async function submitReservation(
   }
 
   if (
+    stayTouchesBlockedRate(
+      arrival,
+      departure,
+      ratePeriods
+    )
+  ) {
+    throw new Error(
+      "Part of that stay is not available."
+    );
+  }
+
+  if (
+    stayTouchesUnpricedDate(
+      arrival,
+      departure,
+      ratePeriods
+    )
+  ) {
+    throw new Error(
+      "Those dates are not currently open for online booking."
+    );
+  }
+
+  const period =
+    ratePeriodForStay(
+      arrival,
+      departure,
+      ratePeriods
+    );
+
+  if (!period) {
+    throw new Error(
+      "Those dates do not fit one currently published rate period."
+    );
+  }
+
+  const nights =
+    nightsBetween(
+      arrival,
+      departure
+    );
+
+  if (
+    period.stay_rule ===
+    "weekly"
+  ) {
+    if (
+      !isSaturday(arrival) ||
+      !isSaturday(departure) ||
+      nights !== 7 ||
+      arrival !== period.start_date ||
+      departure !== period.end_date
+    ) {
+      throw new Error(
+        "This period is available Saturday to Saturday only."
+      );
+    }
+
+    if (
+      period.weekly_price ===
+        null ||
+      period.weekly_price ===
+        undefined
+    ) {
+      throw new Error(
+        "This week does not have a published price yet."
+      );
+    }
+  }
+
+  if (
+    period.stay_rule ===
+    "flexible"
+  ) {
+    if (
+      nights <
+      Number(
+        period.minimum_nights ||
+        1
+      )
+    ) {
+      throw new Error(
+        `This period requires at least ${period.minimum_nights || 1} nights.`
+      );
+    }
+
+    if (
+      period.nightly_price ===
+        null ||
+      period.nightly_price ===
+        undefined
+    ) {
+      throw new Error(
+        "This flexible period does not have a nightly price yet."
+      );
+    }
+  }
+
+  return period;
+}
+
+function calculateQuote(
+  propertyRecord,
+  period,
+  arrival,
+  departure,
+  dogs
+) {
+  const dogCount =
+    Number(dogs || 0);
+
+  const maxDogs =
+    Number(
+      propertyRecord.max_dogs ||
+      0
+    );
+
+  if (
+    dogCount >
+    maxDogs
+  ) {
+    throw new Error(
+      `This property allows a maximum of ${maxDogs} dog${maxDogs === 1 ? "" : "s"}.`
+    );
+  }
+
+  const nights =
+    nightsBetween(
+      arrival,
+      departure
+    );
+
+  let rental = 0;
+
+  if (
+    period.stay_rule ===
+    "weekly"
+  ) {
+    rental =
+      Number(
+        period.weekly_price
+      );
+  } else {
+    rental =
+      Number(
+        period.nightly_price
+      ) *
+      nights;
+  }
+
+  const cleaning =
+    Number(
+      propertyRecord.cleaning_fee ||
+      0
+    );
+
+  const petFee =
+    Number(
+      propertyRecord.pet_fee ||
+      0
+    ) *
+    dogCount;
+
+  const total =
+    rental +
+    cleaning +
+    petFee;
+
+  return {
+    rental,
+    cleaning,
+    petFee,
+    dogs: dogCount,
+    nights,
+    total
+  };
+}
+
+async function submitReservation(
+  property,
+  propertyRecord,
+  formData,
+  availability,
+  ratePeriods
+) {
+  const arrival =
+    formData.get("arrival");
+
+  const departure =
+    formData.get("departure");
+
+  if (
     rangeContainsStatus(
       arrival,
       departure,
@@ -316,6 +760,28 @@ async function submitReservation(
     );
   }
 
+  const period =
+    validateStayAgainstRate(
+      arrival,
+      departure,
+      ratePeriods
+    );
+
+  const dogs =
+    Number(
+      formData.get("dogs") ||
+      0
+    );
+
+  const quote =
+    calculateQuote(
+      propertyRecord,
+      period,
+      arrival,
+      departure,
+      dogs
+    );
+
   const isWaitlist =
     rangeContainsStatus(
       arrival,
@@ -325,7 +791,8 @@ async function submitReservation(
     );
 
   const payload = {
-    property_id: propertyId,
+    property_id:
+      propertyRecord.id,
 
     guest_name:
       formData
@@ -342,25 +809,32 @@ async function submitReservation(
         .get("phone")
         .trim() || null,
 
-    arrival_date: arrival,
-    departure_date: departure,
+    arrival_date:
+      arrival,
+
+    departure_date:
+      departure,
 
     adults:
       Number(
         formData.get("guests")
       ),
 
-    children: 0,
+    children:
+      0,
 
-    dogs:
-      Number(
-        formData.get("dogs") || 0
-      ),
+    dogs,
 
     dog_names:
       formData
         .get("dog_names")
         .trim() || null,
+
+    amount_due:
+      quote.total,
+
+    payment_status:
+      "waiting",
 
     booking_source:
       "direct_website",
@@ -395,7 +869,9 @@ async function submitReservation(
   }
 
   return {
-    isWaitlist
+    isWaitlist,
+    quote,
+    period
   };
 }
 
@@ -507,6 +983,21 @@ function injectCalendarStyles() {
       color: #5f4c00;
     }
 
+    .calendar-day.blocked,
+    .calendar-day.unpriced {
+      background: #f0eee9;
+      color: #aaa;
+      cursor: not-allowed;
+    }
+
+    .calendar-day.blocked {
+      text-decoration: line-through;
+    }
+
+    .calendar-day.weekly-start {
+      box-shadow: inset 0 0 0 2px #8a7752;
+    }
+
     .calendar-day.selected {
       background: #24231f;
       color: white;
@@ -554,6 +1045,10 @@ function injectCalendarStyles() {
       background: #dedede;
     }
 
+    .legend-closed {
+      background: #f0eee9;
+    }
+
     .calendar-message {
       margin-top: 14px;
       font-size: 13px;
@@ -563,6 +1058,35 @@ function injectCalendarStyles() {
     .calendar-message.pending-note {
       padding: 10px;
       background: #fff4cf;
+    }
+
+    .quote-box {
+      margin: 16px 0 22px;
+      padding: 16px;
+      border: 1px solid rgba(36,35,31,.14);
+      background: #faf8f4;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .quote-box h3 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+
+    .quote-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 4px 0;
+    }
+
+    .quote-total {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #ddd;
+      font-weight: 700;
+      font-size: 16px;
     }
 
     @media (max-width: 750px) {
@@ -582,6 +1106,7 @@ function injectCalendarStyles() {
 function renderMonth(
   monthDate,
   availability,
+  ratePeriods,
   selectedArrival,
   selectedDeparture
 ) {
@@ -640,14 +1165,60 @@ function renderMonth(
     const dateString =
       isoDate(date);
 
-    const status =
+    const reservationStatus =
       statusForDate(
         dateString,
         availability
       );
 
+    const rateStatus =
+      rateStatusForDate(
+        dateString,
+        ratePeriods
+      );
+
+    const period =
+      nonBlockedRateForDate(
+        dateString,
+        ratePeriods
+      );
+
+    let status =
+      reservationStatus;
+
+    if (
+      reservationStatus !==
+      "booked"
+    ) {
+      if (
+        rateStatus ===
+        "blocked"
+      ) {
+        status =
+          "blocked";
+      } else if (
+        rateStatus ===
+        "unpriced"
+      ) {
+        status =
+          "unpriced";
+      }
+    }
+
     const classes =
       ["calendar-day", status];
+
+    if (
+      period &&
+      period.stay_rule ===
+        "weekly" &&
+      dateString ===
+        period.start_date
+    ) {
+      classes.push(
+        "weekly-start"
+      );
+    }
 
     if (
       dateString === selectedArrival ||
@@ -668,16 +1239,55 @@ function renderMonth(
     }
 
     const disabled =
-      status === "booked"
+      (
+        status === "booked" ||
+        status === "blocked" ||
+        status === "unpriced"
+      )
         ? "disabled"
         : "";
 
-    const title =
+    let title =
+      "Available";
+
+    if (
       status === "pending"
-        ? "Pending — you may join the waitlist"
-        : status === "booked"
-          ? "Booked"
-          : "Available";
+    ) {
+      title =
+        "Pending — you may join the waitlist";
+    } else if (
+      status === "booked"
+    ) {
+      title =
+        "Booked";
+    } else if (
+      status === "blocked"
+    ) {
+      title =
+        "Not available";
+    } else if (
+      status === "unpriced"
+    ) {
+      title =
+        "Not currently open for online booking";
+    } else if (
+      period &&
+      period.stay_rule ===
+        "weekly"
+    ) {
+      title =
+        dateString ===
+          period.start_date
+          ? `Saturday-to-Saturday week · ${formatMoney(period.weekly_price)}`
+          : "Part of a Saturday-to-Saturday rental week";
+    } else if (
+      period &&
+      period.stay_rule ===
+        "flexible"
+    ) {
+      title =
+        `${formatMoney(period.nightly_price)} per night · ${period.minimum_nights || 1} night minimum`;
+    }
 
     days += `
       <button
@@ -853,27 +1463,6 @@ async function renderProperty() {
   const dogSelect =
     form.elements.dogs;
 
-  if (!property.dogFriendly) {
-    dogCountField.style.display =
-      "none";
-
-    dogNamesField.style.display =
-      "none";
-
-    dogSelect.value =
-      "0";
-  } else {
-    dogSelect.addEventListener(
-      "change",
-      () => {
-        dogNamesField.style.display =
-          dogSelect.value === "0"
-            ? "none"
-            : "block";
-      }
-    );
-  }
-
   form.elements.guests.max =
     String(property.sleeps);
 
@@ -885,15 +1474,64 @@ async function renderProperty() {
 
   injectCalendarStyles();
 
-  const propertyId =
-    await getPropertyUuid(
+  const propertyRecord =
+    await getPropertyRecord(
       property.databaseName
     );
+
+  const propertyId =
+    propertyRecord.id;
 
   let availability =
     await getAvailability(
       propertyId
     );
+
+  let ratePeriods =
+    await getRatePeriods(
+      propertyId
+    );
+
+  if (!property.dogFriendly) {
+    dogCountField.style.display =
+      "none";
+
+    dogNamesField.style.display =
+      "none";
+
+    dogSelect.value =
+      "0";
+  } else {
+    const maxDogs =
+      Number(
+        propertyRecord.max_dogs ||
+        0
+      );
+
+    Array.from(
+      dogSelect.options
+    ).forEach(option => {
+      if (
+        Number(option.value) >
+        maxDogs
+      ) {
+        option.disabled =
+          true;
+      }
+    });
+
+    dogSelect.addEventListener(
+      "change",
+      () => {
+        dogNamesField.style.display =
+          dogSelect.value === "0"
+            ? "none"
+            : "block";
+
+        drawCalendar();
+      }
+    );
+  }
 
   let calendarStart =
     new Date();
@@ -921,6 +1559,128 @@ async function renderProperty() {
     calendarWrap,
     form
   );
+
+  const quoteBox =
+    document.createElement("div");
+
+  quoteBox.className =
+    "quote-box";
+
+  quoteBox.hidden =
+    true;
+
+  form.parentNode.insertBefore(
+    quoteBox,
+    form
+  );
+
+  function currentQuote() {
+    if (
+      !selectedArrival ||
+      !selectedDeparture
+    ) {
+      return null;
+    }
+
+    const period =
+      validateStayAgainstRate(
+        selectedArrival,
+        selectedDeparture,
+        ratePeriods
+      );
+
+    return {
+      period,
+      quote:
+        calculateQuote(
+          propertyRecord,
+          period,
+          selectedArrival,
+          selectedDeparture,
+          dogSelect.value
+        )
+    };
+  }
+
+  function renderQuote() {
+    quoteBox.hidden =
+      true;
+
+    quoteBox.innerHTML =
+      "";
+
+    if (
+      !selectedArrival ||
+      !selectedDeparture
+    ) {
+      return;
+    }
+
+    try {
+      const {
+        period,
+        quote
+      } =
+        currentQuote();
+
+      quoteBox.hidden =
+        false;
+
+      quoteBox.innerHTML = `
+        <h3>Your stay total</h3>
+
+        <div class="quote-row">
+          <span>
+            ${
+              period.stay_rule ===
+                "weekly"
+                ? `Weekly rental · ${formatShortDate(selectedArrival)} – ${formatShortDate(selectedDeparture)}`
+                : `${quote.nights} night${quote.nights === 1 ? "" : "s"} · ${formatMoney(period.nightly_price)}/night`
+            }
+          </span>
+          <strong>
+            ${formatMoney(quote.rental)}
+          </strong>
+        </div>
+
+        <div class="quote-row">
+          <span>Cleaning fee</span>
+          <strong>
+            ${formatMoney(quote.cleaning)}
+          </strong>
+        </div>
+
+        ${
+          quote.dogs > 0
+            ? `
+              <div class="quote-row">
+                <span>
+                  Pet fee · ${quote.dogs} dog${quote.dogs === 1 ? "" : "s"}
+                </span>
+                <strong>
+                  ${formatMoney(quote.petFee)}
+                </strong>
+              </div>
+            `
+            : ""
+        }
+
+        <div class="quote-row quote-total">
+          <span>Total</span>
+          <strong>
+            ${formatMoney(quote.total)}
+          </strong>
+        </div>
+      `;
+
+    } catch (error) {
+      quoteBox.hidden =
+        false;
+
+      quoteBox.textContent =
+        error.message;
+    }
+  }
 
   function drawCalendar() {
     calendarWrap.innerHTML = `
@@ -958,6 +1718,7 @@ async function renderProperty() {
         ${renderMonth(
           calendarStart,
           availability,
+          ratePeriods,
           selectedArrival,
           selectedDeparture
         )}
@@ -969,6 +1730,7 @@ async function renderProperty() {
             1
           ),
           availability,
+          ratePeriods,
           selectedArrival,
           selectedDeparture
         )}
@@ -990,6 +1752,11 @@ async function renderProperty() {
         <span class="legend-item">
           <span class="legend-dot legend-booked"></span>
           Booked
+        </span>
+
+        <span class="legend-item">
+          <span class="legend-dot legend-closed"></span>
+          Not currently open
         </span>
 
       </div>
@@ -1022,14 +1789,40 @@ async function renderProperty() {
           "calendar-message pending-note";
 
         messageBox.textContent =
-          "Some of these dates are currently pending. You may still send a request to join the waitlist.";
+          "Some of these dates currently have a pending 24-hour hold. You may still send a request to join the waitlist.";
       } else {
-        messageBox.className =
-          "calendar-message";
+        try {
+          const period =
+            validateStayAgainstRate(
+              selectedArrival,
+              selectedDeparture,
+              ratePeriods
+            );
 
-        messageBox.textContent =
-          `Selected: ${selectedArrival} through ${selectedDeparture}`;
+          messageBox.className =
+            "calendar-message";
+
+          if (
+            period.stay_rule ===
+            "weekly"
+          ) {
+            messageBox.textContent =
+              `Saturday check-in at 2:00 PM · Saturday checkout at 10:00 AM.`;
+          } else {
+            messageBox.textContent =
+              `Selected: ${formatShortDate(selectedArrival)} through ${formatShortDate(selectedDeparture)} · ${period.minimum_nights || 1}-night minimum.`;
+          }
+        } catch (error) {
+          messageBox.className =
+            "calendar-message pending-note";
+
+          messageBox.textContent =
+            error.message;
+        }
       }
+    } else {
+      messageBox.textContent =
+        "Choose an available arrival date. Saturday-to-Saturday weeks are marked by their Saturday start date.";
     }
 
     calendarWrap
@@ -1081,11 +1874,67 @@ async function renderProperty() {
               button.dataset.calendarStatus;
 
             if (
-              status === "booked"
+              status === "booked" ||
+              status === "blocked" ||
+              status === "unpriced"
             ) {
               return;
             }
 
+            const rate =
+              nonBlockedRateForDate(
+                date,
+                ratePeriods
+              );
+
+            if (!rate) {
+              return;
+            }
+
+            // Weekly periods are intentionally simple:
+            // click the Saturday start and the full week is selected.
+            if (
+              rate.stay_rule ===
+              "weekly"
+            ) {
+              if (
+                date !==
+                rate.start_date
+              ) {
+                selectedArrival =
+                  "";
+
+                selectedDeparture =
+                  "";
+
+                form.elements.arrival.value =
+                  "";
+
+                form.elements.departure.value =
+                  "";
+
+                drawCalendar();
+                return;
+              }
+
+              selectedArrival =
+                rate.start_date;
+
+              selectedDeparture =
+                rate.end_date;
+
+              form.elements.arrival.value =
+                selectedArrival;
+
+              form.elements.departure.value =
+                selectedDeparture;
+
+              drawCalendar();
+              return;
+            }
+
+            // Flexible periods use the first click as arrival
+            // and the second click as departure.
             if (
               !selectedArrival ||
               selectedDeparture
@@ -1152,6 +2001,8 @@ async function renderProperty() {
           }
         );
       });
+
+    renderQuote();
   }
 
   drawCalendar();
@@ -1181,20 +2032,26 @@ async function renderProperty() {
         const response =
           await submitReservation(
             property,
-            propertyId,
+            propertyRecord,
             formData,
-            availability
+            availability,
+            ratePeriods
           );
 
         result.className =
           "booking-result success";
 
+        const total =
+          formatMoney(
+            response.quote.total
+          );
+
         if (response.isWaitlist) {
           result.innerHTML =
-            `<strong>You’re on the waitlist.</strong><br>These dates currently have a pending 24-hour hold. Janis has received your request and can contact you if the dates become available.`;
+            `<strong>You’re on the waitlist.</strong><br>Your requested stay total is ${total}. These dates currently have a pending 24-hour hold. Janis has received your request and can contact you if the dates become available.`;
         } else {
           result.innerHTML =
-            `<strong>Your dates have been received.</strong><br>Your request is pending until Janis confirms the dates, lease, and payment details.`;
+            `<strong>Your dates have been received.</strong><br>Your stay total is ${total}. Your request is pending until Janis confirms the dates, lease, and payment details.`;
         }
 
         form.reset();
@@ -1210,6 +2067,11 @@ async function renderProperty() {
 
         availability =
           await getAvailability(
+            propertyId
+          );
+
+        ratePeriods =
+          await getRatePeriods(
             propertyId
           );
 
