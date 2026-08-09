@@ -92,6 +92,31 @@ const propertySettingsMessage =
   document.getElementById("propertySettingsMessage");
 
 
+const dashboardStats =
+  document.getElementById("dashboardStats");
+
+const dashboardCalendar =
+  document.getElementById("dashboardCalendar");
+
+const dashboardPendingList =
+  document.getElementById("dashboardPendingList");
+
+const dashboardUpcoming =
+  document.getElementById("dashboardUpcoming");
+
+const pendingReservationList =
+  document.getElementById("pendingReservationList");
+
+const sidebarPendingCount =
+  document.getElementById("sidebarPendingCount");
+
+const ownerPageTitle =
+  document.getElementById("ownerPageTitle");
+
+const ownerPageSubtitle =
+  document.getElementById("ownerPageSubtitle");
+
+
 const headers = (extra = {}) => ({
   apikey: cfg.publishableKey,
   Authorization: `Bearer ${token}`,
@@ -1849,6 +1874,712 @@ function reservationCard(r) {
 }
 
 
+
+function activeReservation(
+  reservation
+) {
+  return ![
+    "cancelled",
+    "declined"
+  ].includes(
+    reservation.status
+  );
+}
+
+
+function pendingReservation(
+  reservation
+) {
+  return [
+    "pending",
+    "requested"
+  ].includes(
+    reservation.status
+  );
+}
+
+
+function reservationNights(
+  reservation
+) {
+  if (
+    !reservation.arrival_date ||
+    !reservation.departure_date
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.round(
+      (
+        parseDate(
+          reservation.departure_date
+        ) -
+        parseDate(
+          reservation.arrival_date
+        )
+      ) /
+      (
+        24 *
+        60 *
+        60 *
+        1000
+      )
+    )
+  );
+}
+
+
+function renderDashboardStats() {
+  const booked =
+    currentReservations.filter(
+      reservation =>
+        activeReservation(
+          reservation
+        ) &&
+        reservation.status ===
+          "booked"
+    );
+
+  const nightsBooked =
+    booked.reduce(
+      (
+        total,
+        reservation
+      ) =>
+        total +
+        reservationNights(
+          reservation
+        ),
+      0
+    );
+
+  const pendingCount =
+    currentReservations.filter(
+      pendingReservation
+    ).length;
+
+  const cleaningCount =
+    currentCleanings.filter(
+      cleaning =>
+        cleaning.status ===
+          "waiting" ||
+        cleaning.status ===
+          "confirmed"
+    ).length;
+
+  const rentalIncome =
+    currentReservations
+      .filter(
+        reservation =>
+          reservation.payment_status ===
+            "paid" &&
+          activeReservation(
+            reservation
+          )
+      )
+      .reduce(
+        (
+          total,
+          reservation
+        ) =>
+          total +
+          Number(
+            reservation.amount_received ||
+            reservation.amount_due ||
+            0
+          ),
+        0
+      );
+
+  dashboardStats.innerHTML = `
+    <article class="stat-card">
+      <div class="stat-icon">▣</div>
+      <div>
+        <div class="stat-number">
+          ${nightsBooked}
+        </div>
+        <div class="stat-label">
+          Nights booked
+        </div>
+        <div class="stat-sub">
+          Active booked stays
+        </div>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon">✓</div>
+      <div>
+        <div class="stat-number">
+          ${pendingCount}
+        </div>
+        <div class="stat-label">
+          Pending requests
+        </div>
+        <div class="stat-sub">
+          Needs review
+        </div>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon">♨</div>
+      <div>
+        <div class="stat-number">
+          ${cleaningCount}
+        </div>
+        <div class="stat-label">
+          Cleanings
+        </div>
+        <div class="stat-sub">
+          Waiting or confirmed
+        </div>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon">$</div>
+      <div>
+        <div class="stat-number">
+          ${formatMoney(
+            rentalIncome
+          )}
+        </div>
+        <div class="stat-label">
+          Rental income
+        </div>
+        <div class="stat-sub">
+          Payments logged
+        </div>
+      </div>
+    </article>
+  `;
+
+  if (pendingCount) {
+    sidebarPendingCount.hidden =
+      false;
+
+    sidebarPendingCount.textContent =
+      pendingCount;
+  } else {
+    sidebarPendingCount.hidden =
+      true;
+
+    sidebarPendingCount.textContent =
+      "";
+  }
+}
+
+
+function renderDashboardCalendar() {
+  const year =
+    calendarDate.getFullYear();
+
+  const month =
+    calendarDate.getMonth();
+
+  const monthTitle =
+    calendarDate.toLocaleDateString(
+      "en-US",
+      {
+        month: "long",
+        year: "numeric"
+      }
+    );
+
+  const firstDay =
+    new Date(
+      year,
+      month,
+      1
+    );
+
+  const daysInMonth =
+    new Date(
+      year,
+      month + 1,
+      0
+    ).getDate();
+
+  const properties =
+    currentProperties.map(
+      property => {
+        let cells = "";
+
+        for (
+          let blank = 0;
+          blank <
+            firstDay.getDay();
+          blank++
+        ) {
+          cells += `
+            <div
+              class="dashboard-mini-day blank"
+            ></div>
+          `;
+        }
+
+        for (
+          let day = 1;
+          day <= daysInMonth;
+          day++
+        ) {
+          const dateString =
+            isoDate(
+              new Date(
+                year,
+                month,
+                day
+              )
+            );
+
+          const items =
+            calendarItemsForDay(
+              property.id,
+              dateString
+            );
+
+          cells += `
+            <div
+              class="dashboard-mini-day"
+            >
+              <div
+                class="dashboard-mini-date"
+              >
+                ${day}
+              </div>
+
+              ${
+                items
+                  .slice(0, 2)
+                  .map(
+                    item => `
+                      <span
+                        class="dashboard-mini-item ${item.status}"
+                      >
+                        ${item.reservation.guest_name || "Guest"}
+                      </span>
+                    `
+                  )
+                  .join("")
+              }
+            </div>
+          `;
+        }
+
+        return `
+          <div
+            class="dashboard-calendar-property"
+          >
+            <h3>
+              ${property.name}
+            </h3>
+
+            <div
+              class="dashboard-mini-grid"
+            >
+              ${cells}
+            </div>
+          </div>
+        `;
+      }
+    )
+    .join("");
+
+  dashboardCalendar.innerHTML = `
+    <div
+      class="dashboard-calendar-preview-title"
+    >
+      ${monthTitle}
+    </div>
+
+    <div
+      class="dashboard-calendar-properties"
+    >
+      ${properties}
+    </div>
+  `;
+}
+
+
+function pendingMiniCard(
+  reservation
+) {
+  return `
+    <article
+      class="pending-mini"
+    >
+      <div
+        class="pending-mini-top"
+      >
+        <div>
+          <h3>
+            ${reservation.property_name}
+          </h3>
+          <div class="meta">
+            ${reservation.guest_name || "Guest"}
+          </div>
+        </div>
+
+        <div class="amount">
+          ${
+            reservation.amount_due
+              ? formatMoney(
+                  reservation.amount_due
+                )
+              : ""
+          }
+        </div>
+      </div>
+
+      <div class="meta">
+        ${formatDate(reservation.arrival_date)}
+        –
+        ${formatDate(reservation.departure_date)}
+
+        <br>
+
+        ${reservation.adults || 0}
+        guest(s)
+
+        ${
+          reservation.dogs
+            ? ` · ${reservation.dogs} dog(s)`
+            : ""
+        }
+      </div>
+
+      <div
+        class="pending-mini-actions"
+      >
+        <button
+          type="button"
+          class="review"
+          data-dashboard-review="${reservation.id}"
+        >
+          Review
+        </button>
+      </div>
+    </article>
+  `;
+}
+
+
+function renderDashboardPending() {
+  const pending =
+    currentReservations
+      .filter(
+        pendingReservation
+      )
+      .slice(0, 3);
+
+  dashboardPendingList.innerHTML =
+    pending.length
+      ? pending
+          .map(
+            pendingMiniCard
+          )
+          .join("")
+      : `
+        <div class="empty-state">
+          No pending requests right now.
+        </div>
+      `;
+
+  const allPending =
+    currentReservations.filter(
+      pendingReservation
+    );
+
+  pendingReservationList.innerHTML =
+    allPending.length
+      ? allPending
+          .map(
+            reservationCard
+          )
+          .join("")
+      : `
+        <div class="empty-state">
+          No pending reservation requests.
+        </div>
+      `;
+}
+
+
+function upcomingEvents() {
+  const today =
+    new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const events = [];
+
+  currentReservations
+    .filter(
+      reservation =>
+        activeReservation(
+          reservation
+        ) &&
+        [
+          "booked",
+          "pending_payment"
+        ].includes(
+          reservation.status
+        )
+    )
+    .forEach(
+      reservation => {
+        if (
+          reservation.arrival_date
+        ) {
+          const date =
+            parseDate(
+              reservation.arrival_date
+            );
+
+          if (date >= today) {
+            events.push({
+              type:
+                "checkin",
+              date:
+                reservation.arrival_date,
+              property:
+                reservation.property_name,
+              guest:
+                reservation.guest_name ||
+                "Guest",
+              time:
+                "2:00 PM"
+            });
+          }
+        }
+
+        if (
+          reservation.departure_date
+        ) {
+          const date =
+            parseDate(
+              reservation.departure_date
+            );
+
+          if (date >= today) {
+            events.push({
+              type:
+                "checkout",
+              date:
+                reservation.departure_date,
+              property:
+                reservation.property_name,
+              guest:
+                reservation.guest_name ||
+                "Guest",
+              time:
+                "10:00 AM"
+            });
+          }
+        }
+      }
+    );
+
+  return events
+    .sort(
+      (a, b) => {
+        const dateDiff =
+          parseDate(a.date) -
+          parseDate(b.date);
+
+        if (dateDiff !== 0) {
+          return dateDiff;
+        }
+
+        if (
+          a.type === b.type
+        ) {
+          return 0;
+        }
+
+        // On turnover day, checkout happens before check-in.
+        return (
+          a.type === "checkout"
+            ? -1
+            : 1
+        );
+      }
+    )
+    .slice(0, 4);
+}
+
+
+function renderDashboardUpcoming() {
+  const events =
+    upcomingEvents();
+
+  dashboardUpcoming.innerHTML =
+    events.length
+      ? events
+          .map(
+            event => {
+              const date =
+                parseDate(
+                  event.date
+                );
+
+              const month =
+                date.toLocaleDateString(
+                  "en-US",
+                  {
+                    month:
+                      "short"
+                  }
+                );
+
+              const day =
+                date.getDate();
+
+              return `
+                <article
+                  class="upcoming-event"
+                >
+                  <span
+                    class="event-type ${event.type}"
+                  >
+                    ${
+                      event.type ===
+                        "checkin"
+                        ? "CHECK-IN"
+                        : "CHECK-OUT"
+                    }
+                  </span>
+
+                  <div
+                    class="event-date"
+                  >
+                    ${month} ${day}
+                  </div>
+
+                  <div
+                    class="event-property"
+                  >
+                    ${event.property}
+                  </div>
+
+                  <div
+                    class="event-meta"
+                  >
+                    ${event.guest}
+                    <br>
+                    ${event.time}
+                  </div>
+                </article>
+              `;
+            }
+          )
+          .join("")
+      : `
+        <div class="empty-state">
+          No upcoming check-ins or check-outs.
+        </div>
+      `;
+}
+
+
+function renderDashboard() {
+  renderDashboardStats();
+  renderDashboardCalendar();
+  renderDashboardPending();
+  renderDashboardUpcoming();
+}
+
+
+function showOwnerView(
+  view
+) {
+  const titles = {
+    dashboard: [
+      "Welcome back, Janis!",
+      "Here’s what’s happening at your shore homes."
+    ],
+    calendar: [
+      "Calendar",
+      "See reservations across both properties."
+    ],
+    pending: [
+      "Pending requests",
+      "Review new booking requests and start payment holds."
+    ],
+    reservations: [
+      "Reservations",
+      "View every reservation in one place."
+    ],
+    "add-reservation": [
+      "Add reservation",
+      "Enter an existing or manual booking."
+    ],
+    pricing: [
+      "Pricing & fees",
+      "Control rates, stay rules, cleaning fees, and pet fees."
+    ],
+    cleaning: [
+      "Cleaning dashboard",
+      "Manage upcoming turnovers and cleaner confirmations."
+    ]
+  };
+
+  document
+    .querySelectorAll(
+      "[data-owner-panel]"
+    )
+    .forEach(
+      panel => {
+        panel.classList.toggle(
+          "active",
+          panel.dataset.ownerPanel ===
+            view
+        );
+      }
+    );
+
+  document
+    .querySelectorAll(
+      ".owner-nav-link[data-owner-view]"
+    )
+    .forEach(
+      button => {
+        button.classList.toggle(
+          "active",
+          button.dataset.ownerView ===
+            view
+        );
+      }
+    );
+
+  const [
+    title,
+    subtitle
+  ] =
+    titles[view] ||
+    titles.dashboard;
+
+  ownerPageTitle.textContent =
+    title;
+
+  ownerPageSubtitle.textContent =
+    subtitle;
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
+
 async function refresh() {
   try {
     portalMessage.className = "";
@@ -1875,6 +2606,7 @@ async function refresh() {
     renderCleaningDashboard();
     renderPropertySettings();
     renderRatePeriods();
+    renderDashboard();
 
   } catch (err) {
     message(
@@ -1911,7 +2643,12 @@ function showPortal() {
 
   loadProperties()
     .then(
-      () => refresh()
+      async () => {
+        await refresh();
+        showOwnerView(
+          "dashboard"
+        );
+      }
     );
 }
 
@@ -2188,6 +2925,206 @@ manualReservationForm.addEventListener(
 
 
 reservationList.addEventListener(
+  "click",
+  async event => {
+
+    const button =
+      event.target.closest(
+        "button[data-action]"
+      );
+
+
+    if (!button) {
+      return;
+    }
+
+
+    const card =
+      button.closest(
+        "[data-id]"
+      );
+
+
+    const id =
+      card.dataset.id;
+
+
+    const action =
+      button.dataset.action;
+
+
+    try {
+
+      button.disabled =
+        true;
+
+
+      if (
+        action ===
+        "accept"
+      ) {
+
+        await updateReservation(
+          id,
+          {
+            status:
+              "pending_payment",
+
+            hold_expires_at:
+              new Date(
+                Date.now() +
+                24 *
+                60 *
+                60 *
+                1000
+              ).toISOString()
+          }
+        );
+
+
+        message(
+          portalMessage,
+          "Accepted. The 24-hour payment hold has started."
+        );
+
+      }
+
+
+      if (
+        action ===
+        "decline"
+      ) {
+
+        await updateReservation(
+          id,
+          {
+            status:
+              "declined",
+
+            hold_expires_at:
+              null
+          }
+        );
+
+
+        message(
+          portalMessage,
+          "Reservation request declined."
+        );
+
+      }
+
+
+      if (
+        action ===
+        "cancel"
+      ) {
+
+        const confirmed =
+          window.confirm(
+            "Cancel this reservation and reopen the dates?"
+          );
+
+
+        if (!confirmed) {
+          button.disabled =
+            false;
+
+          return;
+        }
+
+
+        await updateReservation(
+          id,
+          {
+            status:
+              "cancelled",
+
+            hold_expires_at:
+              null
+          }
+        );
+
+
+        message(
+          portalMessage,
+          "Reservation cancelled. The dates are available again."
+        );
+
+      }
+
+
+      if (
+        action ===
+        "paid"
+      ) {
+
+        const amount =
+          card
+            .querySelector(
+              "[data-amount]"
+            )
+            .value;
+
+
+        const method =
+          card
+            .querySelector(
+              "[data-method]"
+            )
+            .value;
+
+
+        if (
+          !amount ||
+          Number(amount) <= 0
+        ) {
+
+          throw new Error(
+            "Enter the payment amount first."
+          );
+
+        }
+
+
+        await addPayment(
+          id,
+          amount,
+          method
+        );
+
+
+        message(
+          portalMessage,
+          `Payment logged as ${method.replaceAll("_", " ")}.`
+        );
+
+      }
+
+
+      await refresh();
+
+
+    } catch (err) {
+
+      message(
+        portalMessage,
+        err.message,
+        true
+      );
+
+
+    } finally {
+
+      button.disabled =
+        false;
+
+    }
+  }
+);
+
+
+pendingReservationList.addEventListener(
   "click",
   async event => {
 
@@ -2921,6 +3858,58 @@ ratePeriodsList.addEventListener(
     }
   }
 );
+
+
+document.addEventListener(
+  "click",
+  event => {
+    const viewButton =
+      event.target.closest(
+        "[data-owner-view]"
+      );
+
+    if (viewButton) {
+      showOwnerView(
+        viewButton.dataset.ownerView
+      );
+      return;
+    }
+
+    const reviewButton =
+      event.target.closest(
+        "[data-dashboard-review]"
+      );
+
+    if (reviewButton) {
+      showOwnerView(
+        "pending"
+      );
+
+      const id =
+        reviewButton.dataset.dashboardReview;
+
+      window.setTimeout(
+        () => {
+          const card =
+            pendingReservationList
+              .querySelector(
+                `[data-id="${id}"]`
+              );
+
+          if (card) {
+            card.scrollIntoView({
+              behavior: "smooth",
+              block: "center"
+            });
+          }
+        },
+        100
+      );
+    }
+  }
+);
+
+
 
 toggleBrokerageFields();
 
