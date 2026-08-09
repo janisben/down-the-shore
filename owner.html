@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Owner Portal | Down the Shore</title>
 <link href="styles.css" rel="stylesheet"/>
+
 <style>
 :root {
   --navy: #0d2b4d;
@@ -92,6 +92,56 @@ button {
   border:0;
   border-radius:8px;
   padding:11px 16px;
+}
+
+.forgot-password {
+  margin-top:14px;
+}
+
+.forgot-password button {
+  padding:0;
+  background:transparent;
+  color:#155aa8;
+  border:0;
+  font-weight:600;
+  text-decoration:underline;
+}
+
+.forgot-password button:hover {
+  color:var(--navy);
+}
+
+.reset-request {
+  margin-top:18px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+}
+
+.reset-request h3 {
+  margin:0 0 6px;
+  color:var(--navy);
+}
+
+.reset-request p {
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+
+.reset-actions {
+  display:flex;
+  gap:8px;
+  margin-top:12px;
+}
+
+.reset-actions button {
+  width:auto;
+}
+
+.reset-actions .secondary {
+  background:#fff;
+  color:var(--navy);
+  border:1px solid #cfd5dd;
 }
 
 .owner-shell {
@@ -315,21 +365,10 @@ button {
   font-size:24px;
 }
 
-.stat-card:nth-child(1) .stat-icon {
-  background:var(--blue-soft);
-}
-
-.stat-card:nth-child(2) .stat-icon {
-  background:var(--green-soft);
-}
-
-.stat-card:nth-child(3) .stat-icon {
-  background:var(--purple-soft);
-}
-
-.stat-card:nth-child(4) .stat-icon {
-  background:var(--gold-soft);
-}
+.stat-card:nth-child(1) .stat-icon { background:var(--blue-soft); }
+.stat-card:nth-child(2) .stat-icon { background:var(--green-soft); }
+.stat-card:nth-child(3) .stat-icon { background:var(--purple-soft); }
+.stat-card:nth-child(4) .stat-icon { background:var(--gold-soft); }
 
 .stat-number {
   font-size:25px;
@@ -722,21 +761,10 @@ button {
   text-overflow:ellipsis;
 }
 
-.dashboard-mini-item.booked {
-  background:#dfe9e4;
-}
-
-.dashboard-mini-item.pending_payment {
-  background:#f3e3ad;
-}
-
-.dashboard-mini-item.pending {
-  background:#eee9df;
-}
-
-.dashboard-mini-item.waitlisted {
-  background:#e8e1f0;
-}
+.dashboard-mini-item.booked { background:#dfe9e4; }
+.dashboard-mini-item.pending_payment { background:#f3e3ad; }
+.dashboard-mini-item.pending { background:#eee9df; }
+.dashboard-mini-item.waitlisted { background:#e8e1f0; }
 
 .meta {
   color:#716f68;
@@ -998,21 +1026,10 @@ button.danger {
   border-radius:2px;
 }
 
-.owner-calendar-item.booked {
-  background:#dfe9e4;
-}
-
-.owner-calendar-item.pending_payment {
-  background:#f3e3ad;
-}
-
-.owner-calendar-item.pending {
-  background:#eee9df;
-}
-
-.owner-calendar-item.waitlisted {
-  background:#e8e1f0;
-}
+.owner-calendar-item.booked { background:#dfe9e4; }
+.owner-calendar-item.pending_payment { background:#f3e3ad; }
+.owner-calendar-item.pending { background:#eee9df; }
+.owner-calendar-item.waitlisted { background:#e8e1f0; }
 
 .owner-calendar-item.cancelled,
 .owner-calendar-item.declined {
@@ -1034,34 +1051,18 @@ button.danger {
   border-radius:2px;
 }
 
-.legend-chip.booked {
-  background:#dfe9e4;
-}
-
-.legend-chip.pending {
-  background:#f3e3ad;
-}
-
-.legend-chip.waitlisted {
-  background:#e8e1f0;
-}
+.legend-chip.booked { background:#dfe9e4; }
+.legend-chip.pending { background:#f3e3ad; }
+.legend-chip.waitlisted { background:#e8e1f0; }
 
 .legend-chip.available {
   background:#faf8f4;
   border:1px solid #ddd;
 }
 
-.cleaning-card.waiting {
-  border-left:5px solid #c9991f;
-}
-
-.cleaning-card.confirmed {
-  border-left:5px solid #4c7a62;
-}
-
-.cleaning-card.completed {
-  border-left:5px solid #777;
-}
+.cleaning-card.waiting { border-left:5px solid #c9991f; }
+.cleaning-card.confirmed { border-left:5px solid #4c7a62; }
+.cleaning-card.completed { border-left:5px solid #777; }
 
 .cleaning-card.cancelled {
   opacity:.65;
@@ -1198,18 +1199,69 @@ button.danger {
   <form id="loginForm" method="post" action="#" onsubmit="return false;">
     <label>
       Email
-      <input name="email" required type="email"/>
+      <input
+        id="ownerEmail"
+        name="email"
+        autocomplete="email"
+        required
+        type="email"
+      />
     </label>
 
     <label>
       Password
-      <input name="password" required type="password"/>
+      <input
+        name="password"
+        autocomplete="current-password"
+        required
+        type="password"
+      />
     </label>
 
     <button class="button" type="submit">
       Sign in
     </button>
   </form>
+
+  <div class="forgot-password">
+    <button id="forgotPasswordButton" type="button">
+      Forgot password?
+    </button>
+  </div>
+
+  <section class="reset-request" hidden id="resetRequestView">
+    <h3>Reset your password</h3>
+
+    <p>
+      Enter the email address for your owner account.
+      We’ll send you a secure password-reset link.
+    </p>
+
+    <label>
+      Email
+      <input
+        id="resetEmail"
+        autocomplete="email"
+        type="email"
+      />
+    </label>
+
+    <div class="reset-actions">
+      <button id="sendResetButton" type="button">
+        Send reset email
+      </button>
+
+      <button
+        class="secondary"
+        id="cancelResetButton"
+        type="button"
+      >
+        Cancel
+      </button>
+    </div>
+
+    <div id="resetMessage"></div>
+  </section>
 
   <div id="loginMessage"></div>
 </section>
@@ -1702,112 +1754,279 @@ Notes
 
 <script>
 (function () {
-  const form = document.getElementById("loginForm");
-  const messageBox = document.getElementById("loginMessage");
+  const form =
+    document.getElementById("loginForm");
+
+  const messageBox =
+    document.getElementById("loginMessage");
+
+  const forgotButton =
+    document.getElementById("forgotPasswordButton");
+
+  const resetView =
+    document.getElementById("resetRequestView");
+
+  const resetEmail =
+    document.getElementById("resetEmail");
+
+  const ownerEmail =
+    document.getElementById("ownerEmail");
+
+  const sendResetButton =
+    document.getElementById("sendResetButton");
+
+  const cancelResetButton =
+    document.getElementById("cancelResetButton");
+
+  const resetMessage =
+    document.getElementById("resetMessage");
+
+  function getConfig() {
+    const cfg =
+      window.SITE_DATA &&
+      window.SITE_DATA.supabase;
+
+    if (
+      !cfg ||
+      !cfg.url ||
+      !cfg.publishableKey
+    ) {
+      throw new Error(
+        "Site login configuration is missing."
+      );
+    }
+
+    return cfg;
+  }
+
+  function showResetMessage(text, isError) {
+    resetMessage.className =
+      isError ? "notice error" : "notice";
+
+    resetMessage.textContent = text;
+  }
+
+  if (forgotButton) {
+    forgotButton.addEventListener(
+      "click",
+      function () {
+        resetView.hidden = false;
+
+        resetMessage.className = "";
+        resetMessage.textContent = "";
+
+        if (ownerEmail && ownerEmail.value) {
+          resetEmail.value =
+            ownerEmail.value.trim();
+        }
+
+        resetEmail.focus();
+      }
+    );
+  }
+
+  if (cancelResetButton) {
+    cancelResetButton.addEventListener(
+      "click",
+      function () {
+        resetView.hidden = true;
+
+        resetMessage.className = "";
+        resetMessage.textContent = "";
+      }
+    );
+  }
+
+  if (sendResetButton) {
+    sendResetButton.addEventListener(
+      "click",
+      async function () {
+        const email =
+          String(resetEmail.value || "")
+            .trim();
+
+        if (!email) {
+          showResetMessage(
+            "Enter your owner email address.",
+            true
+          );
+          return;
+        }
+
+        try {
+          sendResetButton.disabled = true;
+          sendResetButton.textContent =
+            "Sending…";
+
+          resetMessage.className = "";
+          resetMessage.textContent = "";
+
+          const cfg = getConfig();
+
+          const redirectTo =
+            new URL(
+              "reset-password.html",
+              window.location.href
+            ).href;
+
+          const response =
+            await fetch(
+              `${cfg.url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`,
+              {
+                method: "POST",
+                headers: {
+                  "apikey": cfg.publishableKey,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  email
+                })
+              }
+            );
+
+          let body = {};
+
+          try {
+            body = await response.json();
+          } catch (_) {}
+
+          if (!response.ok) {
+            throw new Error(
+              body.msg ||
+              body.message ||
+              body.error_description ||
+              "Could not send the password-reset email."
+            );
+          }
+
+          showResetMessage(
+            "Password-reset email sent. Check your inbox and click the link in the email.",
+            false
+          );
+
+        } catch (error) {
+          showResetMessage(
+            error.message ||
+            "Could not send the password-reset email.",
+            true
+          );
+
+        } finally {
+          sendResetButton.disabled = false;
+          sendResetButton.textContent =
+            "Send reset email";
+        }
+      }
+    );
+  }
 
   if (!form) return;
 
-  form.addEventListener("submit", async function (event) {
-    event.preventDefault();
-    event.stopPropagation();
+  form.addEventListener(
+    "submit",
+    async function (event) {
+      event.preventDefault();
+      event.stopPropagation();
 
-    const submitButton =
-      form.querySelector('button[type="submit"]');
+      const submitButton =
+        form.querySelector(
+          'button[type="submit"]'
+        );
 
-    const formData =
-      new FormData(form);
+      const formData =
+        new FormData(form);
 
-    const email =
-      String(formData.get("email") || "").trim();
+      const email =
+        String(
+          formData.get("email") || ""
+        ).trim();
 
-    const password =
-      String(formData.get("password") || "");
+      const password =
+        String(
+          formData.get("password") || ""
+        );
 
-    if (!email || !password) {
-      messageBox.className = "notice error";
-      messageBox.textContent =
-        "Enter your email and password.";
+      if (!email || !password) {
+        messageBox.className =
+          "notice error";
+
+        messageBox.textContent =
+          "Enter your email and password.";
+
+        return false;
+      }
+
+      try {
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent =
+            "Signing in…";
+        }
+
+        messageBox.className = "";
+        messageBox.textContent = "";
+
+        const cfg = getConfig();
+
+        const response =
+          await fetch(
+            `${cfg.url}/auth/v1/token?grant_type=password`,
+            {
+              method: "POST",
+              headers: {
+                "apikey": cfg.publishableKey,
+                "Content-Type":
+                  "application/json"
+              },
+              body: JSON.stringify({
+                email,
+                password
+              })
+            }
+          );
+
+        const body =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !body.access_token
+        ) {
+          throw new Error(
+            body.msg ||
+            body.error_description ||
+            "Could not sign in."
+          );
+        }
+
+        sessionStorage.setItem(
+          "dts_token",
+          body.access_token
+        );
+
+        window.location.replace(
+          "owner.html"
+        );
+
+      } catch (error) {
+        messageBox.className =
+          "notice error";
+
+        messageBox.textContent =
+          error.message ||
+          "Could not sign in.";
+
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent =
+            "Sign in";
+        }
+      }
+
       return false;
-    }
-
-    try {
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = "Signing in…";
-      }
-
-      messageBox.className = "";
-      messageBox.textContent = "";
-
-      const cfg =
-        window.SITE_DATA &&
-        window.SITE_DATA.supabase;
-
-      if (
-        !cfg ||
-        !cfg.url ||
-        !cfg.publishableKey
-      ) {
-        throw new Error(
-          "Site login configuration is missing."
-        );
-      }
-
-      const response =
-        await fetch(
-          `${cfg.url}/auth/v1/token?grant_type=password`,
-          {
-            method: "POST",
-            headers: {
-              apikey: cfg.publishableKey,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              email,
-              password
-            })
-          }
-        );
-
-      const body =
-        await response.json();
-
-      if (
-        !response.ok ||
-        !body.access_token
-      ) {
-        throw new Error(
-          body.msg ||
-          body.error_description ||
-          "Could not sign in."
-        );
-      }
-
-      sessionStorage.setItem(
-        "dts_token",
-        body.access_token
-      );
-
-      window.location.replace(
-        "owner.html"
-      );
-
-    } catch (error) {
-      messageBox.className =
-        "notice error";
-
-      messageBox.textContent =
-        error.message ||
-        "Could not sign in.";
-
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = "Sign in";
-      }
-    }
-
-    return false;
-  }, true);
+    },
+    true
+  );
 })();
 </script>
 
