@@ -163,3 +163,124 @@ document.addEventListener(
     );
   }
 );
+
+
+document.addEventListener(
+  "click",
+  event => {
+    const button =
+      event.target.closest(
+        'button[data-cleaning-action="save-cleaner"]'
+      );
+
+    if (!button) {
+      return;
+    }
+
+    const card =
+      button.closest(
+        "[data-cleaning-id]"
+      );
+
+    if (!card) {
+      return;
+    }
+
+    const cleaningId =
+      card.dataset.cleaningId;
+
+    const cleaning =
+      currentCleanings.find(
+        item =>
+          item.id ===
+          cleaningId
+      );
+
+    const cleanerName =
+      card
+        .querySelector(
+          "[data-cleaner-name]"
+        )
+        ?.value
+        .trim();
+
+    const cleanerEmail =
+      card
+        .querySelector(
+          "[data-cleaner-email]"
+        )
+        ?.value
+        .trim();
+
+    if (
+      !cleanerEmail ||
+      !cleaning
+    ) {
+      return;
+    }
+
+    const reservation =
+      cleaning.reservation || {};
+
+    window.setTimeout(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/cleaning-assigned",
+              {
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    to:
+                      cleanerEmail,
+
+                    cleanerName:
+                      cleanerName,
+
+                    propertyName:
+                      cleaning.property_name,
+
+                    guestName:
+                      reservation.guest_name ||
+                      "",
+
+                    checkoutDate:
+                      cleaning.checkout_date
+                  })
+              }
+            );
+
+          const result =
+            await response.json();
+
+          if (!response.ok) {
+            console.error(
+              "Cleaner email failed:",
+              result
+            );
+
+            return;
+          }
+
+          console.log(
+            "Cleaner assignment email sent."
+          );
+
+        } catch (error) {
+          console.error(
+            "Cleaner assignment email error:",
+            error
+          );
+        }
+      },
+      500
+    );
+  }
+);
