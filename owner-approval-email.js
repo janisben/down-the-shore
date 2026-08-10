@@ -25,8 +25,8 @@ document.addEventListener(
     const reservation =
       currentReservations.find(
         item =>
-          item.id ===
-          reservationId
+          String(item.id) ===
+          String(reservationId)
       );
 
     if (
@@ -53,32 +53,24 @@ document.addEventListener(
               "/api/create-checkout-session",
               {
                 method: "POST",
-
                 headers: {
                   "Content-Type":
                     "application/json"
                 },
-
                 body:
                   JSON.stringify({
                     reservationId:
                       reservation.id,
-
                     guestName:
                       reservation.guest_name,
-
                     guestEmail:
                       reservation.guest_email,
-
                     propertyName:
                       reservation.property_name,
-
                     arrivalDate:
                       reservation.arrival_date,
-
                     departureDate:
                       reservation.departure_date,
-
                     amount:
                       reservation.amount_due
                   })
@@ -96,7 +88,6 @@ document.addEventListener(
               "Stripe Checkout creation failed:",
               checkoutResult
             );
-
             return;
           }
 
@@ -105,31 +96,23 @@ document.addEventListener(
               "/api/reservation-approved",
               {
                 method: "POST",
-
                 headers: {
                   "Content-Type":
                     "application/json"
                 },
-
                 body:
                   JSON.stringify({
                     to:
                       reservation.guest_email,
-
                     guestName:
                       reservation.guest_name,
-
                     propertyName:
                       reservation.property_name,
-
                     arrivalDate:
                       reservation.arrival_date,
-
                     departureDate:
                       reservation.departure_date,
-
                     holdExpiresAt,
-
                     paymentUrl:
                       checkoutResult.url
                   })
@@ -144,7 +127,6 @@ document.addEventListener(
               "Approval email failed:",
               emailResult
             );
-
             return;
           }
 
@@ -167,7 +149,7 @@ document.addEventListener(
 
 document.addEventListener(
   "click",
-  event => {
+  async event => {
     const button =
       event.target.closest(
         'button[data-cleaning-action="save-cleaner"]'
@@ -177,24 +159,24 @@ document.addEventListener(
       return;
     }
 
+    console.log(
+      "Cleaner Save button detected."
+    );
+
     const card =
       button.closest(
         "[data-cleaning-id]"
       );
 
     if (!card) {
+      console.error(
+        "Cleaner card not found."
+      );
       return;
     }
 
     const cleaningId =
       card.dataset.cleaningId;
-
-    const cleaning =
-      currentCleanings.find(
-        item =>
-          item.id ===
-          cleaningId
-      );
 
     const cleanerName =
       card
@@ -212,75 +194,82 @@ document.addEventListener(
         ?.value
         .trim();
 
-    if (
-      !cleanerEmail ||
-      !cleaning
-    ) {
+    const cleaning =
+      currentCleanings.find(
+        item =>
+          String(item.id) ===
+          String(cleaningId)
+      );
+
+    if (!cleanerEmail) {
+      console.error(
+        "Cleaner email is missing."
+      );
       return;
     }
 
-    const reservation =
-      cleaning.reservation || {};
+    if (!cleaning) {
+      console.error(
+        "Cleaning record not found:",
+        cleaningId
+      );
+      return;
+    }
 
-    window.setTimeout(
-      async () => {
-        try {
-          const response =
-            await fetch(
-              "/api/cleaning-assigned",
-              {
-                method: "POST",
+    try {
+      console.log(
+        "Sending cleaner assignment email to:",
+        cleanerEmail
+      );
 
-                headers: {
-                  "Content-Type":
-                    "application/json"
-                },
-
-                body:
-                  JSON.stringify({
-                    to:
-                      cleanerEmail,
-
-                    cleanerName:
-                      cleanerName,
-
-                    propertyName:
-                      cleaning.property_name,
-
-                    guestName:
-                      reservation.guest_name ||
-                      "",
-
-                    checkoutDate:
-                      cleaning.checkout_date
-                  })
-              }
-            );
-
-          const result =
-            await response.json();
-
-          if (!response.ok) {
-            console.error(
-              "Cleaner email failed:",
-              result
-            );
-
-            return;
+      const response =
+        await fetch(
+          "/api/cleaning-assigned",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+            body:
+              JSON.stringify({
+                to:
+                  cleanerEmail,
+                cleanerName:
+                  cleanerName || "",
+                propertyName:
+                  cleaning.property_name,
+                guestName:
+                  cleaning.reservation?.guest_name ||
+                  "",
+                checkoutDate:
+                  cleaning.checkout_date
+              })
           }
+        );
 
-          console.log(
-            "Cleaner assignment email sent."
-          );
+      const result =
+        await response.json();
 
-        } catch (error) {
-          console.error(
-            "Cleaner assignment email error:",
-            error
-          );
-        }
-      },
-      500
-    );
-  }
+      if (!response.ok) {
+        console.error(
+          "Cleaner email failed:",
+          result
+        );
+        return;
+      }
+
+      console.log(
+        "Cleaner assignment email sent.",
+        result
+      );
+
+    } catch (error) {
+      console.error(
+        "Cleaner assignment email error:",
+        error
+      );
+    }
+  },
+  true
 );
