@@ -4,6 +4,40 @@ const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY
 );
 
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const supabaseSecret =
+  process.env.SUPABASE_SECRET_KEY;
+
+async function getReservation(
+  reservationId
+) {
+  const response =
+    await fetch(
+      `${supabaseUrl}/rest/v1/reservations?id=eq.${encodeURIComponent(
+        reservationId
+      )}&select=*`,
+      {
+        headers: {
+          apikey:
+            supabaseSecret
+        }
+      }
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Could not load reservation."
+    );
+  }
+
+  const rows =
+    await response.json();
+
+  return rows[0] || null;
+}
+
 export default async function handler(
   req,
   res
@@ -16,30 +50,58 @@ export default async function handler(
 
   try {
     const {
-      reservationId,
-      guestName,
-      guestEmail,
-      propertyName,
-      arrivalDate,
-      departureDate,
-      amount
+      reservationId
     } = req.body || {};
 
-    const numericAmount =
-      Number(amount);
+    if (!reservationId) {
+      return res.status(400).json({
+        error:
+          "Reservation ID is required"
+      });
+    }
 
     if (
-      !reservationId ||
-      !guestEmail ||
-      !propertyName ||
-      !arrivalDate ||
-      !departureDate ||
-      !Number.isFinite(numericAmount) ||
-      numericAmount <= 0
+      !process.env.STRIPE_SECRET_KEY ||
+      !supabaseUrl ||
+      !supabaseSecret
+    ) {
+      return res.status(500).json({
+        error:
+          "Server payment configuration is incomplete"
+      });
+    }
+
+    const reservation =
+      await getReservation(
+        reservationId
+      );
+
+    if (!reservation) {
+      return res.status(404).json({
+        error:
+          "Reservation not found"
+      });
+    }
+
+    const amount =
+      Number(
+        reservation.amount_due || 0
+      );
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
     ) {
       return res.status(400).json({
         error:
-          "Missing or invalid reservation payment information"
+          "Reservation does not have a valid amount due"
+      });
+    }
+
+    if (!reservation.guest_email) {
+      return res.status(400).json({
+        error:
+          "Reservation does not have a guest email"
       });
     }
 
@@ -52,28 +114,14 @@ export default async function handler(
         mode: "payment",
 
         customer_email:
-          guestEmail,
+          reservation.guest_email,
 
         client_reference_id:
-          String(reservationId),
+          String(reservation.id),
 
         metadata: {
           reservation_id:
-            String(reservationId),
-
-          guest_name:
-            String(
-              guestName || ""
-            ),
-
-          property_name:
-            String(propertyName),
-
-          arrival_date:
-            String(arrivalDate),
-
-          departure_date:
-            String(departureDate)
+            String(reservation.id)
         },
 
         line_items: [
@@ -85,16 +133,15 @@ export default async function handler(
 
               unit_amount:
                 Math.round(
-                  numericAmount *
-                  100
+                  amount * 100
                 ),
 
               product_data: {
                 name:
-                  `${propertyName} reservation`,
+                  `${reservation.property_name || "Down the Shore"} reservation`,
 
                 description:
-                  `${arrivalDate} to ${departureDate}`
+                  `${reservation.arrival_date} to ${reservation.departure_date}`
               }
             }
           }
