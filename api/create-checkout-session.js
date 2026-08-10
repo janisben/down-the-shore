@@ -1,16 +1,16 @@
-const Stripe = require("stripe");
+import Stripe from "stripe";
 
 const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY
 );
 
-module.exports = async function handler(
+export default async function handler(
   req,
   res
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({
-      error: "Method not allowed."
+      error: "Method not allowed"
     });
   }
 
@@ -25,36 +25,23 @@ module.exports = async function handler(
       amount
     } = req.body || {};
 
+    const numericAmount =
+      Number(amount);
+
     if (
       !reservationId ||
       !guestEmail ||
       !propertyName ||
       !arrivalDate ||
       !departureDate ||
-      !amount
-    ) {
-      return res.status(400).json({
-        error:
-          "Missing required reservation information."
-      });
-    }
-
-    const numericAmount =
-      Number(amount);
-
-    if (
       !Number.isFinite(numericAmount) ||
       numericAmount <= 0
     ) {
       return res.status(400).json({
-        error: "Invalid payment amount."
+        error:
+          "Missing or invalid reservation payment information"
       });
     }
-
-    const amountInCents =
-      Math.round(
-        numericAmount * 100
-      );
 
     const origin =
       req.headers.origin ||
@@ -68,19 +55,23 @@ module.exports = async function handler(
           guestEmail,
 
         client_reference_id:
-          reservationId,
+          String(reservationId),
 
         metadata: {
           reservation_id:
             String(reservationId),
+
           guest_name:
             String(
               guestName || ""
             ),
+
           property_name:
             String(propertyName),
+
           arrival_date:
             String(arrivalDate),
+
           departure_date:
             String(departureDate)
         },
@@ -93,7 +84,10 @@ module.exports = async function handler(
               currency: "usd",
 
               unit_amount:
-                amountInCents,
+                Math.round(
+                  numericAmount *
+                  100
+                ),
 
               product_data: {
                 name:
@@ -114,20 +108,20 @@ module.exports = async function handler(
       });
 
     return res.status(200).json({
-      url: session.url,
-      sessionId: session.id
+      success: true,
+      url: session.url
     });
 
   } catch (error) {
     console.error(
-      "Stripe Checkout error:",
+      "create-checkout-session error:",
       error
     );
 
     return res.status(500).json({
       error:
         error.message ||
-        "Could not start payment."
+        "Could not start Stripe Checkout"
     });
   }
-};
+}
