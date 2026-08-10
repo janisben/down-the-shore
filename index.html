@@ -3,33 +3,190 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Down the Shore</title>
+
+  <title>Down the Shore | Ocean City, NJ</title>
+
+  <meta
+    name="description"
+    content="Thoughtfully hosted Ocean City shore homes, offered directly by the owner."
+  >
+
+  <!-- Social sharing preview -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Down the Shore">
+  <meta
+    property="og:description"
+    content="Come stay Down the Shore. Explore our Ocean City homes, availability and direct booking."
+  >
+  <meta
+    property="og:image"
+    content="https://downtheshoretest.vercel.app/assets/down-the-shore-social.png"
+  >
+  <meta
+    property="og:url"
+    content="https://downtheshoretest.vercel.app/"
+  >
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Down the Shore">
+  <meta
+    name="twitter:description"
+    content="Come stay Down the Shore. Explore our Ocean City homes, availability and direct booking."
+  >
+  <meta
+    name="twitter:image"
+    content="https://downtheshoretest.vercel.app/assets/down-the-shore-social.png"
+  >
+
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
+
 <header class="site-header">
   <a class="brand" href="index.html" data-brand>Down the Shore</a>
-  <nav class="nav"><a href="#homes">Homes</a><a href="#story">Our approach</a><a class="nav-cta" href="#homes">Book direct</a></nav>
+
+  <nav class="nav">
+    <a href="#homes">Homes</a>
+    <a href="#story">Our approach</a>
+    <a class="nav-cta" href="#homes">Book direct</a>
+  </nav>
 </header>
+
 <main>
-<section class="hero"><div class="hero-inner"><div class="eyebrow" data-eyebrow></div><h1 data-headline></h1><p data-intro></p><a class="button button-light" href="#homes">Choose your stay</a></div></section>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow" data-eyebrow></div>
+    <h1 data-headline></h1>
+    <p data-intro></p>
+    <a class="button button-light" href="#homes">
+      Choose your stay
+    </a>
+  </div>
+</section>
+
 <section class="section" id="homes">
-  <div class="section-heading"><div class="eyebrow">Choose your stay</div><h2>Shore homes with a story of their own.</h2><p>A small collection of thoughtfully hosted Ocean City homes, offered directly by their owner.</p></div>
-  <div class="property-grid" data-property-grid></div>
+
+  <div class="section-heading">
+    <div class="eyebrow">Choose your stay</div>
+
+    <h2>
+      Shore homes with a story of their own.
+    </h2>
+
+    <p>
+      A small collection of thoughtfully hosted Ocean City homes,
+      offered directly by their owner.
+    </p>
+  </div>
+
+  <div
+    class="property-grid"
+    data-property-grid
+  ></div>
+
 </section>
-<section class="section section-cream" id="story">
-  <div class="story-grid"><div class="story-photo" role="img" aria-label="A hanging chair in a quiet outdoor nook"></div>
-  <div class="story-copy"><div class="eyebrow">The feeling of being here</div><h2>Less rushing. More porch time.</h2>
-  <p>These are not anonymous rental units. They are independently owned homes prepared with care for real time together.</p>
-  <div class="promise-list">
-    <div class="promise"><strong>Comfort without fuss</strong>Everything guests need to settle in, exhale, and enjoy their stay.</div>
-    <div class="promise"><strong>Direct relationships</strong>Guests communicate directly with Janis, the owner.</div>
-    <div class="promise"><strong>Clear pricing</strong>Published rental prices and fees are shown before you send a booking request.</div>
-  </div></div></div>
+
+<section
+  class="section section-cream"
+  id="story"
+>
+
+  <div class="story-grid">
+
+    <div
+      class="story-photo"
+      role="img"
+      aria-label="A hanging chair in a quiet outdoor nook"
+    ></div>
+
+    <div class="story-copy">
+
+      <div class="eyebrow">
+        The feeling of being here
+      </div>
+
+      <h2>
+        Less rushing. More porch time.
+      </h2>
+
+      <p>
+        These are not anonymous rental units.
+        They are independently owned homes prepared
+        with care for real time together.
+      </p>
+
+      <div class="promise-list">
+
+        <div class="promise">
+          <strong>Comfort without fuss</strong>
+          Everything guests need to settle in,
+          exhale, and enjoy their stay.
+        </div>
+
+        <div class="promise">
+          <strong>Direct relationships</strong>
+          Guests communicate directly with Janis,
+          the owner.
+        </div>
+
+        <div class="promise">
+          <strong>Clear pricing</strong>
+          Published rental prices and fees are shown
+          before you send a booking request.
+        </div>
+
+      </div>
+    </div>
+  </div>
+
 </section>
-<section class="booking-strip"><h2>Ready to go down the shore?</h2><p>Choose a home, see the published price and availability, and send a direct booking request.</p><a class="button button-light" href="#homes">See the homes</a></section>
+
+<section class="booking-strip">
+
+  <h2>
+    Ready to go down the shore?
+  </h2>
+
+  <p>
+    Choose a home, see the published price and availability,
+    and send a direct booking request.
+  </p>
+
+  <a
+    class="button button-light"
+    href="#homes"
+  >
+    See the homes
+  </a>
+
+</section>
+
 </main>
-<footer class="site-footer"><div>© <span id="footerYear"></span> <span data-brand>Down the Shore</span></div><div><span data-domain></span></div></footer>
-<script src="site-data.js"></script><script src="script.js"></script>
-<script>document.getElementById("footerYear").textContent=new Date().getFullYear();renderHome();</script>
-</body></html>
+
+<footer class="site-footer">
+
+  <div>
+    © <span id="footerYear"></span>
+    <span data-brand>Down the Shore</span>
+  </div>
+
+  <div>
+    <span data-domain></span>
+  </div>
+
+</footer>
+
+<script src="site-data.js"></script>
+<script src="script.js"></script>
+
+<script>
+  document.getElementById("footerYear").textContent =
+    new Date().getFullYear();
+
+  renderHome();
+</script>
+
+</body>
+</html>
