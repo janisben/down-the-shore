@@ -20,6 +20,7 @@ let currentRatePeriods = [];
 let currentPayments = [];
 let currentPaymentSchedule = [];
 let currentPropertyPhotos = [];
+let currentLeases = [];
 
 
 
@@ -906,6 +907,230 @@ async function movePhoto(photo, direction) {
   );
 }
 
+
+
+async function loadLeases() {
+  currentLeases =
+    await fetchTable(
+      "leases",
+      "?select=*&order=created_at.desc"
+    );
+
+  return currentLeases;
+}
+
+
+function leaseForReservation(
+  reservationId
+) {
+  return currentLeases.find(
+    lease =>
+      lease.reservation_id ===
+      reservationId
+  ) || null;
+}
+
+
+async function createLeaseForReservation(
+  reservation
+) {
+  const existing =
+    leaseForReservation(
+      reservation.id
+    );
+
+  if (existing) {
+    throw new Error(
+      "A lease already exists for this reservation."
+    );
+  }
+
+  const rentalType =
+    reservation.rental_type ||
+    "standard";
+
+  const leasePayload = {
+    reservation_id:
+      reservation.id,
+    lease_type:
+      rentalType,
+    status:
+      "draft",
+    lease_data: {
+      reservation_id:
+        reservation.id,
+      property_id:
+        reservation.property_id,
+      property_name:
+        reservation.property_name,
+      guest_name:
+        reservation.guest_name ||
+        "",
+      guest_email:
+        reservation.guest_email ||
+        "",
+      guest_phone:
+        reservation.guest_phone ||
+        "",
+      arrival_date:
+        reservation.arrival_date,
+      departure_date:
+        reservation.departure_date,
+      adults:
+        Number(
+          reservation.adults || 0
+        ),
+      children:
+        Number(
+          reservation.children || 0
+        ),
+      dogs:
+        Number(
+          reservation.dogs || 0
+        ),
+      dog_names:
+        reservation.dog_names ||
+        "",
+      amount_due:
+        Number(
+          reservation.amount_due || 0
+        ),
+      rental_type:
+        rentalType,
+      booking_source:
+        reservation.booking_source ||
+        ""
+    }
+  };
+
+  const leaseRes =
+    await fetch(
+      `${cfg.url}/rest/v1/leases`,
+      {
+        method: "POST",
+        headers:
+          headers({
+            Prefer:
+              "return=representation"
+          }),
+        body:
+          JSON.stringify(
+            leasePayload
+          )
+      }
+    );
+
+  if (!leaseRes.ok) {
+    throw new Error(
+      await leaseRes.text()
+    );
+  }
+
+  const created =
+    await leaseRes.json();
+
+  const lease =
+    created[0];
+
+  if (!lease) {
+    throw new Error(
+      "Lease was created but could not be loaded."
+    );
+  }
+
+  const signerPayload = [
+    {
+      lease_id:
+        lease.id,
+      signer_role:
+        "tenant",
+      signer_name:
+        reservation.guest_name ||
+        null,
+      signer_email:
+        reservation.guest_email ||
+        null,
+      signer_phone:
+        reservation.guest_phone ||
+        null,
+      is_required:
+        true,
+      sort_order:
+        1
+    },
+    {
+      lease_id:
+        lease.id,
+      signer_role:
+        "owner",
+      signer_name:
+        "Janis Benstock",
+      signer_email:
+        null,
+      signer_phone:
+        null,
+      is_required:
+        true,
+      sort_order:
+        99
+    }
+  ];
+
+  const signerRes =
+    await fetch(
+      `${cfg.url}/rest/v1/lease_signers`,
+      {
+        method: "POST",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+        body:
+          JSON.stringify(
+            signerPayload
+          )
+      }
+    );
+
+  if (!signerRes.ok) {
+    throw new Error(
+      await signerRes.text()
+    );
+  }
+
+  const eventRes =
+    await fetch(
+      `${cfg.url}/rest/v1/lease_events`,
+      {
+        method: "POST",
+        headers:
+          headers({
+            Prefer:
+              "return=minimal"
+          }),
+        body:
+          JSON.stringify({
+            lease_id:
+              lease.id,
+            event_type:
+              "lease_created",
+            event_data: {
+              source:
+                "owner_portal"
+            }
+          })
+      }
+    );
+
+  if (!eventRes.ok) {
+    throw new Error(
+      await eventRes.text()
+    );
+  }
+
+  return lease;
+}
 
 async function loadPayments() {
   currentPayments =
@@ -3139,6 +3364,11 @@ function paymentScheduleMarkup(
 
 
 function reservationCard(r) {
+  const lease =
+    leaseForReservation(
+      r.id
+    );
+
   const status =
     r.status ||
     "pending";
@@ -3311,6 +3541,17 @@ function reservationCard(r) {
           ${paymentStatus.replaceAll("_", " ")}
         </span>
 
+        ${
+          lease
+            ? `
+              <span class="badge">
+                lease:
+                ${lease.status.replaceAll("_", " ")}
+              </span>
+            `
+            : ""
+        }
+
 
         ${
           r.hold_expires_at &&
@@ -3437,6 +3678,23 @@ function reservationCard(r) {
             : ""
         }
 
+
+        ${
+          !lease &&
+          (
+            status === "pending_payment" ||
+            status === "booked"
+          )
+            ? `
+              <button
+                class="primary"
+                data-action="create_lease"
+              >
+                Create lease
+              </button>
+            `
+            : ""
+        }
 
         ${
           showCancel
@@ -4320,6 +4578,7 @@ async function refresh() {
     await loadCleanings();
     await loadRatePeriods();
     await loadPropertyPhotos();
+    await loadLeases();
     await loadPayments();
     await loadPaymentSchedule();
 
@@ -4913,6 +5172,33 @@ reservationList.addEventListener(
 
       if (
         action ===
+        "create_lease"
+      ) {
+        const reservation =
+          currentReservations.find(
+            item =>
+              item.id === id
+          );
+
+        if (!reservation) {
+          throw new Error(
+            "Reservation could not be found."
+          );
+        }
+
+        await createLeaseForReservation(
+          reservation
+        );
+
+        message(
+          portalMessage,
+          "Lease created. Next we will connect the guest signing page."
+        );
+      }
+
+
+      if (
+        action ===
         "paid"
       ) {
 
@@ -5172,6 +5458,33 @@ pendingReservationList.addEventListener(
       }
 
 
+
+
+      if (
+        action ===
+        "create_lease"
+      ) {
+        const reservation =
+          currentReservations.find(
+            item =>
+              item.id === id
+          );
+
+        if (!reservation) {
+          throw new Error(
+            "Reservation could not be found."
+          );
+        }
+
+        await createLeaseForReservation(
+          reservation
+        );
+
+        message(
+          portalMessage,
+          "Lease created. Next we will connect the guest signing page."
+        );
+      }
 
 
       if (
