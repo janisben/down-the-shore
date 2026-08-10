@@ -6,6 +6,7 @@
 <title>Owner Portal | Down the Shore</title>
 <link href="styles.css" rel="stylesheet"/>
 
+
 <style>
 :root {
   --navy: #0d2b4d;
@@ -24,7 +25,9 @@
   --shadow: 0 8px 28px rgba(22, 38, 57, .07);
 }
 
+
 * { box-sizing: border-box; }
+
 
 body {
   margin:0;
@@ -33,6 +36,7 @@ body {
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+
 button,
 input,
 select,
@@ -40,19 +44,23 @@ textarea {
   font: inherit;
 }
 
+
 button {
   cursor:pointer;
 }
 
+
 [hidden] {
   display:none !important;
 }
+
 
 .wrap {
   max-width:none;
   margin:0;
   padding:0;
 }
+
 
 .card {
   background:#fff;
@@ -62,16 +70,19 @@ button {
   border-radius:14px;
 }
 
+
 .login {
   max-width:440px;
   margin:60px auto;
   box-shadow:var(--shadow);
 }
 
+
 .login h1 {
   font-family:Georgia,serif;
   color:var(--navy);
 }
+
 
 .login label {
   display:block;
@@ -79,12 +90,14 @@ button {
   font-weight:600;
 }
 
+
 .login input {
   width:100%;
   padding:11px;
   border:1px solid #cfd5dd;
   border-radius:8px;
 }
+
 
 .login button {
   background:var(--navy);
@@ -94,9 +107,11 @@ button {
   padding:11px 16px;
 }
 
+
 .forgot-password {
   margin-top:14px;
 }
+
 
 .forgot-password button {
   padding:0;
@@ -107,9 +122,11 @@ button {
   text-decoration:underline;
 }
 
+
 .forgot-password button:hover {
   color:var(--navy);
 }
+
 
 .reset-request {
   margin-top:18px;
@@ -117,10 +134,12 @@ button {
   border-top:1px solid var(--line);
 }
 
+
 .reset-request h3 {
   margin:0 0 6px;
   color:var(--navy);
 }
+
 
 .reset-request p {
   color:var(--muted);
@@ -128,15 +147,18 @@ button {
   line-height:1.5;
 }
 
+
 .reset-actions {
   display:flex;
   gap:8px;
   margin-top:12px;
 }
 
+
 .reset-actions button {
   width:auto;
 }
+
 
 .reset-actions .secondary {
   background:#fff;
@@ -144,11 +166,13 @@ button {
   border:1px solid #cfd5dd;
 }
 
+
 .owner-shell {
   min-height:100vh;
   display:grid;
   grid-template-columns:292px minmax(0,1fr);
 }
+
 
 .owner-sidebar {
   position:sticky;
@@ -161,6 +185,7 @@ button {
   flex-direction:column;
 }
 
+
 .owner-logo {
   display:flex;
   align-items:center;
@@ -169,6 +194,7 @@ button {
   color:var(--navy);
 }
 
+
 .owner-logo-mark {
   width:50px;
   height:50px;
@@ -176,10 +202,12 @@ button {
   flex:0 0 auto;
 }
 
+
 .owner-logo-mark svg {
   width:100%;
   height:100%;
 }
+
 
 .owner-logo-title {
   font-family:Georgia,serif;
@@ -188,6 +216,7 @@ button {
   line-height:1;
 }
 
+
 .owner-logo-subtitle {
   letter-spacing:.22em;
   font-size:10px;
@@ -195,11 +224,13 @@ button {
   font-weight:700;
 }
 
+
 .owner-nav {
   display:flex;
   flex-direction:column;
   gap:5px;
 }
+
 
 .owner-nav-link {
   border:0;
@@ -215,20 +246,24 @@ button {
   font-weight:500;
 }
 
+
 .owner-nav-link:hover {
   background:#f4f7fa;
 }
+
 
 .owner-nav-link.active {
   background:var(--navy);
   color:#fff;
 }
 
+
 .nav-icon {
   width:22px;
   font-size:19px;
   text-align:center;
 }
+
 
 .nav-count {
   margin-left:auto;
@@ -242,6 +277,7 @@ button {
   font-weight:700;
 }
 
+
 .owner-nav-label {
   color:#818895;
   font-size:10px;
@@ -250,10 +286,12 @@ button {
   padding:22px 14px 7px;
 }
 
+
 .owner-main {
   min-width:0;
   padding:28px 34px 48px;
 }
+
 
 .owner-topbar {
   display:flex;
@@ -263,16 +301,19 @@ button {
   margin-bottom:24px;
 }
 
+
 .owner-topbar h1 {
   margin:0;
   font-size:28px;
   color:var(--navy);
 }
 
+
 .owner-topbar p {
   margin:6px 0 0;
   color:var(--muted);
 }
+
 
 .owner-profile {
   display:flex;
@@ -282,12 +323,14 @@ button {
   border-left:1px solid var(--line);
 }
 
+
 .owner-profile span {
   display:block;
   color:var(--muted);
   font-size:12px;
   margin-top:2px;
 }
+
 
 .owner-avatar {
   width:42px;
@@ -300,13 +343,16 @@ button {
   font-weight:700;
 }
 
+
 .owner-panel {
   display:none;
 }
 
+
 .owner-panel.active {
   display:block;
 }
+
 
 .panel-heading {
   display:flex;
@@ -316,6 +362,7 @@ button {
   margin:0 0 18px;
 }
 
+
 .panel-heading h2,
 .dashboard-card h2 {
   margin:4px 0 0;
@@ -323,12 +370,14 @@ button {
   font-size:24px;
 }
 
+
 .section-kicker {
   font-size:10px;
   letter-spacing:.18em;
   font-weight:800;
   color:#8a919d;
 }
+
 
 .primary-dashboard-btn {
   background:var(--navy);
@@ -338,12 +387,14 @@ button {
   padding:10px 14px;
 }
 
+
 .dashboard-stats {
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));
   gap:16px;
   margin-bottom:18px;
 }
+
 
 .stat-card {
   background:#fff;
@@ -356,6 +407,7 @@ button {
   box-shadow:0 2px 10px rgba(22,38,57,.025);
 }
 
+
 .stat-icon {
   width:48px;
   height:48px;
@@ -365,10 +417,12 @@ button {
   font-size:24px;
 }
 
+
 .stat-card:nth-child(1) .stat-icon { background:var(--blue-soft); }
 .stat-card:nth-child(2) .stat-icon { background:var(--green-soft); }
 .stat-card:nth-child(3) .stat-icon { background:var(--purple-soft); }
 .stat-card:nth-child(4) .stat-icon { background:var(--gold-soft); }
+
 
 .stat-number {
   font-size:25px;
@@ -376,11 +430,13 @@ button {
   color:#172334;
 }
 
+
 .stat-label {
   font-size:13px;
   color:#4f5966;
   margin-top:2px;
 }
+
 
 .stat-sub {
   color:#89909a;
@@ -388,12 +444,14 @@ button {
   margin-top:3px;
 }
 
+
 .dashboard-grid {
   display:grid;
   grid-template-columns:minmax(0,1.65fr) minmax(330px,.75fr);
   gap:18px;
   align-items:start;
 }
+
 
 .dashboard-card {
   background:#fff;
@@ -403,6 +461,7 @@ button {
   box-shadow:var(--shadow);
 }
 
+
 .dashboard-card-head {
   display:flex;
   justify-content:space-between;
@@ -410,6 +469,7 @@ button {
   gap:12px;
   margin-bottom:15px;
 }
+
 
 .text-action {
   border:0;
@@ -419,9 +479,11 @@ button {
   padding:6px;
 }
 
+
 .upcoming-card {
   margin-top:18px;
 }
+
 
 .upcoming-events {
   display:grid;
@@ -429,12 +491,14 @@ button {
   gap:12px;
 }
 
+
 .upcoming-event {
   border:1px solid var(--line);
   border-radius:12px;
   padding:14px;
   min-height:128px;
 }
+
 
 .event-type {
   display:inline-block;
@@ -446,20 +510,24 @@ button {
   margin-bottom:10px;
 }
 
+
 .event-type.checkin {
   background:var(--green-soft);
   color:#35643e;
 }
+
 
 .event-type.checkout {
   background:var(--purple-soft);
   color:#594878;
 }
 
+
 .event-type.payment {
   background:var(--gold-soft);
   color:#725600;
 }
+
 
 .payment-summary {
   margin-top:14px;
@@ -469,11 +537,13 @@ button {
   border-radius:10px;
 }
 
+
 .payment-summary-grid {
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:10px;
 }
+
 
 .payment-summary-item {
   padding:10px;
@@ -482,10 +552,12 @@ button {
   border-radius:8px;
 }
 
+
 .payment-summary-label {
   font-size:11px;
   color:var(--muted);
 }
+
 
 .payment-summary-value {
   font-size:18px;
@@ -494,6 +566,7 @@ button {
   margin-top:3px;
 }
 
+
 .payment-schedule-summary {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -501,9 +574,11 @@ button {
   margin:10px 0 12px;
 }
 
+
 .payment-schedule-summary .payment-summary-item {
   background:#fffdf7;
 }
+
 
 .payment-schedule-warning {
   margin-top:8px;
@@ -512,16 +587,19 @@ button {
   font-weight:600;
 }
 
+
 .use-remaining-btn {
   background:var(--gold-soft) !important;
   color:#725600 !important;
   border-color:#e0c275 !important;
 }
 
+
 .payment-schedule,
 .payment-history {
   margin-top:14px;
 }
+
 
 .payment-schedule h3,
 .payment-history h3 {
@@ -530,11 +608,13 @@ button {
   color:var(--navy);
 }
 
+
 .payment-schedule-list,
 .payment-history-list {
   display:grid;
   gap:8px;
 }
+
 
 .payment-schedule-row {
   display:grid;
@@ -547,6 +627,7 @@ button {
   background:#fff;
 }
 
+
 .payment-history-row {
   display:grid;
   grid-template-columns:1fr 1fr 1fr;
@@ -558,6 +639,7 @@ button {
   background:#fff;
 }
 
+
 .payment-schedule-row input,
 .payment-schedule-row select {
   width:100%;
@@ -565,6 +647,7 @@ button {
   border:1px solid #cfd5dd;
   border-radius:7px;
 }
+
 
 .payment-installment-status {
   font-size:11px;
@@ -574,25 +657,30 @@ button {
   display:inline-block;
 }
 
+
 .payment-installment-status.paid {
   background:var(--green-soft);
   color:#35643e;
 }
+
 
 .payment-installment-status.partial {
   background:var(--gold-soft);
   color:#725600;
 }
 
+
 .payment-installment-status.due {
   background:var(--rose-soft);
   color:#87362f;
 }
 
+
 .payment-installment-status.upcoming {
   background:var(--blue-soft);
   color:#285e91;
 }
+
 
 .payment-add-schedule {
   margin-top:10px;
@@ -602,9 +690,11 @@ button {
   background:#fbfcfd;
 }
 
+
 .payment-add-schedule .row {
   align-items:end;
 }
+
 
 .payment-add-schedule label,
 .payment-log-row label {
@@ -615,6 +705,7 @@ button {
   font-weight:600;
 }
 
+
 .payment-add-schedule input,
 .payment-log-row input,
 .payment-log-row select {
@@ -622,6 +713,7 @@ button {
   border:1px solid #cfd5dd;
   border-radius:7px;
 }
+
 
 .payment-log-row {
   margin-top:12px;
@@ -631,10 +723,12 @@ button {
   align-items:end;
 }
 
+
 .owner-calendar-item.payment_due {
   background:var(--gold-soft);
   color:#725600;
 }
+
 
 .event-date {
   font-size:24px;
@@ -642,10 +736,12 @@ button {
   color:var(--navy);
 }
 
+
 .event-property {
   margin-top:6px;
   font-weight:700;
 }
+
 
 .event-meta {
   color:var(--muted);
@@ -654,10 +750,12 @@ button {
   margin-top:4px;
 }
 
+
 .dashboard-pending-list {
   display:grid;
   gap:12px;
 }
+
 
 .pending-mini {
   border:1px solid var(--line);
@@ -665,11 +763,13 @@ button {
   padding:14px;
 }
 
+
 .pending-mini-top {
   display:flex;
   justify-content:space-between;
   gap:12px;
 }
+
 
 .pending-mini h3 {
   margin:0;
@@ -677,20 +777,24 @@ button {
   color:var(--navy);
 }
 
+
 .pending-mini .amount {
   font-weight:700;
   white-space:nowrap;
 }
 
+
 .pending-mini .meta {
   margin-top:8px;
 }
+
 
 .pending-mini-actions {
   display:flex;
   gap:8px;
   margin-top:12px;
 }
+
 
 .pending-mini-actions button {
   flex:1;
@@ -700,15 +804,18 @@ button {
   background:#fff;
 }
 
+
 .pending-mini-actions .review {
   background:var(--navy);
   color:#fff;
   border-color:var(--navy);
 }
 
+
 .dashboard-calendar-card #dashboardCalendar {
   overflow:auto;
 }
+
 
 .dashboard-calendar-preview-title {
   text-align:center;
@@ -717,21 +824,25 @@ button {
   margin:4px 0 12px;
 }
 
+
 .dashboard-calendar-properties {
   display:grid;
   gap:14px;
 }
+
 
 .dashboard-calendar-property h3 {
   margin:0 0 8px;
   font-size:14px;
 }
 
+
 .dashboard-mini-grid {
   display:grid;
   grid-template-columns:repeat(7,1fr);
   gap:3px;
 }
+
 
 .dashboard-mini-day {
   min-height:44px;
@@ -742,13 +853,16 @@ button {
   overflow:hidden;
 }
 
+
 .dashboard-mini-day.blank {
   visibility:hidden;
 }
 
+
 .dashboard-mini-date {
   font-weight:700;
 }
+
 
 .dashboard-mini-item {
   display:block;
@@ -761,16 +875,19 @@ button {
   text-overflow:ellipsis;
 }
 
+
 .dashboard-mini-item.booked { background:#dfe9e4; }
 .dashboard-mini-item.pending_payment { background:#f3e3ad; }
 .dashboard-mini-item.pending { background:#eee9df; }
 .dashboard-mini-item.waitlisted { background:#e8e1f0; }
+
 
 .meta {
   color:#716f68;
   font-size:14px;
   line-height:1.6;
 }
+
 
 .badge {
   display:inline-block;
@@ -781,6 +898,7 @@ button {
   border-radius:5px;
 }
 
+
 .notice {
   padding:12px;
   background:#e4ede9;
@@ -788,16 +906,19 @@ button {
   border-radius:8px;
 }
 
+
 .error {
   background:#f4e3e1;
   color:#7a2f2a;
 }
+
 
 .row {
   display:flex;
   gap:10px;
   flex-wrap:wrap;
 }
+
 
 .res {
   display:grid;
@@ -806,12 +927,14 @@ button {
   align-items:start;
 }
 
+
 .actions {
   display:flex;
   gap:8px;
   flex-wrap:wrap;
   align-items:flex-start;
 }
+
 
 .actions button,
 .money button,
@@ -829,6 +952,7 @@ button {
   background:#fff;
 }
 
+
 .actions .primary,
 button.primary {
   background:var(--navy);
@@ -836,9 +960,11 @@ button.primary {
   border-color:var(--navy);
 }
 
+
 button.danger {
   color:#8a2c24;
 }
+
 
 .money {
   margin-top:14px;
@@ -846,9 +972,11 @@ button.danger {
   border-top:1px solid #ddd;
 }
 
+
 .payment-row {
   align-items:center;
 }
+
 
 .payment-row input,
 .payment-row select {
@@ -857,14 +985,17 @@ button.danger {
   box-sizing:border-box;
 }
 
+
 .manual-form {
   margin-bottom:0;
 }
+
 
 .manual-form h2,
 .embedded-section-heading {
   display:none !important;
 }
+
 
 .form-grid {
   display:grid;
@@ -872,12 +1003,14 @@ button.danger {
   gap:14px;
 }
 
+
 .form-grid label {
   display:flex;
   flex-direction:column;
   gap:5px;
   font-weight:600;
 }
+
 
 .form-grid input,
 .form-grid select,
@@ -890,20 +1023,24 @@ button.danger {
   border-radius:7px;
 }
 
+
 .full {
   grid-column:1 / -1;
 }
+
 
 .brokerage-fields {
   display:none;
   grid-column:1 / -1;
 }
 
+
 .brokerage-fields.show {
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:14px;
 }
+
 
 #propertySettingsSection,
 #ratesSection,
@@ -912,6 +1049,7 @@ button.danger {
   margin-bottom:18px;
 }
 
+
 .property-settings-list,
 .rates-list,
 .cleaning-list {
@@ -919,6 +1057,7 @@ button.danger {
   gap:12px;
   margin-top:18px;
 }
+
 
 .property-settings-card,
 .rate-card,
@@ -929,6 +1068,7 @@ button.danger {
   border-radius:10px;
 }
 
+
 .property-settings-grid,
 .rate-card-grid {
   display:grid;
@@ -936,6 +1076,7 @@ button.danger {
   gap:10px;
   align-items:end;
 }
+
 
 .property-settings-grid label,
 .rate-card label,
@@ -946,6 +1087,7 @@ button.danger {
   font-weight:600;
   font-size:13px;
 }
+
 
 .property-settings-grid input,
 .rate-card input,
@@ -962,6 +1104,7 @@ button.danger {
   border-radius:7px;
 }
 
+
 .rate-blocked-row {
   display:flex !important;
   flex-direction:row !important;
@@ -970,21 +1113,26 @@ button.danger {
   padding-bottom:9px;
 }
 
+
 .rate-blocked-row input {
   width:auto;
 }
+
 
 #ownerCalendar {
   width:100%;
 }
 
+
 .calendar-property {
   margin-bottom:24px;
 }
 
+
 .calendar-property h3 {
   margin:0 0 12px;
 }
+
 
 .owner-calendar-grid {
   display:grid;
@@ -992,12 +1140,14 @@ button.danger {
   gap:4px;
 }
 
+
 .owner-calendar-weekday {
   text-align:center;
   font-size:11px;
   color:#716f68;
   padding:5px 0;
 }
+
 
 .owner-calendar-day {
   min-height:68px;
@@ -1008,14 +1158,17 @@ button.danger {
   font-size:12px;
 }
 
+
 .owner-calendar-day.blank {
   visibility:hidden;
 }
+
 
 .owner-calendar-date {
   font-weight:600;
   margin-bottom:5px;
 }
+
 
 .owner-calendar-item {
   display:block;
@@ -1026,10 +1179,12 @@ button.danger {
   border-radius:2px;
 }
 
+
 .owner-calendar-item.booked { background:#dfe9e4; }
 .owner-calendar-item.pending_payment { background:#f3e3ad; }
 .owner-calendar-item.pending { background:#eee9df; }
 .owner-calendar-item.waitlisted { background:#e8e1f0; }
+
 
 .owner-calendar-item.cancelled,
 .owner-calendar-item.declined {
@@ -1038,6 +1193,7 @@ button.danger {
   text-decoration:line-through;
 }
 
+
 .owner-calendar-legend {
   display:flex;
   gap:10px;
@@ -1045,32 +1201,39 @@ button.danger {
   margin-top:16px;
 }
 
+
 .legend-chip {
   padding:5px 8px;
   font-size:12px;
   border-radius:2px;
 }
 
+
 .legend-chip.booked { background:#dfe9e4; }
 .legend-chip.pending { background:#f3e3ad; }
 .legend-chip.waitlisted { background:#e8e1f0; }
+
 
 .legend-chip.available {
   background:#faf8f4;
   border:1px solid #ddd;
 }
 
+
 .cleaning-card.waiting { border-left:5px solid #c9991f; }
 .cleaning-card.confirmed { border-left:5px solid #4c7a62; }
 .cleaning-card.completed { border-left:5px solid #777; }
+
 
 .cleaning-card.cancelled {
   opacity:.65;
 }
 
+
 .cleaning-card h3 {
   margin:0 0 6px;
 }
+
 
 .cleaning-status {
   display:inline-block;
@@ -1080,6 +1243,7 @@ button.danger {
   background:#f5f1e8;
 }
 
+
 .cleaning-warning {
   margin-top:10px;
   padding:9px 10px;
@@ -1087,10 +1251,12 @@ button.danger {
   font-size:13px;
 }
 
+
 #pendingReservationList .card,
 #reservationList .card {
   box-shadow:none;
 }
+
 
 .empty-state {
   color:var(--muted);
@@ -1101,28 +1267,34 @@ button.danger {
   background:#fff;
 }
 
+
 @media (max-width:1100px) {
   .owner-shell {
     grid-template-columns:230px minmax(0,1fr);
   }
 
+
   .dashboard-stats {
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
+
   .dashboard-grid {
     grid-template-columns:1fr;
   }
+
 
   .upcoming-events {
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
 
+
 @media (max-width:760px) {
   .owner-shell {
     display:block;
   }
+
 
   .owner-sidebar {
     position:static;
@@ -1131,26 +1303,32 @@ button.danger {
     border-bottom:1px solid var(--line);
   }
 
+
   .owner-nav {
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
+
   .owner-nav-label {
     grid-column:1 / -1;
   }
+
 
   .owner-main {
     padding:20px 14px 36px;
   }
 
+
   .owner-topbar {
     align-items:flex-start;
   }
 
+
   .owner-profile {
     display:none;
   }
+
 
   .dashboard-stats,
   .upcoming-events,
@@ -1162,25 +1340,30 @@ button.danger {
     grid-template-columns:1fr;
   }
 
+
   .payment-summary-grid,
   .payment-schedule-row,
   .payment-history-row {
     grid-template-columns:1fr;
   }
 
+
   .payment-schedule-summary {
     grid-template-columns:1fr;
   }
+
 
   .owner-calendar-grid {
     grid-template-columns:repeat(7,minmax(40px,1fr));
     overflow-x:auto;
   }
 
+
   .owner-calendar-day {
     min-height:60px;
     padding:4px;
   }
+
 
   .full {
     grid-column:auto;
@@ -1189,12 +1372,15 @@ button.danger {
 </style>
 </head>
 
+
 <body>
 <div class="wrap">
+
 
 <section class="card login" id="loginView">
   <div class="eyebrow">OWNER PORTAL</div>
   <h1>Down the Shore</h1>
+
 
   <form id="loginForm">
     <label>
@@ -1208,6 +1394,7 @@ button.danger {
       />
     </label>
 
+
     <label>
       Password
       <input
@@ -1218,10 +1405,12 @@ button.danger {
       />
     </label>
 
+
     <button class="button" type="submit">
       Sign in
     </button>
   </form>
+
 
   <div class="forgot-password">
     <button id="forgotPasswordButton" type="button">
@@ -1229,13 +1418,16 @@ button.danger {
     </button>
   </div>
 
+
   <section class="reset-request" hidden id="resetRequestView">
     <h3>Reset your password</h3>
+
 
     <p>
       Enter the email address for your owner account.
       We’ll send you a secure password-reset link.
     </p>
+
 
     <label>
       Email
@@ -1246,10 +1438,12 @@ button.danger {
       />
     </label>
 
+
     <div class="reset-actions">
       <button id="sendResetButton" type="button">
         Send reset email
       </button>
+
 
       <button
         class="secondary"
@@ -1260,17 +1454,23 @@ button.danger {
       </button>
     </div>
 
+
     <div id="resetMessage"></div>
   </section>
+
 
   <div id="loginMessage"></div>
 </section>
 
+
 <section hidden id="portalView">
+
 
 <div class="owner-shell">
 
+
 <aside class="owner-sidebar">
+
 
 <div class="owner-logo">
 <div aria-hidden="true" class="owner-logo-mark">
@@ -1283,23 +1483,28 @@ button.danger {
 </svg>
 </div>
 
+
 <div>
 <div class="owner-logo-title">Down the Shore</div>
 <div class="owner-logo-subtitle">OWNER PORTAL</div>
 </div>
 </div>
 
+
 <nav aria-label="Owner portal" class="owner-nav">
+
 
 <button class="owner-nav-link active" data-owner-view="dashboard" type="button">
 <span class="nav-icon">⌂</span>
 <span>Dashboard</span>
 </button>
 
+
 <button class="owner-nav-link" data-owner-view="calendar" type="button">
 <span class="nav-icon">▣</span>
 <span>Calendar</span>
 </button>
+
 
 <button class="owner-nav-link" data-owner-view="pending" type="button">
 <span class="nav-icon">✓</span>
@@ -1307,45 +1512,56 @@ button.danger {
 <span class="nav-count" hidden id="sidebarPendingCount"></span>
 </button>
 
+
 <div class="owner-nav-label">MANAGE</div>
+
 
 <button class="owner-nav-link" data-owner-view="reservations" type="button">
 <span class="nav-icon">▤</span>
 <span>Reservations</span>
 </button>
 
+
 <button class="owner-nav-link" data-owner-view="add-reservation" type="button">
 <span class="nav-icon">＋</span>
 <span>Add Reservation</span>
 </button>
+
 
 <button class="owner-nav-link" data-owner-view="pricing" type="button">
 <span class="nav-icon">$</span>
 <span>Pricing &amp; Fees</span>
 </button>
 
+
 <button class="owner-nav-link" data-owner-view="cleaning" type="button">
 <span class="nav-icon">♨</span>
 <span>Cleaning Dashboard</span>
 </button>
 
+
 <div class="owner-nav-label">ACCOUNT</div>
+
 
 <button class="owner-nav-link" id="logoutButton" type="button">
 <span class="nav-icon">↪</span>
 <span>Logout</span>
 </button>
 
+
 </nav>
 </aside>
 
+
 <main class="owner-main">
+
 
 <header class="owner-topbar">
 <div>
 <h1 id="ownerPageTitle">Welcome back, Janis!</h1>
 <p id="ownerPageSubtitle">Here’s what’s happening at your shore homes.</p>
 </div>
+
 
 <div class="owner-profile">
 <div class="owner-avatar">JB</div>
@@ -1356,13 +1572,18 @@ button.danger {
 </div>
 </header>
 
+
 <div id="portalMessage"></div>
+
 
 <section class="owner-panel active" data-owner-panel="dashboard">
 
+
 <div class="dashboard-stats" id="dashboardStats"></div>
 
+
 <div class="dashboard-grid">
+
 
 <section class="dashboard-card dashboard-calendar-card">
 <div class="dashboard-card-head">
@@ -1371,13 +1592,16 @@ button.danger {
 <h2>Property calendar</h2>
 </div>
 
+
 <button class="text-action" data-owner-view="calendar" type="button">
 View full calendar
 </button>
 </div>
 
+
 <div id="dashboardCalendar"></div>
 </section>
+
 
 <section class="dashboard-card">
 <div class="dashboard-card-head">
@@ -1386,15 +1610,19 @@ View full calendar
 <h2>Pending requests</h2>
 </div>
 
+
 <button class="text-action" data-owner-view="pending" type="button">
 View all
 </button>
 </div>
 
+
 <div class="dashboard-pending-list" id="dashboardPendingList"></div>
 </section>
 
+
 </div>
+
 
 <section class="dashboard-card upcoming-card">
 <div class="dashboard-card-head">
@@ -1403,17 +1631,22 @@ View all
 <h2>Upcoming events</h2>
 </div>
 
+
 <button class="text-action" data-owner-view="calendar" type="button">
 View calendar
 </button>
 </div>
 
+
 <div class="upcoming-events" id="dashboardUpcoming"></div>
 </section>
 
+
 </section>
 
+
 <section class="owner-panel" data-owner-panel="calendar">
+
 
 <div class="panel-heading">
 <div>
@@ -1422,15 +1655,19 @@ View calendar
 </div>
 </div>
 
+
 <div id="calendarPanelMount">
 
+
 <section class="card" id="ownerCalendarSection">
+
 
 <div class="row embedded-section-heading" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
 <div>
 <div class="eyebrow">MASTER CALENDAR</div>
 <h2 style="margin:4px 0 0;">Property calendar</h2>
 </div>
+
 
 <div class="row">
 <button id="calendarPrev" type="button">← Previous</button>
@@ -1439,7 +1676,9 @@ View calendar
 </div>
 </div>
 
+
 <div id="ownerCalendar"></div>
+
 
 <div class="owner-calendar-legend">
 <span class="legend-chip available">Available</span>
@@ -1448,11 +1687,14 @@ View calendar
 <span class="legend-chip waitlisted">Waitlist</span>
 </div>
 
+
 </section>
 </div>
 </section>
 
+
 <section class="owner-panel" data-owner-panel="pending">
+
 
 <div class="panel-heading">
 <div>
@@ -1461,11 +1703,15 @@ View calendar
 </div>
 </div>
 
+
 <div id="pendingReservationList"></div>
+
 
 </section>
 
+
 <section class="owner-panel" data-owner-panel="reservations">
+
 
 <div class="panel-heading">
 <div>
@@ -1473,18 +1719,23 @@ View calendar
 <h2>Reservations</h2>
 </div>
 
+
 <button class="primary-dashboard-btn" data-owner-view="add-reservation" type="button">
 + Add reservation
 </button>
 </div>
 
+
 <div id="allReservationsMount">
 <div id="reservationList"></div>
 </div>
 
+
 </section>
 
+
 <section class="owner-panel" data-owner-panel="add-reservation">
+
 
 <div class="panel-heading">
 <div>
@@ -1493,17 +1744,23 @@ View calendar
 </div>
 </div>
 
+
 <div id="manualReservationMount">
 
+
 <section class="card manual-form">
+
 
 <h2 class="embedded-section-heading">
 Add reservation manually
 </h2>
 
+
 <form id="manualReservationForm">
 
+
 <div class="form-grid">
+
 
 <label>
 Property
@@ -1511,6 +1768,7 @@ Property
 <option value="">Choose property</option>
 </select>
 </label>
+
 
 <label>
 Booking source
@@ -1520,40 +1778,48 @@ Booking source
 </select>
 </label>
 
+
 <label>
 Guest last name
 <input name="guest_name" required type="text"/>
 </label>
+
 
 <label>
 Guest email
 <input name="guest_email" type="email"/>
 </label>
 
+
 <label>
 Guest phone
 <input name="guest_phone" type="tel"/>
 </label>
+
 
 <label>
 Number of guests
 <input min="1" name="adults" type="number" value="1"/>
 </label>
 
+
 <label>
 Arrival
 <input name="arrival_date" required type="date"/>
 </label>
+
 
 <label>
 Departure
 <input name="departure_date" required type="date"/>
 </label>
 
+
 <label>
 Amount due
 <input min="0" name="amount_due" step="0.01" type="number"/>
 </label>
+
 
 <label>
 Payment status
@@ -1563,51 +1829,66 @@ Payment status
 </select>
 </label>
 
+
 <div class="brokerage-fields" id="brokerageFields">
+
 
 <label>
 Brokerage
 <input name="brokerage_name" type="text"/>
 </label>
 
+
 <label>
 Agent name
 <input name="agent_name" type="text"/>
 </label>
+
 
 <label>
 Agent phone
 <input name="agent_phone" type="tel"/>
 </label>
 
+
 <label>
 Agent email
 <input name="agent_email" type="email"/>
 </label>
 
+
 </div>
+
 
 <label class="full">
 Owner notes
 <textarea name="owner_notes" rows="3"></textarea>
 </label>
 
+
 </div>
+
 
 <div style="margin-top:16px;">
 <button type="submit">Save reservation</button>
 </div>
 
+
 </form>
+
 
 <div id="manualReservationMessage"></div>
 
+
 </section>
+
 
 </div>
 </section>
 
+
 <section class="owner-panel" data-owner-panel="pricing">
+
 
 <div class="panel-heading">
 <div>
@@ -1616,42 +1897,55 @@ Owner notes
 </div>
 </div>
 
+
 <div id="propertySettingsMount">
 
+
 <section class="card" id="propertySettingsSection">
+
 
 <div class="embedded-section-heading">
 <div class="eyebrow">PROPERTY FEES</div>
 <h2 style="margin:4px 0 8px;">Cleaning &amp; pet fees</h2>
+
 
 <div class="meta">
 Change these anytime. The customer booking site will use these values when calculating totals.
 </div>
 </div>
 
+
 <div id="propertySettingsMessage"></div>
 <div class="property-settings-list" id="propertySettingsList"></div>
+
 
 </section>
 </div>
 
+
 <div id="ratesMount">
 
+
 <section class="card" id="ratesSection">
+
 
 <div class="embedded-section-heading">
 <div class="eyebrow">RATES &amp; AVAILABILITY</div>
 <h2 style="margin:4px 0 8px;">Pricing and stay rules</h2>
 
+
 <div class="meta">
-Set weekly prices, flexible shorter stays, minimum nights, or block dates.
+Set weekly, monthly, or nightly prices, flexible shorter stays, minimum nights, or block dates.
 Add a new period whenever you want to change pricing for specific dates.
 </div>
 </div>
 
+
 <form class="rates-form" id="ratePeriodForm" style="margin-top:18px;">
 
+
 <div class="form-grid">
+
 
 <label>
 Property
@@ -1659,6 +1953,7 @@ Property
 <option value="">Choose property</option>
 </select>
 </label>
+
 
 <label>
 Stay rule
@@ -1668,58 +1963,79 @@ Stay rule
 </select>
 </label>
 
+
 <label>
 Start date
 <input name="start_date" required type="date"/>
 </label>
+
 
 <label>
 End date
 <input name="end_date" required type="date"/>
 </label>
 
+
 <label>
 Weekly price
-<input min="0" name="weekly_price" placeholder="Example: 2200" step="0.01" type="number"/>
+<input min="0" name="weekly_price" placeholder="Example: 2200" step="1" type="number"/>
 </label>
+
+
+<label>
+Monthly price
+<input min="0" name="monthly_price" placeholder="For full-month stays" step="1" type="number"/>
+</label>
+
 
 <label>
 Nightly price
-<input min="0" name="nightly_price" placeholder="For flexible stays" step="0.01" type="number"/>
+<input min="0" name="nightly_price" placeholder="For flexible stays" step="1" type="number"/>
 </label>
+
 
 <label>
 Minimum nights
 <input min="1" name="minimum_nights" type="number" value="7"/>
 </label>
 
+
 <label class="rate-blocked-row">
 <input name="blocked" type="checkbox"/>
 Block these dates
 </label>
+
 
 <label class="full">
 Notes
 <textarea name="notes" placeholder="Optional owner note" rows="2"></textarea>
 </label>
 
+
 </div>
+
 
 <div style="margin-top:14px;">
 <button type="submit">Add rate period</button>
 </div>
 
+
 </form>
+
 
 <div id="ratePeriodMessage"></div>
 <div class="rates-list" id="ratePeriodsList"></div>
 
+
 </section>
 </div>
 
+
 </section>
 
+
 <section class="owner-panel" data-owner-panel="cleaning">
+
 
 <div class="panel-heading">
 <div>
@@ -1728,57 +2044,74 @@ Notes
 </div>
 </div>
 
+
 <div id="cleaningMount">
 
+
 <section class="card" id="cleaningDashboardSection">
+
 
 <div class="embedded-section-heading">
 <div class="eyebrow">CLEANING</div>
 <h2 style="margin:4px 0 16px;">Cleaning dashboard</h2>
 </div>
 
+
 <div id="cleaningMessage"></div>
 <div class="cleaning-list" id="cleaningList"></div>
+
 
 </section>
 </div>
 
+
 </section>
+
 
 </main>
 </div>
 </section>
 </div>
 
+
 <script src="site-data.js"></script>
+
 
 <script>
 (function () {
   const forgotButton =
     document.getElementById("forgotPasswordButton");
 
+
   const resetView =
     document.getElementById("resetRequestView");
+
 
   const resetEmail =
     document.getElementById("resetEmail");
 
+
   const ownerEmail =
     document.getElementById("ownerEmail");
+
 
   const sendResetButton =
     document.getElementById("sendResetButton");
 
+
   const cancelResetButton =
     document.getElementById("cancelResetButton");
 
+
   const resetMessage =
     document.getElementById("resetMessage");
+
 
   function getConfig() {
     const cfg =
       window.SITE_DATA &&
       window.SITE_DATA.supabase;
+
 
     if (
       !cfg ||
@@ -1790,15 +2123,19 @@ Notes
       );
     }
 
+
     return cfg;
   }
+
 
   function showResetMessage(text, isError) {
     resetMessage.className =
       isError ? "notice error" : "notice";
 
+
     resetMessage.textContent = text;
   }
+
 
   if (forgotButton) {
     forgotButton.addEventListener(
@@ -1806,18 +2143,22 @@ Notes
       function () {
         resetView.hidden = false;
 
+
         resetMessage.className = "";
         resetMessage.textContent = "";
+
 
         if (ownerEmail && ownerEmail.value) {
           resetEmail.value =
             ownerEmail.value.trim();
         }
 
+
         resetEmail.focus();
       }
     );
   }
+
 
   if (cancelResetButton) {
     cancelResetButton.addEventListener(
@@ -1825,11 +2166,13 @@ Notes
       function () {
         resetView.hidden = true;
 
+
         resetMessage.className = "";
         resetMessage.textContent = "";
       }
     );
   }
+
 
   if (sendResetButton) {
     sendResetButton.addEventListener(
@@ -1839,6 +2182,7 @@ Notes
           String(resetEmail.value || "")
             .trim();
 
+
         if (!email) {
           showResetMessage(
             "Enter your owner email address.",
@@ -1847,21 +2191,26 @@ Notes
           return;
         }
 
+
         try {
           sendResetButton.disabled = true;
           sendResetButton.textContent =
             "Sending…";
 
+
           resetMessage.className = "";
           resetMessage.textContent = "";
 
+
           const cfg = getConfig();
+
 
           const redirectTo =
             new URL(
               "reset-password.html",
               window.location.href
             ).href;
+
 
           const response =
             await fetch(
@@ -1878,11 +2227,14 @@ Notes
               }
             );
 
+
           let body = {};
+
 
           try {
             body = await response.json();
           } catch (_) {}
+
 
           if (!response.ok) {
             throw new Error(
@@ -1893,10 +2245,12 @@ Notes
             );
           }
 
+
           showResetMessage(
             "Password-reset email sent. Check your inbox and click the link in the email.",
             false
           );
+
 
         } catch (error) {
           showResetMessage(
@@ -1904,6 +2258,7 @@ Notes
             "Could not send the password-reset email.",
             true
           );
+
 
         } finally {
           sendResetButton.disabled = false;
@@ -1914,12 +2269,15 @@ Notes
     );
   }
 
+
 })();
 </script>
+
 
 <script src="owner.js"></script>
 <script src="owner-approval-email.js"></script>
 <script src="owner-reservations-ui.js"></script>
+
 
 </body>
 </html>
