@@ -1008,7 +1008,36 @@ function weeklyPriceLabel(period) {
   return formatMoney(
     period.weekly_price
   );
-}function publishedRateSummary(ratePeriods) {
+}
+
+function flexiblePriceLabel(period) {
+  if (
+    !period ||
+    period.stay_rule !== "flexible" ||
+    period.nightly_price == null
+  ) {
+    return "";
+  }
+
+  return `${formatMoney(period.nightly_price)}/nt`;
+}
+
+function flexibleRateDetails(period) {
+  if (
+    !period ||
+    period.stay_rule !== "flexible" ||
+    period.nightly_price == null
+  ) {
+    return "";
+  }
+
+  const minimum =
+    Number(period.minimum_nights || 1);
+
+  return `${formatMoney(period.nightly_price)}/night · ${minimum}-night minimum`;
+}
+
+function publishedRateSummary(ratePeriods) {
   const open =
     ratePeriods.filter(
       period => !period.blocked
@@ -1413,6 +1442,18 @@ function renderMonth(
             ? `
               <span class="weekly-price">
                 ${weeklyPriceLabel(period)}
+              </span>
+            `
+            : ""
+        }
+
+        ${
+          period &&
+          period.stay_rule === "flexible" &&
+          period.nightly_price != null
+            ? `
+              <span class="weekly-price">
+                ${flexiblePriceLabel(period)}
               </span>
             `
             : ""
@@ -1943,12 +1984,62 @@ async function renderProperty() {
         class="calendar-message"
         data-calendar-message
       ></div>
+
+      <div
+        class="calendar-message"
+        data-flexible-rate-message
+      ></div>
     `;
 
     const messageBox =
       calendarWrap.querySelector(
         "[data-calendar-message]"
       );
+
+    const flexibleRateMessage =
+      calendarWrap.querySelector(
+        "[data-flexible-rate-message]"
+      );
+
+    const flexiblePeriods =
+      ratePeriods.filter(
+        period =>
+          !period.blocked &&
+          period.stay_rule === "flexible" &&
+          period.nightly_price != null
+      );
+
+    if (flexibleRateMessage) {
+      if (selectedArrival && !selectedDeparture) {
+        const selectedRate =
+          nonBlockedRateForDate(
+            selectedArrival,
+            ratePeriods
+          );
+
+        if (
+          selectedRate &&
+          selectedRate.stay_rule === "flexible"
+        ) {
+          flexibleRateMessage.innerHTML =
+            `<strong>Short-stay pricing:</strong> ${flexibleRateDetails(selectedRate)}. Choose your departure date.`;
+        } else {
+          flexibleRateMessage.textContent = "";
+        }
+      } else if (flexiblePeriods.length) {
+        const uniqueDetails =
+          [...new Set(
+            flexiblePeriods.map(
+              period => flexibleRateDetails(period)
+            )
+          )];
+
+        flexibleRateMessage.innerHTML =
+          `<strong>Short-stay pricing:</strong> ${uniqueDetails.join(" · ")}`;
+      } else {
+        flexibleRateMessage.textContent = "";
+      }
+    }
 
     if (
       selectedArrival &&
