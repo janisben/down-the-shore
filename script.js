@@ -1,4 +1,4 @@
-\const data = window.SITE_DATA;
+const data = window.SITE_DATA;
 
 function propertyImage(property) {
   if (property.image) {
@@ -188,110 +188,6 @@ async function getRatePeriods(propertyId) {
   }
 
   return response.json();
-}
-
-async function getPropertyPhotos(propertyId) {
-  const response =
-    await fetch(
-      `${data.supabase.url}/rest/v1/property_photos` +
-      `?select=*` +
-      `&property_id=eq.${propertyId}` +
-      `&order=is_primary.desc,sort_order.asc,created_at.asc`,
-      {
-        headers: supabaseHeaders()
-      }
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      "Property photos could not be loaded."
-    );
-  }
-
-  return response.json();
-}
-
-function primaryPropertyPhoto(
-  property,
-  propertyPhotos
-) {
-  const primary =
-    propertyPhotos.find(
-      photo => photo.is_primary
-    ) ||
-    propertyPhotos[0];
-
-  return (
-    primary?.public_url ||
-    property.image ||
-    ""
-  );
-}
-
-function renderPropertyPhotoGallery(
-  propertyPhotos,
-  propertyName
-) {
-  if (!propertyPhotos.length) {
-    return "";
-  }
-
-  return `
-    <section
-      aria-label="${escapeHtml(propertyName)} photos"
-      style="margin-top:28px;"
-    >
-      <div
-        style="
-          display:grid;
-          grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-          gap:12px;
-        "
-      >
-        ${propertyPhotos
-          .map(
-            (photo, index) => `
-              <figure
-                style="
-                  margin:0;
-                  overflow:hidden;
-                  background:#f5f1e8;
-                  border-radius:4px;
-                "
-              >
-                <img
-                  src="${escapeHtml(photo.public_url)}"
-                  alt="${escapeHtml(photo.caption || `${propertyName} photo ${index + 1}`)}"
-                  loading="${index < 3 ? "eager" : "lazy"}"
-                  style="
-                    display:block;
-                    width:100%;
-                    aspect-ratio:4 / 3;
-                    object-fit:cover;
-                  "
-                >
-                ${
-                  photo.caption
-                    ? `
-                      <figcaption
-                        style="
-                          padding:9px 10px;
-                          font-size:13px;
-                          color:#716f68;
-                        "
-                      >
-                        ${escapeHtml(photo.caption)}
-                      </figcaption>
-                    `
-                    : ""
-                }
-              </figure>
-            `
-          )
-          .join("")}
-      </div>
-    </section>
-  `;
 }
 
 function isoDate(date) {
@@ -1712,6 +1608,11 @@ async function renderProperty() {
       "[data-page-hero]"
     );
 
+  hero.style.backgroundImage =
+    property.image
+      ? `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${property.image}')`
+      : `linear-gradient(135deg, #aaa295, #6f6b63)`;
+
   hero.style.backgroundPosition =
     property.imagePosition ||
     "center";
@@ -1829,58 +1730,6 @@ async function renderProperty() {
 
   const propertyId =
     propertyRecord.id;
-
-  let propertyPhotos =
-    await getPropertyPhotos(
-      propertyId
-    );
-
-  const heroPhoto =
-    primaryPropertyPhoto(
-      property,
-      propertyPhotos
-    );
-
-  hero.style.backgroundImage =
-    heroPhoto
-      ? `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${heroPhoto}')`
-      : `linear-gradient(135deg, #aaa295, #6f6b63)`;
-
-  const descriptionEl =
-    document.querySelector(
-      "[data-property-description]"
-    );
-
-  if (
-    descriptionEl &&
-    propertyPhotos.length
-  ) {
-    const existingGallery =
-      document.querySelector(
-        "[data-property-photo-gallery]"
-      );
-
-    if (existingGallery) {
-      existingGallery.remove();
-    }
-
-    const gallery =
-      document.createElement("div");
-
-    gallery.dataset.propertyPhotoGallery =
-      "true";
-
-    gallery.innerHTML =
-      renderPropertyPhotoGallery(
-        propertyPhotos,
-        property.name
-      );
-
-    descriptionEl.insertAdjacentElement(
-      "afterend",
-      gallery
-    );
-  }
 
   let availability =
     await getAvailability(
