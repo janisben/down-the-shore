@@ -1,4 +1,4 @@
-const data = window.SITE_DATA;
+\const data = window.SITE_DATA;
 
 function propertyImage(property) {
   if (property.image) {
@@ -188,6 +188,110 @@ async function getRatePeriods(propertyId) {
   }
 
   return response.json();
+}
+
+async function getPropertyPhotos(propertyId) {
+  const response =
+    await fetch(
+      `${data.supabase.url}/rest/v1/property_photos` +
+      `?select=*` +
+      `&property_id=eq.${propertyId}` +
+      `&order=is_primary.desc,sort_order.asc,created_at.asc`,
+      {
+        headers: supabaseHeaders()
+      }
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Property photos could not be loaded."
+    );
+  }
+
+  return response.json();
+}
+
+function primaryPropertyPhoto(
+  property,
+  propertyPhotos
+) {
+  const primary =
+    propertyPhotos.find(
+      photo => photo.is_primary
+    ) ||
+    propertyPhotos[0];
+
+  return (
+    primary?.public_url ||
+    property.image ||
+    ""
+  );
+}
+
+function renderPropertyPhotoGallery(
+  propertyPhotos,
+  propertyName
+) {
+  if (!propertyPhotos.length) {
+    return "";
+  }
+
+  return `
+    <section
+      aria-label="${escapeHtml(propertyName)} photos"
+      style="margin-top:28px;"
+    >
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+          gap:12px;
+        "
+      >
+        ${propertyPhotos
+          .map(
+            (photo, index) => `
+              <figure
+                style="
+                  margin:0;
+                  overflow:hidden;
+                  background:#f5f1e8;
+                  border-radius:4px;
+                "
+              >
+                <img
+                  src="${escapeHtml(photo.public_url)}"
+                  alt="${escapeHtml(photo.caption || `${propertyName} photo ${index + 1}`)}"
+                  loading="${index < 3 ? "eager" : "lazy"}"
+                  style="
+                    display:block;
+                    width:100%;
+                    aspect-ratio:4 / 3;
+                    object-fit:cover;
+                  "
+                >
+                ${
+                  photo.caption
+                    ? `
+                      <figcaption
+                        style="
+                          padding:9px 10px;
+                          font-size:13px;
+                          color:#716f68;
+                        "
+                      >
+                        ${escapeHtml(photo.caption)}
+                      </figcaption>
+                    `
+                    : ""
+                }
+              </figure>
+            `
+          )
+          .join("")}
+      </div>
+    </section>
+  `;
 }
 
 function isoDate(date) {
@@ -994,7 +1098,61 @@ async function submitReservation(
   };
 }
 
-function injectCalendarStyles() {}
+function injectCalendarStyles() {
+  if (document.getElementById("dts-flexible-rate-styles")) {
+    return;
+  }
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "dts-flexible-rate-styles";
+
+  style.textContent = `
+    .calendar-day .flexible-price {
+      display:block;
+      margin-top:3px;
+      font-size:9px;
+      line-height:1.1;
+      font-weight:700;
+      color:#0d2b4d;
+      white-space:nowrap;
+    }
+
+    .flexible-rate-details {
+      margin:14px 0 0;
+      padding:12px 14px;
+      border:1px solid #e0ddd7;
+      background:#fffdf8;
+    }
+
+    .flexible-rate-details-title {
+      margin:0 0 8px;
+      font-weight:700;
+      color:#172334;
+    }
+
+    .flexible-rate-detail {
+      padding:7px 0;
+      border-top:1px solid #ece7df;
+      font-size:13px;
+      line-height:1.4;
+      color:#4f5966;
+    }
+
+    .flexible-rate-detail:first-of-type {
+      border-top:0;
+      padding-top:0;
+    }
+
+    .flexible-rate-detail strong {
+      color:#0d2b4d;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
 
 function weeklyPriceLabel(period) {
   if (
@@ -1010,31 +1168,65 @@ function weeklyPriceLabel(period) {
   );
 }
 
-function flexiblePriceLabel(period) {
-  if (
-    !period ||
-    period.stay_rule !== "flexible" ||
-    period.nightly_price == null
-  ) {
-    return "";
-  }
-
-  return `${formatMoney(period.nightly_price)}/nt`;
+function compactMoney(value) {
+  return Number(
+    value || 0
+  ).toLocaleString(
+    "en-US",
+    {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    }
+  );
 }
 
-function flexibleRateDetails(period) {
-  if (
-    !period ||
-    period.stay_rule !== "flexible" ||
-    period.nightly_price == null
-  ) {
+function flexibleRateDetails(ratePeriods) {
+  const flexible =
+    ratePeriods
+      .filter(
+        period =>
+          !period.blocked &&
+          period.stay_rule === "flexible" &&
+          period.nightly_price != null
+      )
+      .slice()
+      .sort(
+        (a, b) =>
+          parseDate(a.start_date) -
+          parseDate(b.start_date)
+      );
+
+  if (!flexible.length) {
     return "";
   }
 
-  const minimum =
-    Number(period.minimum_nights || 1);
+  return `
+    <section class="flexible-rate-details">
+      <div class="flexible-rate-details-title">
+        Short-stay pricing
+      </div>
 
-  return `${formatMoney(period.nightly_price)}/night · ${minimum}-night minimum`;
+      ${
+        flexible
+          .map(
+            period => `
+              <div class="flexible-rate-detail">
+                <strong>
+                  ${formatMoney(period.nightly_price)}/night
+                  · ${Number(period.minimum_nights || 1)}-night minimum
+                </strong>
+                <br>
+                ${formatShortDate(period.start_date)}
+                –
+                ${formatShortDate(period.end_date)}
+              </div>
+            `
+          )
+          .join("")
+      }
+    </section>
+  `;
 }
 
 function publishedRateSummary(ratePeriods) {
@@ -1452,8 +1644,8 @@ function renderMonth(
           period.stay_rule === "flexible" &&
           period.nightly_price != null
             ? `
-              <span class="weekly-price">
-                ${flexiblePriceLabel(period)}
+              <span class="flexible-price">
+                ${compactMoney(period.nightly_price)}/nt
               </span>
             `
             : ""
@@ -1519,11 +1711,6 @@ async function renderProperty() {
     document.querySelector(
       "[data-page-hero]"
     );
-
-  hero.style.backgroundImage =
-    property.image
-      ? `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${property.image}')`
-      : `linear-gradient(135deg, #aaa295, #6f6b63)`;
 
   hero.style.backgroundPosition =
     property.imagePosition ||
@@ -1642,6 +1829,58 @@ async function renderProperty() {
 
   const propertyId =
     propertyRecord.id;
+
+  let propertyPhotos =
+    await getPropertyPhotos(
+      propertyId
+    );
+
+  const heroPhoto =
+    primaryPropertyPhoto(
+      property,
+      propertyPhotos
+    );
+
+  hero.style.backgroundImage =
+    heroPhoto
+      ? `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${heroPhoto}')`
+      : `linear-gradient(135deg, #aaa295, #6f6b63)`;
+
+  const descriptionEl =
+    document.querySelector(
+      "[data-property-description]"
+    );
+
+  if (
+    descriptionEl &&
+    propertyPhotos.length
+  ) {
+    const existingGallery =
+      document.querySelector(
+        "[data-property-photo-gallery]"
+      );
+
+    if (existingGallery) {
+      existingGallery.remove();
+    }
+
+    const gallery =
+      document.createElement("div");
+
+    gallery.dataset.propertyPhotoGallery =
+      "true";
+
+    gallery.innerHTML =
+      renderPropertyPhotoGallery(
+        propertyPhotos,
+        property.name
+      );
+
+    descriptionEl.insertAdjacentElement(
+      "afterend",
+      gallery
+    );
+  }
 
   let availability =
     await getAvailability(
@@ -1980,14 +2219,11 @@ async function renderProperty() {
 
       </div>
 
-      <div
-        class="calendar-message"
-        data-calendar-message
-      ></div>
+      ${flexibleRateDetails(ratePeriods)}
 
       <div
         class="calendar-message"
-        data-flexible-rate-message
+        data-calendar-message
       ></div>
     `;
 
@@ -1996,52 +2232,28 @@ async function renderProperty() {
         "[data-calendar-message]"
       );
 
-    const flexibleRateMessage =
-      calendarWrap.querySelector(
-        "[data-flexible-rate-message]"
-      );
-
-    const flexiblePeriods =
-      ratePeriods.filter(
-        period =>
-          !period.blocked &&
-          period.stay_rule === "flexible" &&
-          period.nightly_price != null
-      );
-
-    if (flexibleRateMessage) {
-      if (selectedArrival && !selectedDeparture) {
-        const selectedRate =
-          nonBlockedRateForDate(
-            selectedArrival,
-            ratePeriods
-          );
-
-        if (
-          selectedRate &&
-          selectedRate.stay_rule === "flexible"
-        ) {
-          flexibleRateMessage.innerHTML =
-            `<strong>Short-stay pricing:</strong> ${flexibleRateDetails(selectedRate)}. Choose your departure date.`;
-        } else {
-          flexibleRateMessage.textContent = "";
-        }
-      } else if (flexiblePeriods.length) {
-        const uniqueDetails =
-          [...new Set(
-            flexiblePeriods.map(
-              period => flexibleRateDetails(period)
-            )
-          )];
-
-        flexibleRateMessage.innerHTML =
-          `<strong>Short-stay pricing:</strong> ${uniqueDetails.join(" · ")}`;
-      } else {
-        flexibleRateMessage.textContent = "";
-      }
-    }
-
     if (
+      selectedArrival &&
+      !selectedDeparture
+    ) {
+      const arrivalPeriod =
+        nonBlockedRateForDate(
+          selectedArrival,
+          ratePeriods
+        );
+
+      if (
+        arrivalPeriod &&
+        arrivalPeriod.stay_rule === "flexible"
+      ) {
+        messageBox.textContent =
+          `Arrival selected: ${formatShortDate(selectedArrival)} · ${formatMoney(arrivalPeriod.nightly_price)}/night · ${arrivalPeriod.minimum_nights || 1}-night minimum. Choose your departure date.`;
+      } else {
+        messageBox.textContent =
+          `Arrival selected: ${formatShortDate(selectedArrival)}. Choose your departure date.`;
+      }
+
+    } else if (
       selectedArrival &&
       selectedDeparture
     ) {
