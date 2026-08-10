@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rental Agreement | Down the Shore</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body{background:#f7f4ee;color:#24231f}
+    .lease-shell{max-width:900px;margin:0 auto;padding:36px 20px 80px}
+    .lease-card{background:#fff;border:1px solid #ded9cf;padding:28px}
+    .lease-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
+    .lease-meta div{background:#f5f1e8;padding:12px}
+    .lease-section{margin:28px 0}
+    .lease-section h2{font-family:Georgia,serif;font-weight:400}
+    .initial-box{display:flex;gap:12px;align-items:center;margin-top:12px}
+    .initial-box input{max-width:120px}
+    .signature-box{margin-top:28px;padding-top:20px;border-top:1px solid #ddd}
+    .notice{padding:14px;background:#f5f1e8;margin:18px 0}
+    button{padding:12px 18px}
+  </style>
+</head>
+<body>
+  <main class="lease-shell">
+    <h1>Down the Shore</h1>
+    <p>Seasonal Rental Agreement</p>
+
+    <div id="leaseMessage" class="notice">Loading your rental agreement…</div>
+
+    <section id="leaseCard" class="lease-card" hidden>
+      <div class="lease-meta" id="leaseMeta"></div>
+
+      <div id="leaseBody"></div>
+
+      <div class="signature-box">
+        <h2>Guest signature</h2>
+        <p>By signing below, I confirm that I have read and agree to the rental agreement above.</p>
+
+        <label>
+          Type your full legal name
+          <input id="signatureText" type="text" autocomplete="name">
+        </label>
+
+        <div style="margin-top:16px">
+          <button id="signLeaseButton" type="button">Sign rental agreement</button>
+        </div>
+
+        <div id="signatureMessage" class="notice" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const token =
+      new URLSearchParams(window.location.search)
+        .get("token");
+
+    const leaseMessage =
+      document.getElementById("leaseMessage");
+
+    const leaseCard =
+      document.getElementById("leaseCard");
+
+    const leaseMeta =
+      document.getElementById("leaseMeta");
+
+    const leaseBody =
+      document.getElementById("leaseBody");
+
+    const signButton =
+      document.getElementById("signLeaseButton");
+
+    const signatureText =
+      document.getElementById("signatureText");
+
+    const signatureMessage =
+      document.getElementById("signatureMessage");
+
+    let leasePayload = null;
+
+    function esc(value) {
+      return String(value ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function money(value) {
+      return new Intl.NumberFormat(
+        "en-US",
+        {style:"currency",currency:"USD"}
+      ).format(Number(value || 0));
+    }
+
+    function sectionMarkup(section) {
+      const initials =
+        section.requires_initials
+          ? `
+            <div class="initial-box">
+              <label>
+                Initials
+                <input
+                  type="text"
+                  maxlength="6"
+                  data-initial-key="${esc(section.key)}"
+                >
+              </label>
+            </div>
+          `
+          : "";
+
+      return `
+        <section class="lease-section">
+          <h2>${esc(section.title)}</h2>
+          <div>${section.html}</div>
+          ${initials}
+        </section>
+      `;
+    }
+
+    async function loadLease() {
+      if (!token) {
+        leaseMessage.textContent =
+          "This lease link is missing its secure token.";
+        return;
+      }
+
+      const response =
+        await fetch(
+          `/api/get-lease?token=${encodeURIComponent(token)}`
+        );
+
+      const body =
+        await response.json();
+
+      if (!response.ok) {
+        leaseMessage.textContent =
+          body.error ||
+          "This rental agreement could not be loaded.";
+        return;
+      }
+
+      leasePayload = body;
+
+      leaseMessage.hidden = true;
+      leaseCard.hidden = false;
+
+      leaseMeta.innerHTML = `
+        <div><strong>Property</strong><br>${esc(body.lease_data.property_name)}</div>
+        <div><strong>Guest</strong><br>${esc(body.signer.signer_name)}</div>
+        <div><strong>Arrival</strong><br>${esc(body.lease_data.arrival_date)}</div>
+        <div><strong>Departure</strong><br>${esc(body.lease_data.departure_date)}</div>
+        <div><strong>Total</strong><br>${money(body.lease_data.amount_due)}</div>
+        <div><strong>Lease status</strong><br>${esc(body.status.replaceAll("_"," "))}</div>
+      `;
+
+      leaseBody.innerHTML =
+        (body.sections || [])
+          .map(sectionMarkup)
+          .join("");
+
+      if (body.signer.signed_at) {
+        signButton.disabled = true;
+        signatureText.value =
+          body.signer.signature_text || "";
+        signatureText.disabled = true;
+        signatureMessage.hidden = false;
+        signatureMessage.textContent =
+          "You have already signed this rental agreement.";
+      }
+    }
+
+    signButton.addEventListener(
+      "click",
+      async () => {
+        signatureMessage.hidden = true;
+
+        const signature =
+          signatureText.value.trim();
+
+        if (!signature) {
+          signatureMessage.hidden = false;
+          signatureMessage.textContent =
+            "Enter your full legal name before signing.";
+          return;
+        }
+
+        const initials = {};
+
+        document
+          .querySelectorAll("[data-initial-key]")
+          .forEach(input => {
+            initials[
+              input.dataset.initialKey
+            ] = input.value.trim();
+          });
+
+        const missing =
+          Object.entries(initials)
+            .find(([,value]) => !value);
+
+        if (missing) {
+          signatureMessage.hidden = false;
+          signatureMessage.textContent =
+            "Please complete all required initials before signing.";
+          return;
+        }
+
+        signButton.disabled = true;
+        signButton.textContent =
+          "Signing…";
+
+        const response =
+          await fetch(
+            "/api/sign-lease",
+            {
+              method:"POST",
+              headers:{
+                "Content-Type":"application/json"
+              },
+              body:JSON.stringify({
+                token,
+                signature,
+                initials
+              })
+            }
+          );
+
+        const body =
+          await response.json();
+
+        if (!response.ok) {
+          signButton.disabled = false;
+          signButton.textContent =
+            "Sign rental agreement";
+          signatureMessage.hidden = false;
+          signatureMessage.textContent =
+            body.error ||
+            "The lease could not be signed.";
+          return;
+        }
+
+        signatureMessage.hidden = false;
+        signatureMessage.textContent =
+          "Signed successfully. Your payment step is next.";
+        signButton.textContent =
+          "Signed";
+      }
+    );
+
+    loadLease();
+  </script>
+</body>
+</html>
