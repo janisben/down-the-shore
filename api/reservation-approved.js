@@ -34,13 +34,51 @@ export default async function handler(
     }
 
     if (
-      !process.env.RESEND_API_KEY
+      !process.env.RESEND_API_KEY ||
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.SUPABASE_SECRET_KEY
     ) {
       return res.status(500).json({
         error:
-          "RESEND_API_KEY is not configured"
+          "Server configuration is incomplete"
       });
     }
+
+    const paymentSettingsResponse =
+      await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/payment_settings?select=zelle_recipient,venmo_url,check_payee,check_mailing_address&limit=1`,
+        {
+          headers: {
+            apikey:
+              process.env.SUPABASE_SECRET_KEY
+          }
+        }
+      );
+
+    if (!paymentSettingsResponse.ok) {
+      console.error(
+        "Could not load payment settings:",
+        await paymentSettingsResponse.text()
+      );
+
+      return res.status(500).json({
+        error:
+          "Could not load payment settings"
+      });
+    }
+
+    const paymentSettingsRows =
+      await paymentSettingsResponse.json();
+
+    const paymentSettings =
+      paymentSettingsRows[0] || {};
+
+    const {
+      zelle_recipient,
+      venmo_url,
+      check_payee,
+      check_mailing_address
+    } = paymentSettings;
 
     const formatDate =
       value =>
@@ -153,8 +191,8 @@ export default async function handler(
           </p>
 
           <p style="margin:0;">
-            Your reservation is being
-            held for you for
+            Your reservation is being held
+            for you for
             <strong>24 hours</strong>.
           </p>
 
@@ -169,33 +207,153 @@ export default async function handler(
 
         </div>
 
-        <p>
-          Complete your credit-card
-          payment using the secure
-          Stripe payment button below.
-        </p>
+        <h2 style="
+          font-family:Georgia,'Times New Roman',serif;
+          font-weight:400;
+          color:#0d2b4d;
+          margin-top:30px;
+        ">
+          Choose your payment method
+        </h2>
+
+        <div style="
+          border:1px solid #e5e7eb;
+          padding:20px;
+          margin:16px 0;
+        ">
+
+          <h3 style="
+            margin:0 0 8px;
+            color:#0d2b4d;
+          ">
+            Credit or debit card
+          </h3>
+
+          <p style="margin:0 0 18px;">
+            Pay securely online through Stripe.
+          </p>
+
+          <p style="margin:0;">
+            <a
+              href="${safe(paymentUrl)}"
+              style="
+                display:inline-block;
+                padding:13px 22px;
+                background:#0d2b4d;
+                color:#ffffff;
+                text-decoration:none;
+                border-radius:6px;
+                font-weight:bold;
+              "
+            >
+              Pay securely by card
+            </a>
+          </p>
+
+        </div>
+
+        ${
+          zelle_recipient
+            ? `
+              <div style="
+                border:1px solid #e5e7eb;
+                padding:20px;
+                margin:16px 0;
+              ">
+
+                <h3 style="
+                  margin:0 0 8px;
+                  color:#0d2b4d;
+                ">
+                  Zelle
+                </h3>
+
+                <p style="margin:0;">
+                  Send your payment by Zelle to:
+                  <strong>
+                    ${safe(zelle_recipient)}
+                  </strong>
+                </p>
+
+              </div>
+            `
+            : ""
+        }
+
+        ${
+          venmo_url
+            ? `
+              <div style="
+                border:1px solid #e5e7eb;
+                padding:20px;
+                margin:16px 0;
+              ">
+
+                <h3 style="
+                  margin:0 0 8px;
+                  color:#0d2b4d;
+                ">
+                  Venmo
+                </h3>
+
+                <p style="margin:0;">
+                  <a
+                    href="${safe(venmo_url)}"
+                    style="
+                      color:#155aa8;
+                      font-weight:bold;
+                    "
+                  >
+                    Pay with Venmo
+                  </a>
+                </p>
+
+              </div>
+            `
+            : ""
+        }
+
+        ${
+          check_payee &&
+          check_mailing_address
+            ? `
+              <div style="
+                border:1px solid #e5e7eb;
+                padding:20px;
+                margin:16px 0;
+              ">
+
+                <h3 style="
+                  margin:0 0 8px;
+                  color:#0d2b4d;
+                ">
+                  Check
+                </h3>
+
+                <p style="margin:0 0 8px;">
+                  Make check payable to:
+                  <strong>
+                    ${safe(check_payee)}
+                  </strong>
+                </p>
+
+                <p style="margin:0;">
+                  Mail to:<br>
+                  <strong>
+                    ${safe(
+                      check_mailing_address
+                    )}
+                  </strong>
+                </p>
+
+              </div>
+            `
+            : ""
+        }
 
         <p style="
-          margin:28px 0;
-          text-align:center;
+          margin-top:26px;
         ">
-          <a
-            href="${safe(paymentUrl)}"
-            style="
-              display:inline-block;
-              padding:14px 24px;
-              background:#0d2b4d;
-              color:#ffffff;
-              text-decoration:none;
-              border-radius:6px;
-              font-weight:bold;
-            "
-          >
-            Pay securely by credit card
-          </a>
-        </p>
-
-        <p>
           Please complete the required
           lease and payment steps before
           the hold expires. If the
