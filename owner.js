@@ -396,6 +396,37 @@ async function loadReservations() {
     properties;
 
 
+  // Keep every property selector in sync with the latest property list.
+  // This is especially important for the Photos view because refresh()
+  // reloads properties as part of the reservation query.
+  const refreshedPropertyOptions =
+    `<option value="">
+      Choose property
+    </option>` +
+    properties
+      .map(
+        property => `
+          <option value="${property.id}">
+            ${property.name}
+          </option>
+        `
+      )
+      .join("");
+
+  if (photoProperty) {
+    const selectedPhotoProperty =
+      photoProperty.value;
+
+    photoProperty.innerHTML =
+      refreshedPropertyOptions;
+
+    if (selectedPhotoProperty) {
+      photoProperty.value =
+        selectedPhotoProperty;
+    }
+  }
+
+
   const propertyMap =
     Object.fromEntries(
       properties.map(
