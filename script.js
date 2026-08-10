@@ -101,6 +101,8 @@ function renderHome() {
         </article>
       `)
       .join("");
+
+  refreshHomeCardPhotos();
 }
 
 function supabaseHeaders(prefer = "") {
@@ -188,6 +190,181 @@ async function getRatePeriods(propertyId) {
   }
 
   return response.json();
+}
+
+
+async function getPropertyPhotos(propertyId) {
+  const response =
+    await fetch(
+      `${data.supabase.url}/rest/v1/property_photos` +
+      `?select=id,property_id,public_url,caption,sort_order,is_primary,created_at` +
+      `&property_id=eq.${propertyId}` +
+      `&order=is_primary.desc,sort_order.asc,created_at.asc`,
+      {
+        headers: supabaseHeaders()
+      }
+    );
+
+  if (!response.ok) {
+    console.warn(
+      "Property photos could not be loaded."
+    );
+    return [];
+  }
+
+  return response.json();
+}
+
+function choosePrimaryPhoto(
+  property,
+  photos
+) {
+  const primary =
+    photos.find(
+      photo => photo.is_primary
+    ) ||
+    photos[0];
+
+  return (
+    primary?.public_url ||
+    property.image ||
+    ""
+  );
+}
+
+async function loadManagedPhotosForProperty(
+  property
+) {
+  try {
+    const propertyRecord =
+      await getPropertyRecord(
+        property.databaseName
+      );
+
+    return await getPropertyPhotos(
+      propertyRecord.id
+    );
+  } catch (error) {
+    console.warn(
+      "Managed photos unavailable:",
+      error
+    );
+    return [];
+  }
+}
+
+async function refreshHomeCardPhotos() {
+  const cards =
+    document.querySelectorAll(
+      ".property-card"
+    );
+
+  if (!cards.length) {
+    return;
+  }
+
+  await Promise.all(
+    data.properties.map(
+      async (property, index) => {
+        const card =
+          cards[index];
+
+        if (!card) {
+          return;
+        }
+
+        const image =
+          card.querySelector(
+            ".property-image img"
+          );
+
+        if (!image) {
+          return;
+        }
+
+        const photos =
+          await loadManagedPhotosForProperty(
+            property
+          );
+
+        const photoUrl =
+          choosePrimaryPhoto(
+            property,
+            photos
+          );
+
+        if (photoUrl) {
+          image.src = photoUrl;
+        }
+      }
+    )
+  );
+}
+
+function propertyGalleryMarkup(
+  property,
+  photos
+) {
+  if (!photos.length) {
+    return "";
+  }
+
+  return `
+    <section
+      class="managed-photo-gallery"
+      data-managed-photo-gallery
+      aria-label="${property.name} photos"
+      style="margin-top:28px;"
+    >
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+          gap:12px;
+        "
+      >
+        ${photos.map(
+          (photo, index) => `
+            <figure
+              style="
+                margin:0;
+                overflow:hidden;
+                background:#f5f1e8;
+                border-radius:4px;
+              "
+            >
+              <img
+                src="${photo.public_url}"
+                alt="${photo.caption || `${property.name} photo ${index + 1}`}"
+                loading="${index < 3 ? "eager" : "lazy"}"
+                style="
+                  display:block;
+                  width:100%;
+                  aspect-ratio:4 / 3;
+                  object-fit:cover;
+                "
+              >
+              ${
+                photo.caption
+                  ? `
+                    <figcaption
+                      style="
+                        padding:9px 10px;
+                        font-size:13px;
+                        color:#716f68;
+                      "
+                    >
+                      ${photo.caption}
+                    </figcaption>
+                  `
+                  : ""
+              }
+            </figure>
+          `
+        ).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function isoDate(date) {
@@ -1730,6 +1907,48 @@ async function renderProperty() {
 
   const propertyId =
     propertyRecord.id;
+
+  const managedPhotos =
+    await getPropertyPhotos(
+      propertyId
+    );
+
+  const managedHero =
+    choosePrimaryPhoto(
+      property,
+      managedPhotos
+    );
+
+  if (managedHero) {
+    hero.style.backgroundImage =
+      `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${managedHero}')`;
+  }
+
+  if (managedPhotos.length) {
+    const description =
+      document.querySelector(
+        "[data-property-description]"
+      );
+
+    const existingGallery =
+      document.querySelector(
+        "[data-managed-photo-gallery]"
+      );
+
+    if (existingGallery) {
+      existingGallery.remove();
+    }
+
+    if (description) {
+      description.insertAdjacentHTML(
+        "afterend",
+        propertyGalleryMarkup(
+          property,
+          managedPhotos
+        )
+      );
+    }
+  }
 
   let availability =
     await getAvailability(
