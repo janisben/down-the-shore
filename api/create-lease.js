@@ -211,7 +211,8 @@ export default async function handler(
   }
 
   try {
-    await requireOwner(req);
+    const ownerUser =
+      await requireOwner(req);
 
     const {
       reservation_id,
@@ -490,6 +491,7 @@ export default async function handler(
             "Janis Benstock",
 
           signer_email:
+            ownerUser.email ||
             null,
 
           signer_phone:
