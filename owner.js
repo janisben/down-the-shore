@@ -6,20 +6,49 @@ const ownerPortalFixStyle =
 
 ownerPortalFixStyle.textContent = `
   .payment-summary-grid {
-    grid-template-columns:
-      repeat(3, minmax(0, 1fr)) !important;
+    display:block !important;
   }
 
   .payment-summary-item {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:18px !important;
     min-width:0 !important;
-    overflow:hidden;
+    overflow:visible !important;
+    padding:10px 0 !important;
+    border:0 !important;
+    border-bottom:1px solid var(--line) !important;
+    background:transparent !important;
+  }
+
+  .payment-summary-item:last-child {
+    border-bottom:0 !important;
+  }
+
+  .payment-summary-label {
+    min-width:0 !important;
+    font-size:15px !important;
+    line-height:1.25 !important;
   }
 
   .payment-summary-value {
+    flex:0 0 auto !important;
     min-width:0 !important;
-    font-size:clamp(18px, 2vw, 26px) !important;
-    line-height:1.1;
-    white-space:nowrap;
+    font-size:20px !important;
+    line-height:1.15 !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+  }
+
+  .payment-history-row {
+    display:grid !important;
+    grid-template-columns:
+      max-content
+      minmax(70px,1fr)
+      minmax(120px,auto) !important;
+    align-items:center !important;
+    gap:12px !important;
   }
 
   .payment-log-row {
@@ -31,13 +60,35 @@ ownerPortalFixStyle.textContent = `
 
   .payment-log-row input,
   .payment-log-row select {
-    width:100%;
-    min-width:0;
-    box-sizing:border-box;
+    width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
   }
 
-  .card.res {
+  .card.res,
+  .card.res * {
     min-width:0;
+  }
+
+  .card.res .actions {
+    position:relative;
+    z-index:2;
+  }
+
+  .card.res button[data-action="create_lease"] {
+    pointer-events:auto !important;
+    cursor:pointer !important;
+  }
+
+  @media (max-width:700px) {
+    .payment-history-row {
+      grid-template-columns:1fr !important;
+      gap:4px !important;
+    }
+
+    .payment-log-row {
+      grid-template-columns:1fr !important;
+    }
   }
 `;
 
@@ -2731,15 +2782,36 @@ function paymentTotals(
       );
 
 
+  const roundedTotal =
+    Math.round(
+      totalDue * 100
+    ) / 100;
+
+  const roundedPaid =
+    Math.round(
+      paid * 100
+    ) / 100;
+
+  const roundedBalance =
+    Math.max(
+      0,
+      Math.round(
+        (
+          roundedTotal -
+          roundedPaid
+        ) *
+        100
+      ) /
+      100
+    );
+
   return {
-    totalDue,
-    paid,
+    totalDue:
+      roundedTotal,
+    paid:
+      roundedPaid,
     balance:
-      Math.max(
-        0,
-        totalDue -
-        paid
-      )
+      roundedBalance
   };
 }
 
@@ -5168,21 +5240,43 @@ reservationList.addEventListener(
           );
         }
 
-        const leaseResult =
-          await createLeaseForReservation(
-            reservation
-          );
+        const originalText =
+          button.textContent;
+
+        button.textContent =
+          "Creating lease…";
 
         message(
           portalMessage,
-          "Lease created and signing email sent to the guest."
+          "Creating lease and sending the guest signing email…"
         );
 
-        window.alert(
-          leaseResult.email_sent
-            ? "Lease created. The signing email was sent to the guest."
-            : "Lease created, but the email was not confirmed as sent."
-        );
+        try {
+          const leaseResult =
+            await createLeaseForReservation(
+              reservation
+            );
+
+          message(
+            portalMessage,
+            "Lease created and signing email sent to the guest."
+          );
+
+          window.alert(
+            leaseResult.email_sent
+              ? "Lease created. The signing email was sent to the guest."
+              : "Lease created, but the email was not confirmed as sent."
+          );
+        } catch (leaseError) {
+          window.alert(
+            `Lease error: ${leaseError.message}`
+          );
+
+          throw leaseError;
+        } finally {
+          button.textContent =
+            originalText;
+        }
       }
 
 
@@ -5465,21 +5559,43 @@ pendingReservationList.addEventListener(
           );
         }
 
-        const leaseResult =
-          await createLeaseForReservation(
-            reservation
-          );
+        const originalText =
+          button.textContent;
+
+        button.textContent =
+          "Creating lease…";
 
         message(
           portalMessage,
-          "Lease created and signing email sent to the guest."
+          "Creating lease and sending the guest signing email…"
         );
 
-        window.alert(
-          leaseResult.email_sent
-            ? "Lease created. The signing email was sent to the guest."
-            : "Lease created, but the email was not confirmed as sent."
-        );
+        try {
+          const leaseResult =
+            await createLeaseForReservation(
+              reservation
+            );
+
+          message(
+            portalMessage,
+            "Lease created and signing email sent to the guest."
+          );
+
+          window.alert(
+            leaseResult.email_sent
+              ? "Lease created. The signing email was sent to the guest."
+              : "Lease created, but the email was not confirmed as sent."
+          );
+        } catch (leaseError) {
+          window.alert(
+            `Lease error: ${leaseError.message}`
+          );
+
+          throw leaseError;
+        } finally {
+          button.textContent =
+            originalText;
+        }
       }
 
 
