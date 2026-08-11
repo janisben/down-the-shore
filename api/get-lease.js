@@ -1,10 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabase =
-  createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SECRET_KEY
-  );
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SECRET_KEY
+);
 
 function esc(value) {
   return String(value ?? "")
@@ -16,67 +15,259 @@ function esc(value) {
 }
 
 function money(value) {
-  return new Intl.NumberFormat(
-    "en-US",
-    {
-      style: "currency",
-      currency: "USD"
-    }
-  ).format(Number(value || 0));
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD"
+  }).format(Number(value || 0));
 }
 
 function formatDate(value) {
   if (!value) return "";
 
-  const date =
-    new Date(`${value}T12:00:00`);
+  const date = new Date(`${value}T12:00:00`);
 
-  return new Intl.DateTimeFormat(
-    "en-US",
-    {
-      month: "long",
-      day: "numeric",
-      year: "numeric"
-    }
-  ).format(date);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  }).format(date);
 }
 
 function yesNo(value) {
-  if (
-    value === true ||
-    value === "true" ||
-    value === "yes" ||
-    value === 1 ||
-    value === "1"
-  ) {
-    return "Yes";
-  }
-
-  return "No";
+  return value ? "Yes" : "No";
 }
 
-function displayValue(
-  value,
-  fallback = "Not specified"
-) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return fallback;
+function firstValue(data, keys, fallback = "") {
+  for (const key of keys) {
+    if (
+      data[key] !== undefined &&
+      data[key] !== null &&
+      data[key] !== ""
+    ) {
+      return data[key];
+    }
   }
 
-  return esc(value);
+  return fallback;
+}
+
+function propertyDetails(data) {
+  const propertyName =
+    data.property_name ||
+    "the rental property";
+
+  const isCottage =
+    String(propertyName)
+      .toLowerCase()
+      .includes("cottage");
+
+  return {
+    propertyName,
+
+    checkIn:
+      firstValue(
+        data,
+        ["check_in_time"],
+        "2:00 PM"
+      ),
+
+    checkOut:
+      firstValue(
+        data,
+        ["check_out_time"],
+        "10:00 AM"
+      ),
+
+    cleaningFee:
+      Number(
+        firstValue(
+          data,
+          ["cleaning_fee"],
+          0
+        )
+      ),
+
+    petFee:
+      Number(
+        firstValue(
+          data,
+          ["pet_fee"],
+          75
+        )
+      ),
+
+    maxDogs:
+      Number(
+        firstValue(
+          data,
+          ["max_dogs"],
+          2
+        )
+      ),
+
+    beachTagCharge:
+      Number(
+        firstValue(
+          data,
+          [
+            "beach_tag_replacement_fee",
+            "beach_tag_charge"
+          ],
+          50
+        )
+      ),
+
+    beachTags:
+      Number(
+        firstValue(
+          data,
+          [
+            "beach_tags",
+            "beach_tag_count",
+            "number_of_beach_tags"
+          ],
+          0
+        )
+      ),
+
+    beachChairs:
+      Number(
+        firstValue(
+          data,
+          [
+            "beach_chairs",
+            "beach_chair_count",
+            "number_of_beach_chairs"
+          ],
+          0
+        )
+      ),
+
+    beds:
+      firstValue(
+        data,
+        [
+          "bed_sizes",
+          "beds",
+          "bed_configuration"
+        ],
+        isCottage
+          ? "See property listing or guest information"
+          : "See property listing or guest information"
+      ),
+
+    washerDryer:
+      Boolean(
+        firstValue(
+          data,
+          [
+            "washer_dryer",
+            "has_washer_dryer"
+          ],
+          !isCottage
+        )
+      ),
+
+    internet:
+      Boolean(
+        firstValue(
+          data,
+          [
+            "internet",
+            "has_internet"
+          ],
+          true
+        )
+      ),
+
+    smartTv:
+      Boolean(
+        firstValue(
+          data,
+          [
+            "smart_tv",
+            "has_smart_tv"
+          ],
+          true
+        )
+      ),
+
+    coffeePot:
+      Boolean(
+        firstValue(
+          data,
+          [
+            "coffee_pot",
+            "has_coffee_pot"
+          ],
+          true
+        )
+      ),
+
+    stockedKitchen:
+      Boolean(
+        firstValue(
+          data,
+          [
+            "fully_stocked_kitchen",
+            "stocked_kitchen"
+          ],
+          true
+        )
+      ),
+
+    linensText:
+      firstValue(
+        data,
+        ["linens_text"],
+        "Guests are responsible for bringing their own sheets, towels, and other personal linens."
+      )
+  };
+}
+
+function amenitiesMarkup(details) {
+  const items = [
+    `<strong>Bed configuration:</strong> ${esc(details.beds)}`,
+    `<strong>Washer/dryer:</strong> ${yesNo(details.washerDryer)}`,
+    `<strong>Internet:</strong> ${yesNo(details.internet)}`,
+    `<strong>Smart TV:</strong> ${yesNo(details.smartTv)}`,
+    `<strong>Coffee pot:</strong> ${yesNo(details.coffeePot)}`,
+    `<strong>Fully stocked kitchen:</strong> ${yesNo(details.stockedKitchen)}`,
+    `<strong>Beach chairs:</strong> ${details.beachChairs}`,
+    `<strong>Beach tags:</strong> ${details.beachTags}`
+  ];
+
+  return `
+    <ul>
+      ${items
+        .map(item => `<li>${item}</li>`)
+        .join("")}
+    </ul>
+  `;
 }
 
 function standardSections(lease) {
   const data =
     lease.lease_data || {};
 
-  const propertyName =
-    data.property_name ||
-    "the rental property";
+  const details =
+    propertyDetails(data);
+
+  const dogs =
+    Number(data.dogs || 0);
+
+  const dogNames =
+    data.dog_names
+      ? esc(data.dog_names)
+      : "";
+
+  const total =
+    money(data.amount_due);
+
+  const securityDeposit =
+    Number(
+      data.security_deposit || 0
+    );
 
   const guestName =
     esc(data.guest_name || "");
@@ -87,957 +278,537 @@ function standardSections(lease) {
   const departure =
     formatDate(data.departure_date);
 
-  const checkIn =
-    data.check_in_time ||
-    "2:00 PM";
-
-  const checkOut =
-    data.check_out_time ||
-    "10:00 AM";
-
-  const adults =
-    Number(data.adults || 0);
-
-  const children =
+  const occupancy =
+    Number(data.adults || 0) +
     Number(data.children || 0);
 
-  const occupancy =
-    adults + children;
-
-  const maximumOccupancy =
-    data.maximum_occupancy ||
-    data.max_occupancy ||
-    "Not specified";
-
-  const rent =
-    money(
-      data.rent ??
-      data.rent_amount ??
-      data.amount_due
-    );
-
-  const cleaningFee =
-    money(data.cleaning_fee || 0);
-
-  const petFee =
-    money(data.pet_fee || 0);
-
-  const otherCharges =
-    money(data.other_charges || 0);
-
-  const securityDeposit =
-    money(data.security_deposit || 0);
-
-  const totalDue =
-    money(data.amount_due || 0);
-
-  const paymentSchedule =
-    data.payment_schedule_text ||
-    data.payment_schedule ||
-    "See reservation payment schedule.";
-
-  const dogs =
-    Number(data.dogs || 0);
-
-  const dogNames =
-    data.dog_names ||
-    "None";
-
-  const maxDogs =
-    Number(
-      data.max_dogs || 2
-    );
-
-  const petsPermitted =
+  const petParagraph =
     dogs > 0
-      ? "Yes"
-      : "No";
+      ? `
+        <p>
+          This reservation includes
+          <strong>${dogs} dog${dogs === 1 ? "" : "s"}</strong>
+          ${dogNames ? `(${dogNames})` : ""}.
+          No additional animal may occupy the Property
+          without Landlord's advance written approval.
+        </p>
 
-  const beds =
-    data.beds ||
-    data.bed_configuration ||
-    data.bed_sizes ||
-    "Not specified";
+        <p>
+          The applicable pet fee is
+          <strong>${money(details.petFee)} per dog</strong>,
+          unless a different amount is specifically shown
+          in the reservation. The maximum permitted number
+          of dogs is <strong>${details.maxDogs}</strong>.
+        </p>
 
-  const washerDryer =
-    yesNo(data.washer_dryer);
-
-  const internet =
-    yesNo(
-      data.internet ??
-      data.wifi
-    );
-
-  const smartTv =
-    yesNo(data.smart_tv);
-
-  const coffeePot =
-    yesNo(data.coffee_pot);
-
-  const stockedKitchen =
-    yesNo(
-      data.fully_stocked_kitchen
-    );
-
-  const otherAmenities =
-    data.other_amenities ||
-    "None";
-
-  const sheets =
-    yesNo(data.sheets_provided);
-
-  const bathTowels =
-    yesNo(
-      data.bath_towels_provided
-    );
-
-  const beachTowels =
-    yesNo(
-      data.beach_towels_provided
-    );
-
-  const blankets =
-    yesNo(
-      data.blankets_provided
-    );
-
-  const pillows =
-    yesNo(
-      data.pillows_provided
-    );
-
-  const mattressPads =
-    yesNo(
-      data.mattress_pads_provided
-    );
-
-  const beachTags =
-    Number(
-      data.beach_tags || 0
-    );
-
-  const beachChairs =
-    Number(
-      data.beach_chairs || 0
-    );
-
-  const beachTagCharge =
-    money(
-      data.beach_tag_replacement_fee ||
-      50
-    );
-
-  const specialConditions =
-    data.special_conditions ||
-    "None";
+        <p>
+          Tenant is responsible for supervising all approved
+          dogs, promptly cleaning up after them, preventing
+          damage, and preventing excessive barking, nuisance,
+          or disturbance. Tenant is responsible for damage
+          or extraordinary cleaning caused by an approved
+          animal.
+        </p>
+      `
+      : `
+        <p>
+          <strong>No pets or animals are approved for this
+          reservation.</strong> No animal may occupy the
+          Property unless Landlord gives advance written
+          approval and any applicable pet fee is paid.
+        </p>
+      `;
 
   return [
     {
       key: "rental_terms",
-      title: "1. Vacation Rental",
+      title: "1. Rental Terms",
       requires_initials: false,
       html: `
         <p>
-          This Summer Rental Agreement
-          ("Agreement") is made between
-          <strong>Janis Benstock
-          ("Landlord")</strong> and
-          <strong>${guestName}
-          ("Tenant")</strong> for the
-          short-term rental of the Property
-          described below.
+          <strong>Landlord:</strong>
+          Janis Benstock
+        </p>
+
+        <p>
+          <strong>Tenant:</strong>
+          ${guestName}
         </p>
 
         <p>
           <strong>Property:</strong>
-          ${esc(propertyName)},
-          Ocean City, New Jersey
+          ${esc(details.propertyName)}, Ocean City, New Jersey
         </p>
 
         <p>
-          <strong>Arrival:</strong>
-          ${esc(arrival)}<br>
-          <strong>Departure:</strong>
-          ${esc(departure)}<br>
-          <strong>Check-in:</strong>
-          ${esc(checkIn)}<br>
-          <strong>Check-out:</strong>
-          ${esc(checkOut)}<br>
-          <strong>Maximum Occupancy:</strong>
-          ${esc(maximumOccupancy)}<br>
-          <strong>Number of Guests:</strong>
-          ${occupancy || "Not specified"}
+          <strong>Rental period:</strong>
+          ${esc(arrival)} through ${esc(departure)}.
+          Check-in is no earlier than
+          <strong>${esc(details.checkIn)}</strong>
+          and checkout is no later than
+          <strong>${esc(details.checkOut)}</strong>,
+          unless Landlord agrees otherwise in writing.
         </p>
 
         <p>
-          <strong>Rent:</strong>
-          ${rent}<br>
-          <strong>Cleaning Fee:</strong>
-          ${cleaningFee}<br>
-          <strong>Pet Fee:</strong>
-          ${petFee}<br>
-          <strong>Other Charges:</strong>
-          ${otherCharges}<br>
-          <strong>Security Deposit:</strong>
-          ${securityDeposit}<br>
-          <strong>Total Due:</strong>
-          ${totalDue}
+          <strong>Total reservation amount:</strong>
+          ${esc(total)}.
+          The payment schedule associated with this
+          reservation is incorporated into this Agreement.
         </p>
 
-        <p>
-          <strong>Payment Schedule:</strong><br>
-          ${esc(paymentSchedule)}
-        </p>
+        ${
+          securityDeposit > 0
+            ? `
+              <p>
+                <strong>Security deposit:</strong>
+                ${money(securityDeposit)}.
+              </p>
+            `
+            : ""
+        }
 
         <p>
-          The payment schedule and
-          reservation-specific charges shown
-          above are incorporated into this
-          Agreement.
-        </p>
-
-        <p>
-          Tenant agrees to rent the Property
-          from Landlord for the dates shown
-          above. The Property is being rented
-          as a <strong>short-term vacation or
-          seasonal accommodation</strong> and
-          not as a year-round residential
+          The Property is rented as a short-term seasonal
+          vacation accommodation. This Agreement is not
+          intended to create a year-round residential
           tenancy.
         </p>
+      `
+    },
+
+    {
+      key: "acceptance_property",
+      title: "2. Acceptance and Condition of Property",
+      requires_initials: true,
+      html: `
+        <p>
+          Tenant accepts the Property in its existing
+          condition, subject to specific written
+          representations made by Landlord in this Agreement
+          or in the reservation.
+        </p>
 
         <p>
-          Tenant understands that this
-          Agreement is for temporary occupancy
-          associated with a vacation or
-          seasonal rental. The parties intend
-          the occupancy to be treated
-          consistently with applicable New
-          Jersey law governing transient and
-          seasonal rentals.
+          Tenant understands that opinions concerning the
+          condition, appearance, furnishings, and suitability
+          of a vacation property are subjective. Tenant
+          should promptly notify Landlord of any material
+          problem or pre-existing damage discovered at
+          check-in so that it can be documented and, when
+          appropriate, addressed.
+        </p>
+
+        <p>
+          Tenant has not relied upon any promise concerning
+          the Property that is not contained in the
+          reservation, this Agreement, or another written
+          communication from Landlord.
         </p>
       `
     },
 
     {
       key: "occupancy_use",
-      title: "2. Occupancy and Use",
+      title: "3. Occupancy and Use",
       requires_initials: true,
       html: `
         <p>
-          The Property may be occupied only by
-          the persons included in the approved
-          reservation and may not exceed the
-          stated maximum occupancy.
+          The Property may be used only as a private
+          residence by the persons permitted under this
+          reservation. The reservation currently reflects
+          <strong>${occupancy || "the disclosed number of"}</strong>
+          occupant${occupancy === 1 ? "" : "s"}.
+          Occupancy may not exceed the Property's stated
+          maximum occupancy.
         </p>
 
         <p>
-          Tenant may use the Property only as
-          a private residence for the rental
-          period. The Property may not be used
-          for any unlawful, commercial,
-          professional, event, party, or other
-          purpose inconsistent with a private
-          vacation stay.
+          Tenant may not use the Property for any unlawful,
+          commercial, professional, event, party, or other
+          purpose inconsistent with a private vacation stay.
+          Tenant may not assign or transfer the reservation,
+          or permit another person to take over the
+          reservation, without Landlord's written consent.
         </p>
 
         <p>
-          No recreational vehicle, camper,
-          trailer, or similar vehicle may be
-          used for sleeping or additional
-          occupancy at the Property without
-          Landlord's written permission.
+          Minors may not occupy the Property without the
+          adult supervision required by Landlord and
+          applicable law.
         </p>
 
         <p>
-          Tenant may not alter the Property or
-          install fixtures, appliances,
-          air-conditioning units, or other
-          equipment without Landlord's written
-          consent.
-        </p>
-
-        <p>
-          Tenant is responsible for the
-          conduct of all occupants, guests,
-          invitees, and approved animals at
-          the Property.
-        </p>
-      `
-    },
-
-    {
-      key: "condition",
-      title: "3. Condition of Property",
-      requires_initials: false,
-      html: `
-        <p>
-          Tenant accepts the Property in its
-          existing condition, subject to any
-          specific written representations
-          made by Landlord.
-        </p>
-
-        <p>
-          If Tenant has not personally
-          inspected the Property before
-          entering into this Agreement, Tenant
-          understands that photographs,
-          descriptions, and other information
-          may not convey every feature or
-          condition of the Property.
-        </p>
-
-        <p>
-          Tenant must promptly notify Landlord
-          after check-in of any significant
-          pre-existing damage, unsafe
-          condition, or material problem
-          discovered upon arrival. Failure to
-          report an existing condition
-          promptly may make it more difficult
-          to determine whether the condition
-          occurred before or during Tenant's
-          stay.
-        </p>
-      `
-    },
-
-    {
-      key: "damage_deposit",
-      title:
-        "4. Damage, Cleaning and Security Deposit",
-      requires_initials: true,
-      html: `
-        <p>
-          Tenant agrees to return the Property
-          at the end of the rental period in
-          substantially the same condition in
-          which it was received, ordinary wear
-          from reasonable use excepted.
-        </p>
-
-        <p>
-          Tenant is responsible for damage,
-          breakage, missing property, excessive
-          cleaning, unauthorized occupants,
-          unauthorized animals, rule
-          violations, and other charges caused
-          by Tenant or Tenant's occupants,
-          guests, invitees, or animals.
-        </p>
-
-        <p>
-          Any security deposit identified for
-          the reservation may be applied to
-          amounts properly due for damage,
-          excessive cleaning, missing items,
-          unpaid charges, or other obligations
-          under this Agreement.
-        </p>
-
-        <p>
-          The security deposit does
-          <strong>not</strong> limit Tenant's
-          liability. Tenant remains responsible
-          for amounts properly due that exceed
-          the security deposit.
-        </p>
-
-        <p>
-          Following termination of the rental
-          period, Landlord will inspect the
-          Property and determine whether any
-          deductions are required. Landlord
-          will <strong>initiate the return of
-          any remaining refundable security
-          deposit by Bill Pay check within
-          seven (7) days after termination of
-          the lease.</strong>
-        </p>
-
-        <p>
-          Tenant remains responsible for
-          damage or other amounts properly due
-          that are discovered after the initial
-          inspection, including conditions that
-          could not reasonably have been
-          discovered during that inspection.
+          Tenant is responsible for the conduct of every
+          person and approved animal permitted onto the
+          Property by Tenant.
         </p>
       `
     },
 
     {
       key: "pets",
-      title: "5. Pets and Animals",
+      title: "4. Dogs and Other Animals",
       requires_initials: true,
-      html: `
-        <p>
-          <strong>Pets permitted:</strong>
-          ${petsPermitted}<br>
-          <strong>Number of approved dogs:</strong>
-          ${dogs}<br>
-          <strong>Dog name(s):</strong>
-          ${esc(dogNames)}<br>
-          <strong>Pet fee:</strong>
-          ${petFee}<br>
-          <strong>Maximum dogs permitted:</strong>
-          ${maxDogs}
-        </p>
-
-        ${
-          dogs > 0
-            ? `
-              <p>
-                Only the approved animal(s)
-                listed for this reservation may
-                occupy the Property. Tenant is
-                responsible for supervising all
-                animals, cleaning up after them,
-                preventing excessive barking or
-                nuisance, and paying for any
-                damage or additional cleaning
-                caused by them.
-              </p>
-            `
-            : `
-              <p>
-                No pet or animal may occupy the
-                Property without Landlord's
-                prior written approval.
-              </p>
-            `
-        }
-
-        <p>
-          An unauthorized animal constitutes a
-          material violation of this Agreement
-          and may result in termination of
-          occupancy to the extent permitted by
-          law, in addition to responsibility
-          for resulting charges or damages.
-        </p>
-
-        <p>
-          Nothing in this paragraph is intended
-          to limit rights or obligations
-          applicable to an assistance animal
-          under applicable law.
-        </p>
-      `
+      html: petParagraph
     },
 
     {
-      key: "house_rules",
-      title: "6. House Rules and Conduct",
+      key: "conduct_rules",
+      title: "5. Conduct and House Rules",
       requires_initials: true,
       html: `
         <p>
-          <strong>No smoking or vaping is
-          permitted anywhere on the Property,
-          indoors or outdoors.</strong>
+          <strong>
+            No smoking or vaping is permitted anywhere on
+            the Property, indoors or outdoors, with no
+            exceptions.
+          </strong>
         </p>
 
         <p>
-          Tenant and all occupants must respect
-          neighbors and avoid unreasonable
-          noise, nuisance, disturbance, or
-          conduct that interferes with the
-          peaceful use of surrounding
-          properties.
-        </p>
-
-        <p>
-          Outdoor noise must be kept to a
-          minimum, particularly after
+          Tenant must respect neighbors and avoid
+          unreasonable noise, nuisance, disturbance, or
+          conduct that interferes with neighboring
+          properties. Outdoor noise must be kept to a
+          minimum, especially after
           <strong>10:00 PM</strong>.
         </p>
 
         <p>
-          Tenant must comply with reasonable
-          written instructions provided by
-          Landlord concerning parking, trash,
-          recycling, use of outdoor areas,
-          safety, check-out procedures, and
-          care of the Property.
-        </p>
-
-        <p>
-          Tenant is responsible for placing
-          trash and recycling in the
-          appropriate exterior containers and
-          complying with applicable Ocean City
-          requirements and instructions
+          Tenant is responsible for placing trash and
+          recyclables in the appropriate exterior containers
+          and following applicable City of Ocean City
+          collection rules and any written instructions
           supplied by Landlord.
         </p>
 
         <p>
-          A serious or repeated violation of
-          these rules may constitute a default
-          under this Agreement.
+          Tenant must comply with reasonable written parking,
+          safety, property, and checkout instructions
+          supplied by Landlord.
+        </p>
+
+        <p>
+          A serious or repeated violation may constitute a
+          default and may result in termination of occupancy
+          to the extent permitted by applicable law.
         </p>
       `
     },
 
     {
-      key: "amenities",
-      title:
-        "7. Amenities and Property Details",
-      requires_initials: false,
+      key: "condition_damage",
+      title: "6. End of Term, Damage, and Security Deposit",
+      requires_initials: true,
       html: `
         <p>
-          <strong>Beds:</strong>
-          ${displayValue(beds)}<br>
-          <strong>Washer/Dryer:</strong>
-          ${washerDryer}<br>
-          <strong>Internet/Wi-Fi:</strong>
-          ${internet}<br>
-          <strong>Smart TV:</strong>
-          ${smartTv}<br>
-          <strong>Coffee Pot:</strong>
-          ${coffeePot}<br>
-          <strong>Fully Stocked Kitchen:</strong>
-          ${stockedKitchen}<br>
-          <strong>Other Included Amenities:</strong>
-          ${displayValue(otherAmenities, "None")}
+          Tenant shall return the Property in substantially
+          the same condition in which it was received,
+          ordinary wear from reasonable use excepted.
         </p>
 
         <p>
-          Landlord will make reasonable efforts
-          to maintain the appliances,
-          utilities, internet service,
-          television, air conditioning, and
-          other amenities provided with the
-          Property.
+          Tenant is responsible for damage, breakage,
+          missing property, excessive cleaning, unauthorized
+          occupants or animals, unpaid charges, and other
+          losses caused by Tenant or Tenant's guests.
         </p>
 
         <p>
-          Temporary interruption, breakdown,
-          loss of service, or failure of an
-          appliance or amenity does not
-          automatically entitle Tenant to a
-          refund. Landlord will make reasonable
-          efforts to arrange repair or
-          restoration after being notified.
+          Any security deposit identified for this
+          reservation may be applied to amounts properly due
+          because of damage, excessive cleaning, missing
+          property, unpaid charges, or other obligations
+          under this Agreement. Tenant remains responsible
+          for amounts exceeding the security deposit.
+        </p>
+
+        <p>
+          After the rental term ends, Landlord will inspect
+          the Property and allow a reasonable opportunity to
+          identify damage or other charges that may not be
+          apparent during the initial inspection. Landlord
+          will <strong>initiate the return of any refundable
+          security-deposit balance by Bill Pay within seven
+          (7) days after termination of this Agreement</strong>,
+          less any lawful deductions.
         </p>
       `
     },
 
     {
-      key: "linens",
-      title: "8. Linens and Personal Items",
-      requires_initials: false,
+      key: "linens_amenities",
+      title: "7. Linens, Beach Items, and Amenities",
+      requires_initials: true,
       html: `
         <p>
-          <strong>Sheets provided:</strong>
-          ${sheets}<br>
-          <strong>Bath towels provided:</strong>
-          ${bathTowels}<br>
-          <strong>Beach towels provided:</strong>
-          ${beachTowels}<br>
-          <strong>Blankets provided:</strong>
-          ${blankets}<br>
-          <strong>Pillows provided:</strong>
-          ${pillows}<br>
-          <strong>Mattress pads provided:</strong>
-          ${mattressPads}
+          <strong>Linens:</strong>
+          ${esc(details.linensText)}
         </p>
 
         <p>
-          Tenant is responsible for bringing
-          any linens, towels, or personal items
-          identified above as
-          <strong>not provided</strong>.
+          The following amenities and property items are
+          identified for this reservation:
         </p>
 
-        <p>
-          Any reservation-specific written
-          agreement concerning linens or other
-          items controls over a general
-          property description.
-        </p>
-      `
-    },
-
-    {
-      key: "beach_items",
-      title:
-        "9. Beach Tags and Beach Chairs",
-      requires_initials: false,
-      html: `
-        <p>
-          <strong>Beach Tags:</strong>
-          ${beachTags}<br>
-          <strong>Beach Chairs:</strong>
-          ${beachChairs}
-        </p>
+        ${amenitiesMarkup(details)}
 
         <p>
-          Tenant is responsible for the care
-          and return of all beach tags and
-          beach chairs provided with the
-          Property.
+          Beach tags, beach chairs, remotes, and other items
+          supplied with the Property remain Landlord's
+          property and must remain at or be returned to the
+          Property at checkout as instructed.
         </p>
 
-        <p>
-          The replacement charge for each
-          missing beach tag is
-          <strong>${beachTagCharge}</strong>.
-        </p>
+        ${
+          details.beachTags > 0
+            ? `
+              <p>
+                The Property is supplied with
+                <strong>${details.beachTags} beach tag${details.beachTags === 1 ? "" : "s"}</strong>.
+                Tenant agrees to pay
+                <strong>${money(details.beachTagCharge)}</strong>
+                for each supplied beach tag that is lost,
+                missing, or not returned at the end of the
+                stay.
+              </p>
+            `
+            : ""
+        }
 
-        <p>
-          Tenant is responsible for the
-          reasonable replacement cost of any
-          missing or damaged beach chair or
-          other reusable property item supplied
-          for the stay.
-        </p>
+        ${
+          details.beachChairs > 0
+            ? `
+              <p>
+                The Property is supplied with
+                <strong>${details.beachChairs} beach chair${details.beachChairs === 1 ? "" : "s"}</strong>.
+                Tenant is responsible for returning the
+                supplied chairs to the Property at the end
+                of the stay.
+              </p>
+            `
+            : ""
+        }
       `
     },
 
     {
       key: "utilities",
-      title: "10. Utilities",
+      title: "8. Utilities, Appliances, and Services",
       requires_initials: false,
       html: `
         <p>
-          Unless the reservation specifically
-          states otherwise, ordinary utilities
-          associated with the rental are
-          included in the rental amount.
+          Utilities are included unless the reservation,
+          rate period, special conditions, or other written
+          rental terms specifically state otherwise.
         </p>
 
         <p>
-          If any utility or service is
-          specifically excluded or separately
-          payable by Tenant, that term will be
-          shown in the reservation or Special
-          Conditions.
+          Landlord will make reasonable efforts to maintain
+          appliances, internet service, air conditioning,
+          televisions, and other included services and
+          amenities. Temporary interruption or failure of an
+          appliance, utility, service, or amenity does not
+          automatically entitle Tenant to a refund.
         </p>
 
         <p>
-          Temporary utility or internet outages
-          beyond Landlord's reasonable control
-          do not automatically entitle Tenant
-          to a refund.
+          Tenant shall promptly notify Landlord of a problem.
+          Landlord will make reasonable efforts to arrange
+          repair or service based upon the circumstances and
+          availability of contractors or service providers.
         </p>
       `
     },
 
     {
       key: "access",
-      title: "11. Landlord Access",
+      title: "9. Landlord Access",
       requires_initials: false,
       html: `
         <p>
-          Landlord may enter the Property at
-          reasonable times when reasonably
-          necessary to inspect the Property,
-          address an emergency, make or arrange
-          repairs, provide services, investigate
-          a reported problem or violation, or
-          otherwise protect the Property.
+          Landlord may enter the Property at reasonable times
+          when reasonably necessary to inspect the Property,
+          address an emergency, make or arrange repairs or
+          improvements, provide necessary services,
+          investigate a reported problem or rule violation,
+          or as otherwise permitted by law.
         </p>
 
         <p>
-          When circumstances reasonably allow,
-          Landlord will attempt to provide
-          notice before non-emergency entry.
+          When circumstances reasonably allow, Landlord will
+          attempt to provide notice before non-emergency
+          entry.
         </p>
       `
     },
 
     {
-      key: "cancellation",
-      title: "12. Cancellation",
-      requires_initials: false,
+      key: "cancellation_default",
+      title: "10. Cancellation, Default, and Termination",
+      requires_initials: true,
       html: `
         <p>
-          A request by Tenant to cancel the
-          reservation does not automatically
-          release Tenant from the financial
-          obligations of this Agreement.
+          Tenant's cancellation does not automatically
+          release Tenant from the financial obligations of
+          the reservation.
         </p>
 
         <p>
-          Any refund, credit, re-rental
-          arrangement, or reduction in amounts
-          due will be governed by the
-          cancellation terms applicable to the
-          reservation and any subsequent
-          written agreement between Landlord
-          and Tenant.
+          If Tenant requests cancellation, any refund,
+          credit, release, or continuing payment obligation
+          will be determined by the cancellation terms
+          applicable to the reservation, Landlord's written
+          agreement, the extent to which the Property is
+          re-rented, and applicable law.
         </p>
 
         <p>
-          If Tenant cancels and the Property is
-          not re-rented on terms acceptable to
-          Landlord, Tenant may remain
-          responsible for amounts due under
-          this Agreement, subject to applicable
-          law.
+          Failure to make a required payment when due,
+          material misrepresentation in the reservation,
+          unauthorized occupancy, serious property damage,
+          or a material violation of this Agreement may
+          constitute default.
+        </p>
+
+        <p>
+          Landlord's remedies following default are subject
+          to applicable New Jersey law. Nothing in this
+          Agreement authorizes unlawful self-help or waives
+          a right that cannot legally be waived.
         </p>
       `
     },
 
     {
-      key: "default",
-      title: "13. Tenant Default",
+      key: "rentability",
+      title: "11. Casualty and Rentability",
       requires_initials: false,
       html: `
         <p>
-          Failure to make a required payment
-          when due, material misrepresentation
-          in the reservation, unauthorized
-          occupancy, unauthorized animals,
-          serious property damage, prohibited
-          conduct, or a material violation of
-          this Agreement may constitute a
-          default.
+          If the Property becomes materially unfit for
+          occupancy because of fire, casualty, or another
+          condition affecting the Property itself and the
+          stay cannot reasonably continue, Landlord may
+          cancel the affected portion of the reservation and
+          return an equitable prorated share of prepaid rent
+          for the unusable period.
         </p>
 
         <p>
-          Landlord's rights following a default
-          are subject to applicable New Jersey
-          law.
-        </p>
-      `
-    },
-
-    {
-      key: "casualty",
-      title:
-        "14. Casualty and Rentability",
-      requires_initials: false,
-      html: `
-        <p>
-          If the Property becomes materially
-          unfit for occupancy because of fire,
-          casualty, severe property damage, or
-          another condition affecting the
-          Property itself and the rental cannot
-          reasonably continue, Landlord may
-          terminate the affected portion of the
-          rental and return an equitable
-          prorated share of prepaid rent for
-          the unusable period.
-        </p>
-
-        <p>
-          Conditions outside Landlord's
-          reasonable control—including weather,
-          beach conditions, neighborhood
-          conditions, nearby construction,
-          municipal activity, or temporary
-          interruption of an appliance,
-          utility, or amenity—do not by
-          themselves make the Property unfit
-          for occupancy.
-        </p>
-      `
-    },
-
-    {
-      key: "subletting",
-      title:
-        "15. No Subletting or Transfer",
-      requires_initials: false,
-      html: `
-        <p>
-          Tenant may not sublet, assign,
-          transfer, or otherwise permit another
-          person to take over the Property or
-          reservation without Landlord's prior
-          written approval.
+          Off-site conditions outside Landlord's reasonable
+          control, including weather, beach conditions,
+          neighborhood conditions, construction elsewhere,
+          municipal activity, or temporary interruption of
+          amenities, do not by themselves make the Property
+          unfit for occupancy.
         </p>
       `
     },
 
     {
       key: "megans_law",
-      title:
-        "16. Megan’s Law Information",
+      title: "12. Megan’s Law Information",
       requires_initials: false,
       html: `
         <p>
-          New Jersey law provides for
-          registration and community
-          notification concerning certain
-          convicted sex offenders.
-        </p>
-
-        <p>
-          Information that is publicly
-          available may be obtained from
-          appropriate official New Jersey
-          law-enforcement resources. Tenant is
-          responsible for making any inquiry
-          Tenant considers appropriate
-          regarding the area surrounding the
+          New Jersey law provides for registration and
+          community notification concerning certain
+          convicted sex offenders. Information that is
+          publicly available may be obtained from official
+          New Jersey law-enforcement resources. Tenant is
+          responsible for making any inquiry Tenant considers
+          appropriate concerning the area surrounding the
           Property.
-        </p>
-      `
-    },
-
-    {
-      key: "property_rules",
-      title: "17. Property Rules",
-      requires_initials: false,
-      html: `
-        <p>
-          Tenant agrees to comply with
-          reasonable written rules established
-          by Landlord concerning occupancy,
-          maintenance, parking, trash and
-          recycling, noise, smoking, safety,
-          use of outdoor areas, and other
-          matters reasonably related to the
-          Property.
-        </p>
-
-        <p>
-          Those rules and any check-in/check-out
-          instructions provided by Landlord are
-          incorporated into Tenant's
-          responsibilities under this
-          Agreement.
-        </p>
-      `
-    },
-
-    {
-      key: "special_conditions",
-      title: "18. Special Conditions",
-      requires_initials: false,
-      html: `
-        <p>
-          ${esc(specialConditions)}
-        </p>
-
-        <p>
-          Any written Special Condition
-          included here is part of this
-          Agreement.
         </p>
       `
     },
 
     {
       key: "owner_disclosure",
-      title:
-        "19. Licensed Broker Disclosure",
+      title: "13. Owner and Real Estate License Disclosure",
       requires_initials: true,
       html: `
         <p>
-          Landlord,
-          <strong>Janis Benstock,
-          New Jersey Real Estate Broker
-          License #1756109</strong>,
-          is a licensed New Jersey real estate
-          broker.
+          Landlord, <strong>Janis Benstock</strong>, is a
+          licensed New Jersey real estate broker,
+          license number <strong>1756109</strong>.
         </p>
 
         <p>
-          Landlord is offering and renting the
-          Property <strong>in her capacity as
-          the owner of the Property and not as
-          a real estate broker or brokerage
-          representing Tenant or another party
-          in this transaction.</strong>
-        </p>
-
-        <p>
-          No brokerage relationship is created
-          between Landlord and Tenant by this
-          Agreement.
+          Janis Benstock is offering and renting the Property
+          in her capacity as the
+          <strong>owner of the Property</strong>.
+          She is not acting as a real estate broker or agent
+          representing Tenant in this transaction.
         </p>
       `
     },
 
     {
       key: "electronic_signatures",
-      title:
-        "20. Electronic Signatures and Records",
+      title: "14. Electronic Signatures and Counterparts",
       requires_initials: false,
       html: `
         <p>
-          The parties agree that this Agreement
-          may be signed electronically and in
-          counterparts.
+          The parties agree that this Agreement may be signed
+          electronically and in counterparts. Electronic
+          signatures, typed signatures used through the
+          Down the Shore signing process, and electronic
+          records of required initials are intended to have
+          the same effect as signatures and initials placed
+          on a paper counterpart to the extent permitted by
+          applicable law.
+        </p>
+      `
+    },
+
+    {
+      key: "entire_agreement",
+      title: "15. Entire Agreement and Written Changes",
+      requires_initials: false,
+      html: `
+        <p>
+          This Agreement, the reservation details, the
+          payment schedule, and any written terms expressly
+          incorporated into the reservation constitute the
+          agreement between Landlord and Tenant concerning
+          this rental.
         </p>
 
         <p>
-          Typed signatures, electronic
-          signatures, electronic initials,
-          timestamps, and related records
-          created through the Down the Shore
-          signing process are intended to have
-          the same effect as signatures and
-          initials placed on a paper
-          counterpart to the extent permitted
-          by law.
-        </p>
-
-        <p>
-          Each signer acknowledges that use of
-          that signer's secure lease link and
-          entry of the signer's name or
-          initials is intended as that signer's
-          electronic act.
+          A change to the material rental terms must be
+          agreed to in writing by the parties.
         </p>
       `
     },
 
     {
       key: "acceptance",
-      title:
-        "21. Acceptance and Execution",
+      title: "16. Acceptance and Binding Effect",
       requires_initials: true,
       html: `
         <p>
-          Tenant's signature confirms that
-          Tenant has read and agrees to this
-          Agreement.
+          Tenant's signature confirms that Tenant has read
+          and agrees to this Agreement.
         </p>
 
         <p>
-          Landlord will execute the Agreement
-          after:
-        </p>
-
-        <ol>
-          <li>
-            Tenant has completed all required
-            signatures and initials; and
-          </li>
-          <li>
-            the required
-            <strong>initial payment</strong>
-            has been received.
-          </li>
-        </ol>
-
-        <p>
-          The entire rental balance does
-          <strong>not</strong> have to be paid
-          before Landlord executes the
-          Agreement. If the reservation
-          includes a payment plan, all
-          remaining installments remain due
-          according to the payment schedule.
+          <strong>
+            Landlord will not execute this Agreement until
+            the required initial payment has been received.
+          </strong>
+          Payment in full is not required before Landlord
+          signs when the reservation has an approved payment
+          schedule.
         </p>
 
         <p>
-          The Agreement becomes fully executed
-          when Tenant has signed, the required
-          initial payment has been received,
-          and Landlord has signed.
-        </p>
-
-        <p>
-          Failure to make a later installment
-          payment when due may constitute a
-          default under this Agreement.
+          The Agreement becomes fully executed when the
+          required Tenant signature and initials have been
+          completed, the required initial payment has been
+          received, and Landlord has signed the Agreement.
         </p>
       `
     }
@@ -1045,13 +816,17 @@ function standardSections(lease) {
 }
 
 function leaseSections(lease) {
+  /*
+    Regular seasonal lease only.
+
+    Senior Week and winter rentals intentionally use
+    separate lease forms and will not be folded into this
+    agreement.
+  */
   return standardSections(lease);
 }
 
-export default async function handler(
-  req,
-  res
-) {
+export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       error: "Method not allowed"
@@ -1100,59 +875,46 @@ export default async function handler(
   }
 
   const {
-    data: tenantSigners,
-    error: tenantSignerError
+    data: allSigners,
+    error: allSignersError
   } =
     await supabase
       .from("lease_signers")
       .select(
-        "id, signer_role, signer_name, signed_at, signature_text"
+        "id,signer_role,signer_name,signer_email,signed_at,signature_text"
       )
-      .eq("lease_id", lease.id)
-      .neq("signer_role", "owner");
+      .eq("lease_id", lease.id);
 
-  if (tenantSignerError) {
+  if (allSignersError) {
     return res.status(500).json({
-      error: tenantSignerError.message
+      error: allSignersError.message
     });
   }
 
-  const tenantSignerIds =
-    (tenantSigners || [])
-      .map(item => item.id);
+  const {
+    data: allInitials,
+    error: initialsError
+  } =
+    await supabase
+      .from("lease_initials")
+      .select(
+        "signer_id,section_key,initials,initialed_at"
+      )
+      .eq("lease_id", lease.id);
 
-  let tenantInitials = [];
-
-  if (tenantSignerIds.length) {
-    const {
-      data: initials,
-      error: initialsError
-    } =
-      await supabase
-        .from("lease_initials")
-        .select(
-          "signer_id, section_key, initials, initialed_at"
-        )
-        .in(
-          "signer_id",
-          tenantSignerIds
-        );
-
-    if (initialsError) {
-      return res.status(500).json({
-        error: initialsError.message
-      });
-    }
-
-    tenantInitials =
-      initials || [];
+  if (initialsError) {
+    return res.status(500).json({
+      error: initialsError.message
+    });
   }
 
   return res.status(200).json({
     id: lease.id,
     status: lease.status,
-    lease_type: lease.lease_type,
-    lease_data: lease.lease_data,
+    lease_type:
+      lease.lease_type || "standard",
+    lease_data:
+      lease.lease_data || {},
 
     signer: {
       id: signer.id,
@@ -1168,11 +930,11 @@ export default async function handler(
         signer.signature_text
     },
 
-    tenant_signers:
-      tenantSigners || [],
+    signers:
+      allSigners || [],
 
-    tenant_initials:
-      tenantInitials,
+    initials:
+      allInitials || [],
 
     sections:
       leaseSections(lease)
