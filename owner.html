@@ -1268,103 +1268,6 @@ button.danger {
 }
 
 
-.photo-manager-toolbar {
-  display:grid;
-  grid-template-columns:minmax(220px,320px) minmax(0,1fr);
-  gap:16px;
-  align-items:end;
-  margin-bottom:18px;
-}
-
-.photo-manager-toolbar label {
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  font-weight:600;
-}
-
-.photo-manager-toolbar select,
-.photo-manager-toolbar input[type="file"] {
-  width:100%;
-  padding:10px;
-  border:1px solid #cfd5dd;
-  border-radius:8px;
-  background:#fff;
-}
-
-.photo-upload-box {
-  border:1px dashed #cfd5dd;
-  background:#fbfcfd;
-  border-radius:12px;
-  padding:16px;
-}
-
-.photo-upload-actions {
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  align-items:center;
-  margin-top:10px;
-}
-
-.photo-grid {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:14px;
-  margin-top:18px;
-}
-
-.photo-card {
-  border:1px solid var(--line);
-  border-radius:12px;
-  overflow:hidden;
-  background:#fff;
-}
-
-.photo-card-image {
-  aspect-ratio:4 / 3;
-  width:100%;
-  object-fit:cover;
-  display:block;
-  background:#f2f3f5;
-}
-
-.photo-card-body {
-  padding:12px;
-}
-
-.photo-card-primary {
-  display:inline-block;
-  background:var(--gold-soft);
-  color:#725600;
-  font-size:11px;
-  font-weight:800;
-  padding:4px 7px;
-  border-radius:6px;
-  margin-bottom:8px;
-}
-
-.photo-card-actions {
-  display:flex;
-  gap:7px;
-  flex-wrap:wrap;
-  margin-top:10px;
-}
-
-.photo-card-actions button {
-  padding:7px 9px;
-  border-radius:7px;
-  border:1px solid #c7ccd3;
-  background:#fff;
-}
-
-.photo-card-actions button.primary {
-  background:var(--navy);
-  color:#fff;
-  border-color:var(--navy);
-}
-
-
 @media (max-width:1100px) {
   .owner-shell {
     grid-template-columns:230px minmax(0,1fr);
@@ -1378,10 +1281,6 @@ button.danger {
 
   .dashboard-grid {
     grid-template-columns:1fr;
-  }
-
-  .photo-grid {
-    grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
 
@@ -1433,8 +1332,6 @@ button.danger {
 
   .dashboard-stats,
   .upcoming-events,
-  .photo-grid,
-  .photo-manager-toolbar,
   .property-settings-grid,
   .rate-card-grid,
   .form-grid,
@@ -1634,12 +1531,6 @@ button.danger {
 <button class="owner-nav-link" data-owner-view="pricing" type="button">
 <span class="nav-icon">$</span>
 <span>Pricing &amp; Fees</span>
-</button>
-
-
-<button class="owner-nav-link" data-owner-view="photos" type="button">
-<span class="nav-icon">▧</span>
-<span>Photos</span>
 </button>
 
 
@@ -1926,7 +1817,7 @@ Departure
 
 <label>
 Amount due
-<input min="0" name="amount_due" step="0.01" type="number"/>
+<input name="amount_due" type="text" inputmode="decimal" placeholder="0.00"/>
 </label>
 
 
@@ -2140,43 +2031,6 @@ Notes
 </section>
 </div>
 
-
-</section>
-
-
-<section class="owner-panel" data-owner-panel="photos">
-
-<div class="panel-heading">
-<div>
-<span class="section-kicker">PROPERTY PHOTOS</span>
-<h2>Photos</h2>
-</div>
-</div>
-
-<section class="card" id="photoManagerSection">
-  <div class="photo-manager-toolbar">
-    <label>
-      Property
-      <select id="photoProperty">
-        <option value="">Choose property</option>
-      </select>
-    </label>
-
-    <div class="photo-upload-box">
-      <label>
-        Add photos
-        <input id="photoFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-      </label>
-      <div class="photo-upload-actions">
-        <button class="primary" id="uploadPhotosButton" type="button">Upload selected photos</button>
-        <span class="meta">JPG, PNG, or WebP. The first photo can be set as the main photo below.</span>
-      </div>
-    </div>
-  </div>
-
-  <div id="photoManagerMessage"></div>
-  <div class="photo-grid" id="photoGrid"></div>
-</section>
 
 </section>
 
