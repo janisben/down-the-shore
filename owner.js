@@ -158,6 +158,34 @@ const manualReservationMessage =
   document.getElementById("manualReservationMessage");
 
 
+const manualAmountDueInput =
+  manualReservationForm
+    ?.querySelector(
+      '[name="amount_due"]'
+    );
+
+if (manualAmountDueInput) {
+  manualAmountDueInput.type =
+    "text";
+
+  manualAmountDueInput.inputMode =
+    "decimal";
+
+  manualAmountDueInput.removeAttribute(
+    "min"
+  );
+
+  manualAmountDueInput.removeAttribute(
+    "step"
+  );
+
+  manualAmountDueInput.setAttribute(
+    "autocomplete",
+    "off"
+  );
+}
+
+
 const manualProperty =
   document.getElementById("manualProperty");
 
@@ -6018,18 +6046,7 @@ document.addEventListener(
     if (
       document.activeElement === event.target &&
       event.target.matches(
-        [
-          '[name="amount_due"]',
-          '[data-amount]',
-          '[data-payment-due-amount]',
-          '[data-new-payment-amount]',
-          '[data-property-cleaning-fee]',
-          '[data-property-pet-fee]',
-          '[data-rate-weekly]',
-          '[data-rate-nightly]',
-          '[name="weekly_price"]',
-          '[name="nightly_price"]'
-        ].join(", ")
+        '[data-rate-weekly], [data-rate-nightly], [name="weekly_price"], [name="nightly_price"]'
       )
     ) {
       event.target.blur();
