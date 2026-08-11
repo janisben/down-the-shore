@@ -32,6 +32,51 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
+async function createCheckoutSession(
+  req,
+  reservationId
+) {
+  const response =
+    await fetch(
+      `${siteOrigin(req)}/api/create-checkout-session`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          "Origin":
+            siteOrigin(req)
+        },
+
+        body:
+          JSON.stringify({
+            reservationId
+          })
+      }
+    );
+
+  let body = {};
+
+  try {
+    body =
+      await response.json();
+  } catch (_) {}
+
+  if (
+    !response.ok ||
+    !body.url
+  ) {
+    throw new Error(
+      body.error ||
+      "The payment page could not be created."
+    );
+  }
+
+  return body.url;
+}
+
 async function sendOwnerReadyEmail(
   req,
   {
@@ -436,6 +481,10 @@ export default async function handler(
         }
       });
 
+    /*
+      OWNER SIGNATURE
+    */
+
     if (
       signer.signer_role ===
       "owner"
@@ -495,6 +544,10 @@ export default async function handler(
           true
       });
     }
+
+    /*
+      TENANT / GUEST SIGNATURE
+    */
 
     const guestSideComplete =
       guestSigners.every(
@@ -561,6 +614,10 @@ export default async function handler(
             item.signer_role ===
             "owner"
         );
+
+    /*
+      PAYMENT ALREADY EXISTS
+    */
 
     if (
       paid > 0
@@ -657,6 +714,13 @@ export default async function handler(
       });
     }
 
+    /*
+      NO PAYMENT YET:
+      MOVE LEASE TO AWAITING PAYMENT,
+      CREATE STRIPE CHECKOUT,
+      RETURN PAYMENT URL TO LEASE PAGE
+    */
+
     await supabase
       .from("leases")
       .update({
@@ -674,6 +738,47 @@ export default async function handler(
         signer.lease_id
       );
 
+    let checkoutUrl =
+      null;
+
+    try {
+      checkoutUrl =
+        await createCheckoutSession(
+          req,
+          lease.reservation_id
+        );
+
+      await supabase
+        .from("lease_events")
+        .insert({
+          lease_id:
+            lease.id,
+
+          signer_id:
+            signer.id,
+
+          event_type:
+            "payment_checkout_created",
+
+          event_data: {
+            reservation_id:
+              lease.reservation_id
+          }
+        });
+
+    } catch (checkoutError) {
+      console.error(
+        "Checkout creation error:",
+        checkoutError
+      );
+
+      return res.status(500).json({
+        error:
+          checkoutError.message ||
+          "Your lease was signed, but the payment page could not be opened."
+      });
+    }
+
     return res.status(200).json({
       success:
         true,
@@ -685,7 +790,10 @@ export default async function handler(
         false,
 
       awaitingOwnerSignature:
-        false
+        false,
+
+      checkout_url:
+        checkoutUrl
     });
 
   } catch (error) {
