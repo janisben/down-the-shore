@@ -6,13 +6,10 @@ const supabase =
     process.env.SUPABASE_SECRET_KEY
   );
 
-export default async function handler(
-  req,
-  res
-) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
-      error:"Method not allowed"
+      error: "Method not allowed"
     });
   }
 
@@ -20,7 +17,8 @@ export default async function handler(
     token,
     signature,
     initials
-  } = req.body || {};
+  } =
+    req.body || {};
 
   if (!token || !signature) {
     return res.status(400).json({
@@ -36,19 +34,12 @@ export default async function handler(
     await supabase
       .from("lease_signers")
       .select("*")
-      .eq("access_token",String(token))
+      .eq("access_token", String(token))
       .single();
 
   if (signerError || !signer) {
     return res.status(404).json({
-      error:"Signer not found"
-    });
-  }
-
-  if (signer.signer_role === "owner") {
-    return res.status(403).json({
-      error:
-        "Owner signature is handled separately after payment."
+      error: "Signer not found"
     });
   }
 
@@ -59,11 +50,99 @@ export default async function handler(
     });
   }
 
+  const {
+    data: lease,
+    error: leaseError
+  } =
+    await supabase
+      .from("leases")
+      .select("*")
+      .eq("id", signer.lease_id)
+      .single();
+
+  if (leaseError || !lease) {
+    return res.status(404).json({
+      error: "Lease not found"
+    });
+  }
+
+  const {
+    data: requiredSigners,
+    error: requiredError
+  } =
+    await supabase
+      .from("lease_signers")
+      .select(
+        "id,signer_role,is_required,signed_at"
+      )
+      .eq("lease_id", signer.lease_id)
+      .eq("is_required", true);
+
+  if (requiredError) {
+    return res.status(500).json({
+      error: requiredError.message
+    });
+  }
+
+  const guestSideCompleteBefore =
+    (requiredSigners || [])
+      .filter(
+        item =>
+          item.signer_role !== "owner"
+      )
+      .every(
+        item =>
+          Boolean(item.signed_at)
+      );
+
+  if (signer.signer_role === "owner") {
+    if (!guestSideCompleteBefore) {
+      return res.status(409).json({
+        error:
+          "The required guest signatures are not complete yet."
+      });
+    }
+
+    const {
+      data: payments,
+      error: paymentError
+    } =
+      await supabase
+        .from("payments")
+        .select("amount")
+        .eq(
+          "reservation_id",
+          lease.reservation_id
+        );
+
+    if (paymentError) {
+      return res.status(500).json({
+        error: paymentError.message
+      });
+    }
+
+    const paid =
+      (payments || [])
+        .reduce(
+          (total, payment) =>
+            total +
+            Number(payment.amount || 0),
+          0
+        );
+
+    if (paid <= 0) {
+      return res.status(409).json({
+        error:
+          "A payment must be received before the owner signs."
+      });
+    }
+  }
+
   const signedAt =
     new Date().toISOString();
 
   const {
-    error:updateError
+    error: updateError
   } =
     await supabase
       .from("lease_signers")
@@ -72,25 +151,27 @@ export default async function handler(
           String(signature).trim(),
         signature_method:
           "typed_name",
-        signed_at:signedAt,
-        updated_at:signedAt
+        signed_at:
+          signedAt,
+        updated_at:
+          signedAt
       })
-      .eq("id",signer.id);
+      .eq("id", signer.id);
 
   if (updateError) {
     return res.status(500).json({
-      error:updateError.message
+      error: updateError.message
     });
   }
 
   const initialRows =
     Object.entries(initials || {})
       .filter(
-        ([,value]) =>
+        ([, value]) =>
           String(value || "").trim()
       )
       .map(
-        ([sectionKey,value]) => ({
+        ([sectionKey, value]) => ({
           lease_id:
             signer.lease_id,
           signer_id:
@@ -108,7 +189,7 @@ export default async function handler(
 
   if (initialRows.length) {
     const {
-      error:initialError
+      error: initialError
     } =
       await supabase
         .from("lease_initials")
@@ -122,7 +203,7 @@ export default async function handler(
 
     if (initialError) {
       return res.status(500).json({
-        error:initialError.message
+        error: initialError.message
       });
     }
   }
@@ -136,41 +217,64 @@ export default async function handler(
         signer.id,
       event_type:
         "signer_signed",
-      event_data:{
+      event_data: {
         signer_role:
           signer.signer_role
       }
     });
 
-  const {
-    data: requiredSigners
-  } =
+  if (signer.signer_role === "owner") {
+    const {
+      error: completeError
+    } =
+      await supabase
+        .from("leases")
+        .update({
+          status: "completed",
+          updated_at: signedAt
+        })
+        .eq("id", signer.lease_id);
+
+    if (completeError) {
+      return res.status(500).json({
+        error: completeError.message
+      });
+    }
+
     await supabase
-      .from("lease_signers")
-      .select(
-        "id,signer_role,is_required,signed_at"
-      )
-      .eq(
-        "lease_id",
-        signer.lease_id
-      )
-      .eq(
-        "is_required",
-        true
-      );
+      .from("lease_events")
+      .insert({
+        lease_id:
+          signer.lease_id,
+        signer_id:
+          signer.id,
+        event_type:
+          "lease_completed",
+        event_data: {
+          completed_at:
+            signedAt
+        }
+      });
+
+    return res.status(200).json({
+      success: true,
+      ownerSigned: true,
+      completed: true
+    });
+  }
 
   const guestSideComplete =
     (requiredSigners || [])
       .filter(
         item =>
-          item.signer_role !==
-          "owner"
+          item.signer_role !== "owner"
       )
       .every(
-        item => Boolean(
-          item.signed_at ||
-          item.id === signer.id
-        )
+        item =>
+          Boolean(
+            item.signed_at ||
+            item.id === signer.id
+          )
       );
 
   if (guestSideComplete) {
@@ -184,14 +288,11 @@ export default async function handler(
         updated_at:
           signedAt
       })
-      .eq(
-        "id",
-        signer.lease_id
-      );
+      .eq("id", signer.lease_id);
   }
 
   return res.status(200).json({
-    success:true,
+    success: true,
     guestSideComplete
   });
 }
