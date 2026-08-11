@@ -4,9 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <title>
-    Rental Agreement | Down the Shore
-  </title>
+  <title>Rental Agreement | Down the Shore</title>
 
   <link
     rel="stylesheet"
@@ -34,10 +32,7 @@
     .lease-meta {
       display:grid;
       grid-template-columns:
-        repeat(
-          auto-fit,
-          minmax(180px,1fr)
-        );
+        repeat(auto-fit,minmax(180px,1fr));
       gap:12px;
       margin:20px 0;
     }
@@ -122,13 +117,9 @@
 
   <main class="lease-shell">
 
-    <h1>
-      Down the Shore
-    </h1>
+    <h1>Down the Shore</h1>
 
-    <p>
-      Summer Rental Agreement
-    </p>
+    <p>Summer Rental Agreement</p>
 
     <div
       id="leaseMessage"
@@ -148,9 +139,7 @@
         id="leaseMeta"
       ></div>
 
-      <div
-        id="leaseBody"
-      ></div>
+      <div id="leaseBody"></div>
 
       <div
         id="tenantSignatureRecord"
@@ -158,22 +147,16 @@
         hidden
       ></div>
 
-      <div
-        class="signature-box"
-      >
+      <div class="signature-box">
 
-        <h2
-          id="signatureHeading"
-        >
+        <h2 id="signatureHeading">
           Tenant signature
         </h2>
 
-        <p
-          id="signatureIntro"
-        >
-          By signing below, I confirm
-          that I have read and agree to
-          the rental agreement above.
+        <p id="signatureIntro">
+          By signing below, I confirm that I
+          have read and agree to the rental
+          agreement above.
         </p>
 
         <label>
@@ -186,9 +169,7 @@
           >
         </label>
 
-        <div
-          style="margin-top:16px"
-        >
+        <div style="margin-top:16px">
           <button
             id="signLeaseButton"
             type="button"
@@ -268,31 +249,17 @@
       );
 
 
-    let leasePayload = null;
+    let leasePayload =
+      null;
 
 
     function esc(value) {
       return String(value ?? "")
-        .replaceAll(
-          "&",
-          "&amp;"
-        )
-        .replaceAll(
-          "<",
-          "&lt;"
-        )
-        .replaceAll(
-          ">",
-          "&gt;"
-        )
-        .replaceAll(
-          '"',
-          "&quot;"
-        )
-        .replaceAll(
-          "'",
-          "&#039;"
-        );
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
 
@@ -300,11 +267,8 @@
       return new Intl.NumberFormat(
         "en-US",
         {
-          style:
-            "currency",
-
-          currency:
-            "USD"
+          style:"currency",
+          currency:"USD"
         }
       ).format(
         Number(value || 0)
@@ -335,9 +299,6 @@
         return "";
       }
 
-      const date =
-        new Date(value);
-
       return new Intl.DateTimeFormat(
         "en-US",
         {
@@ -347,19 +308,20 @@
           hour:"numeric",
           minute:"2-digit"
         }
-      ).format(date);
+      ).format(
+        new Date(value)
+      );
     }
 
 
     function tenantSigner() {
       return (
-        leasePayload
-          ?.signers ||
+        leasePayload?.signers ||
         []
       ).find(
         signer =>
           signer.signer_role ===
-            "tenant"
+          "tenant"
       ) || null;
     }
 
@@ -376,8 +338,7 @@
 
       const record =
         (
-          leasePayload
-            ?.initials ||
+          leasePayload?.initials ||
           []
         ).find(
           item =>
@@ -387,7 +348,8 @@
               sectionKey
         );
 
-      return record?.initials || "";
+      return record?.initials ||
+        "";
     }
 
 
@@ -418,9 +380,7 @@
 
 
           initialsMarkup = `
-            <div
-              class="completed-initials"
-            >
+            <div class="completed-initials">
               <strong>
                 Tenant initials:
               </strong>
@@ -438,9 +398,7 @@
         } else {
 
           initialsMarkup = `
-            <div
-              class="initial-box"
-            >
+            <div class="initial-box">
               <label>
                 Initials
 
@@ -462,9 +420,7 @@
 
 
       return `
-        <section
-          class="lease-section"
-        >
+        <section class="lease-section">
 
           <h2>
             ${esc(section.title)}
@@ -604,10 +560,8 @@
 
 
       try {
-
         body =
           await response.json();
-
       } catch (_) {}
 
 
@@ -665,9 +619,7 @@
 
       leaseMeta.innerHTML = `
         <div>
-          <strong>
-            Property
-          </strong>
+          <strong>Property</strong>
           <br>
           ${
             esc(
@@ -679,9 +631,7 @@
         </div>
 
         <div>
-          <strong>
-            Signer
-          </strong>
+          <strong>Signer</strong>
           <br>
           ${
             esc(
@@ -693,9 +643,7 @@
         </div>
 
         <div>
-          <strong>
-            Arrival
-          </strong>
+          <strong>Arrival</strong>
           <br>
           ${
             esc(
@@ -708,9 +656,7 @@
         </div>
 
         <div>
-          <strong>
-            Departure
-          </strong>
+          <strong>Departure</strong>
           <br>
           ${
             esc(
@@ -723,9 +669,7 @@
         </div>
 
         <div>
-          <strong>
-            Total
-          </strong>
+          <strong>Total</strong>
           <br>
           ${
             money(
@@ -877,8 +821,7 @@
             await fetch(
               "/api/sign-lease",
               {
-                method:
-                  "POST",
+                method:"POST",
 
                 headers: {
                   "Content-Type":
@@ -956,13 +899,62 @@
           signatureMessage.textContent =
             "Signed successfully. The rental agreement is fully executed.";
 
-        } else {
+          signButton.textContent =
+            "Signed";
 
-          signatureMessage.textContent =
-            "Signed successfully. Your payment step is next.";
-
+          return;
         }
 
+
+        if (
+          body.checkout_url
+        ) {
+
+          signatureMessage.textContent =
+            "Signed successfully. Opening secure payment…";
+
+          signButton.textContent =
+            "Signed";
+
+          window.location.href =
+            body.checkout_url;
+
+          return;
+        }
+
+
+        if (
+          body.paymentReceived &&
+          body.awaitingOwnerSignature
+        ) {
+
+          signatureMessage.textContent =
+            "Signed successfully. Your payment has been received and the agreement has been sent to the owner for signature.";
+
+          signButton.textContent =
+            "Signed";
+
+          return;
+        }
+
+
+        if (
+          body.guestSideComplete ===
+          false
+        ) {
+
+          signatureMessage.textContent =
+            "Signed successfully. The remaining required signer must complete the agreement next.";
+
+          signButton.textContent =
+            "Signed";
+
+          return;
+        }
+
+
+        signatureMessage.textContent =
+          "Signed successfully.";
 
         signButton.textContent =
           "Signed";
