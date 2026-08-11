@@ -71,8 +71,12 @@ async function requireOwner(req) {
 
   if (!token) {
     throw Object.assign(
-      new Error("Owner authentication required."),
-      { statusCode: 401 }
+      new Error(
+        "Owner authentication required."
+      ),
+      {
+        statusCode: 401
+      }
     );
   }
 
@@ -89,12 +93,263 @@ async function requireOwner(req) {
     !data?.user
   ) {
     throw Object.assign(
-      new Error("Owner session is invalid or expired."),
-      { statusCode: 401 }
+      new Error(
+        "Owner session is invalid or expired."
+      ),
+      {
+        statusCode: 401
+      }
     );
   }
 
   return data.user;
+}
+
+function objectValue(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  )
+    ? value
+    : {};
+}
+
+function mergedLeaseTerms(
+  property,
+  reservation
+) {
+  const defaults =
+    objectValue(
+      property.lease_defaults
+    );
+
+  const overrides =
+    objectValue(
+      reservation.lease_overrides
+    );
+
+  return {
+    ...defaults,
+    ...overrides
+  };
+}
+
+function numberValue(
+  value,
+  fallback = 0
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return fallback;
+  }
+
+  const number =
+    Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : fallback;
+}
+
+function booleanValue(
+  value,
+  fallback = false
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return fallback;
+  }
+
+  if (
+    value === true ||
+    value === "true" ||
+    value === 1 ||
+    value === "1"
+  ) {
+    return true;
+  }
+
+  if (
+    value === false ||
+    value === "false" ||
+    value === 0 ||
+    value === "0"
+  ) {
+    return false;
+  }
+
+  return fallback;
+}
+
+function buildLeaseData(
+  property,
+  reservation
+) {
+  const terms =
+    mergedLeaseTerms(
+      property,
+      reservation
+    );
+
+  return {
+    reservation_id:
+      reservation.id,
+
+    property_id:
+      reservation.property_id,
+
+    property_name:
+      property.name,
+
+    guest_name:
+      reservation.guest_name ||
+      "",
+
+    guest_email:
+      reservation.guest_email ||
+      "",
+
+    guest_phone:
+      reservation.guest_phone ||
+      "",
+
+    arrival_date:
+      reservation.arrival_date,
+
+    departure_date:
+      reservation.departure_date,
+
+    adults:
+      numberValue(
+        reservation.adults,
+        0
+      ),
+
+    children:
+      numberValue(
+        reservation.children,
+        0
+      ),
+
+    dogs:
+      numberValue(
+        reservation.dogs,
+        0
+      ),
+
+    dog_names:
+      reservation.dog_names ||
+      "",
+
+    amount_due:
+      numberValue(
+        reservation.amount_due,
+        0
+      ),
+
+    security_deposit:
+      numberValue(
+        reservation.security_deposit,
+        0
+      ),
+
+    cleaning_fee:
+      numberValue(
+        property.cleaning_fee,
+        0
+      ),
+
+    pet_fee:
+      numberValue(
+        property.pet_fee,
+        0
+      ),
+
+    max_dogs:
+      numberValue(
+        property.max_dogs,
+        0
+      ),
+
+    rental_type:
+      reservation.rental_type ||
+      "standard",
+
+    booking_source:
+      reservation.booking_source ||
+      "",
+
+    check_in_time:
+      terms.check_in_time ||
+      "2:00 PM",
+
+    check_out_time:
+      terms.check_out_time ||
+      "10:00 AM",
+
+    linens_text:
+      terms.linens_text ||
+      "",
+
+    beach_tags:
+      numberValue(
+        terms.beach_tags,
+        0
+      ),
+
+    beach_chairs:
+      numberValue(
+        terms.beach_chairs,
+        0
+      ),
+
+    beach_tag_replacement_fee:
+      numberValue(
+        terms.beach_tag_replacement_fee,
+        50
+      ),
+
+    bed_configuration:
+      terms.bed_configuration ||
+      "",
+
+    washer_dryer:
+      booleanValue(
+        terms.washer_dryer,
+        false
+      ),
+
+    internet:
+      booleanValue(
+        terms.internet,
+        false
+      ),
+
+    smart_tv:
+      booleanValue(
+        terms.smart_tv,
+        false
+      ),
+
+    coffee_pot:
+      booleanValue(
+        terms.coffee_pot,
+        false
+      ),
+
+    fully_stocked_kitchen:
+      booleanValue(
+        terms.fully_stocked_kitchen,
+        false
+      )
+  };
 }
 
 async function sendLeaseEmail(
@@ -115,24 +370,34 @@ async function sendLeaseEmail(
         Down the Shore
       </h1>
 
-      <p>Hi ${esc(guestName)},</p>
+      <p>
+        Hi ${esc(guestName)},
+      </p>
 
       <p>
-        Your reservation has been approved. The next step is to
-        review and sign your rental agreement.
+        Your reservation has been approved.
+        The next step is to review and sign
+        your rental agreement.
       </p>
 
       <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
         <p style="margin:0 0 8px;">
-          <strong>${esc(propertyName)}</strong>
+          <strong>
+            ${esc(propertyName)}
+          </strong>
         </p>
 
         <p style="margin:0 0 8px;">
-          ${esc(formatDate(arrival))} – ${esc(formatDate(departure))}
+          ${esc(formatDate(arrival))}
+          –
+          ${esc(formatDate(departure))}
         </p>
 
         <p style="margin:0;">
-          <strong>Reservation total: ${esc(formatMoney(total))}</strong>
+          <strong>
+            Reservation total:
+            ${esc(formatMoney(total))}
+          </strong>
         </p>
       </div>
 
@@ -146,10 +411,11 @@ async function sendLeaseEmail(
       </p>
 
       <p>
-        Please complete all required initials and your signature.
-        After the required guest and co-signer signatures are complete,
-        the payment step comes next. Janis will sign the agreement
-        after the required payment has been received.
+        Please complete all required initials
+        and your signature. Janis will execute
+        the agreement after your signature is
+        complete and the required initial
+        payment has been received.
       </p>
 
       <p>
@@ -159,7 +425,8 @@ async function sendLeaseEmail(
       </p>
 
       <p style="font-size:12px;color:#716f68;margin-top:28px;">
-        Owner is a New Jersey licensed real estate broker.
+        Owner is a New Jersey licensed real
+        estate broker.
       </p>
     </div>
   `;
@@ -169,23 +436,30 @@ async function sendLeaseEmail(
       `${siteOrigin(req)}/api/send-email`,
       {
         method: "POST",
+
         headers: {
           "Content-Type":
             "application/json"
         },
-        body: JSON.stringify({
-          to,
-          subject:
-            `Your Down the Shore rental agreement — ${propertyName}`,
-          html
-        })
+
+        body:
+          JSON.stringify({
+            to,
+
+            subject:
+              `Your Down the Shore rental agreement — ${propertyName}`,
+
+            html
+          })
       }
     );
 
-  let body = null;
+  let body =
+    null;
 
   try {
-    body = await response.json();
+    body =
+      await response.json();
   } catch (_) {}
 
   if (!response.ok) {
@@ -203,7 +477,10 @@ export default async function handler(
   req,
   res
 ) {
-  if (req.method !== "POST") {
+  if (
+    req.method !==
+    "POST"
+  ) {
     return res.status(405).json({
       error:
         "Method not allowed"
@@ -250,7 +527,9 @@ export default async function handler(
       });
     }
 
-    if (!reservation.guest_email) {
+    if (
+      !reservation.guest_email
+    ) {
       return res.status(400).json({
         error:
           "The reservation needs a guest email before a lease can be sent."
@@ -264,7 +543,7 @@ export default async function handler(
       await supabase
         .from("properties")
         .select(
-          "id,name,cleaning_fee,pet_fee,max_dogs"
+          "id,name,cleaning_fee,pet_fee,max_dogs,lease_defaults"
         )
         .eq(
           "id",
@@ -286,9 +565,26 @@ export default async function handler(
       reservation.rental_type ||
       "standard";
 
+    if (
+      rentalType !==
+      "standard"
+    ) {
+      return res.status(409).json({
+        error:
+          "Only the regular summer lease is active right now. Senior Week and winter leases will use separate agreements."
+      });
+    }
+
+    const leaseData =
+      buildLeaseData(
+        property,
+        reservation
+      );
+
     let {
       data: existingLease,
-      error: existingLeaseError
+      error:
+        existingLeaseError
     } =
       await supabase
         .from("leases")
@@ -299,7 +595,9 @@ export default async function handler(
         )
         .maybeSingle();
 
-    if (existingLeaseError) {
+    if (
+      existingLeaseError
+    ) {
       throw existingLeaseError;
     }
 
@@ -307,81 +605,6 @@ export default async function handler(
       existingLease;
 
     if (!lease) {
-      const leaseData = {
-        reservation_id:
-          reservation.id,
-
-        property_id:
-          reservation.property_id,
-
-        property_name:
-          property.name,
-
-        guest_name:
-          reservation.guest_name ||
-          "",
-
-        guest_email:
-          reservation.guest_email ||
-          "",
-
-        guest_phone:
-          reservation.guest_phone ||
-          "",
-
-        arrival_date:
-          reservation.arrival_date,
-
-        departure_date:
-          reservation.departure_date,
-
-        adults:
-          Number(
-            reservation.adults || 0
-          ),
-
-        children:
-          Number(
-            reservation.children || 0
-          ),
-
-        dogs:
-          Number(
-            reservation.dogs || 0
-          ),
-
-        dog_names:
-          reservation.dog_names ||
-          "",
-
-        amount_due:
-          Number(
-            reservation.amount_due || 0
-          ),
-
-        cleaning_fee:
-          Number(
-            property.cleaning_fee || 0
-          ),
-
-        pet_fee:
-          Number(
-            property.pet_fee || 75
-          ),
-
-        max_dogs:
-          Number(
-            property.max_dogs || 2
-          ),
-
-        rental_type:
-          rentalType,
-
-        booking_source:
-          reservation.booking_source ||
-          ""
-      };
-
       const {
         data: createdLease,
         error: leaseError
@@ -506,13 +729,16 @@ export default async function handler(
       ];
 
       const {
-        error: signerInsertError
+        error:
+          signerInsertError
       } =
         await supabase
           .from("lease_signers")
           .insert(signers);
 
-      if (signerInsertError) {
+      if (
+        signerInsertError
+      ) {
         throw signerInsertError;
       }
 
@@ -528,13 +754,62 @@ export default async function handler(
           event_data: {
             source:
               "owner_portal",
+
             rental_type:
               rentalType
           }
         });
-    } else if (
-      lease.status === "draft"
-    ) {
+
+    } else {
+
+      if (
+        lease.status ===
+        "completed"
+      ) {
+        return res.status(409).json({
+          error:
+            "This lease has already been completed."
+        });
+      }
+
+      const {
+        data: signers,
+        error: signerCheckError
+      } =
+        await supabase
+          .from("lease_signers")
+          .select(
+            "id,signed_at"
+          )
+          .eq(
+            "lease_id",
+            lease.id
+          );
+
+      if (
+        signerCheckError
+      ) {
+        throw signerCheckError;
+      }
+
+      const alreadySigned =
+        (signers || [])
+          .some(
+            signer =>
+              Boolean(
+                signer.signed_at
+              )
+          );
+
+      if (
+        alreadySigned
+      ) {
+        return res.status(409).json({
+          error:
+            "This lease has already been signed and cannot be regenerated with changed lease terms."
+        });
+      }
+
       const {
         data: updatedLease,
         error: updateError
@@ -542,10 +817,18 @@ export default async function handler(
         await supabase
           .from("leases")
           .update({
+            lease_type:
+              rentalType,
+
+            lease_data:
+              leaseData,
+
             status:
               "awaiting_guest_signature",
+
             updated_at:
-              new Date().toISOString()
+              new Date()
+                .toISOString()
           })
           .eq(
             "id",
@@ -554,7 +837,9 @@ export default async function handler(
           .select()
           .single();
 
-      if (updateError) {
+      if (
+        updateError
+      ) {
         throw updateError;
       }
 
@@ -564,7 +849,8 @@ export default async function handler(
 
     const {
       data: tenantSigner,
-      error: tenantSignerError
+      error:
+        tenantSignerError
     } =
       await supabase
         .from("lease_signers")
@@ -597,7 +883,9 @@ export default async function handler(
     }
 
     const signingUrl =
-      `${siteOrigin(req)}/lease.html?token=${encodeURIComponent(tenantSigner.access_token)}`;
+      `${siteOrigin(req)}/lease.html?token=${encodeURIComponent(
+        tenantSigner.access_token
+      )}`;
 
     const emailResult =
       await sendLeaseEmail(
