@@ -5,383 +5,518 @@
   let searchText = "";
   let sortDirection = "asc";
 
-  const style = document.createElement("style");
+  const style =
+    document.createElement("style");
 
   style.textContent = `
     .dts-reservations-shell {
-      display: grid;
-      gap: 18px;
+      display:grid;
+      gap:18px;
     }
 
     .dts-property-tabs,
     .dts-status-tabs {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
     }
 
     .dts-property-tab,
     .dts-status-tab {
-      border: 1px solid #d9dee5;
-      background: #fff;
-      color: #172334;
-      border-radius: 8px;
-      padding: 9px 14px;
-      font-weight: 600;
+      border:1px solid #d9dee5;
+      background:#fff;
+      color:#172334;
+      border-radius:8px;
+      padding:9px 14px;
+      font-weight:600;
     }
 
     .dts-property-tab.active,
     .dts-status-tab.active {
-      background: #0d2b4d;
-      border-color: #0d2b4d;
-      color: #fff;
+      background:#0d2b4d;
+      border-color:#0d2b4d;
+      color:#fff;
     }
 
     .dts-toolbar {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
     }
 
     .dts-toolbar input,
     .dts-toolbar select {
-      border: 1px solid #d9dee5;
-      background: #fff;
-      border-radius: 8px;
-      padding: 10px 12px;
+      border:1px solid #d9dee5;
+      background:#fff;
+      border-radius:8px;
+      padding:10px 12px;
     }
 
     .dts-toolbar input {
-      min-width: 280px;
+      min-width:280px;
     }
 
     .dts-reservation-summary {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #fff;
+      display:grid;
+      grid-template-columns:
+        repeat(5,minmax(0,1fr));
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      overflow:hidden;
+      background:#fff;
     }
 
     .dts-summary-item {
-      padding: 15px;
-      border-right: 1px solid #e5e7eb;
+      padding:15px;
+      border-right:1px solid #e5e7eb;
     }
 
     .dts-summary-item:last-child {
-      border-right: 0;
+      border-right:0;
     }
 
     .dts-summary-label {
-      color: #6f7782;
-      font-size: 11px;
-      margin-bottom: 4px;
+      color:#6f7782;
+      font-size:11px;
+      margin-bottom:4px;
     }
 
     .dts-summary-value {
-      color: #0d2b4d;
-      font-weight: 700;
-      font-size: 20px;
+      color:#0d2b4d;
+      font-weight:700;
+      font-size:20px;
     }
 
     .dts-reservation-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 330px;
-      gap: 18px;
-      align-items: start;
+      display:grid;
+      grid-template-columns:
+        minmax(0,1fr)
+        360px;
+      gap:18px;
+      align-items:start;
     }
 
     .dts-reservation-table-card,
     .dts-detail-panel {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      overflow: hidden;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      overflow:hidden;
     }
 
     .dts-table-title {
-      padding: 16px 18px;
-      border-bottom: 1px solid #e5e7eb;
-      color: #0d2b4d;
-      font-weight: 700;
+      padding:16px 18px;
+      border-bottom:1px solid #e5e7eb;
+      color:#0d2b4d;
+      font-weight:700;
     }
 
     .dts-reservation-row {
-      display: grid;
+      display:grid;
       grid-template-columns:
-        minmax(170px, 1.2fr)
-        minmax(145px, .95fr)
+        minmax(170px,1.2fr)
+        minmax(145px,.95fr)
         75px
         38px
         120px
         100px
         100px;
-      gap: 10px;
-      align-items: center;
-      padding: 13px 18px;
-      border-bottom: 1px solid #edf0f3;
-      font-size: 13px;
+      gap:10px;
+      align-items:center;
+      padding:13px 18px;
+      border-bottom:1px solid #edf0f3;
+      font-size:13px;
     }
 
     .dts-reservation-row:last-child {
-      border-bottom: 0;
+      border-bottom:0;
     }
 
     .dts-reservation-head {
-      background: #fafbfc;
-      color: #707987;
-      font-size: 11px;
-      font-weight: 700;
+      background:#fafbfc;
+      color:#707987;
+      font-size:11px;
+      font-weight:700;
     }
 
     .dts-guest-name {
-      color: #172334;
-      font-weight: 700;
+      color:#172334;
+      font-weight:700;
     }
 
     .dts-guest-email {
-      color: #737b86;
-      font-size: 11px;
-      margin-top: 2px;
-      word-break: break-word;
+      color:#737b86;
+      font-size:11px;
+      margin-top:2px;
+      word-break:break-word;
     }
 
     .dts-date-button {
-      border: 1px solid #d5dce5;
-      background: #f4f7fa;
-      color: #0d2b4d;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-weight: 700;
-      text-align: left;
-      width: 100%;
+      border:1px solid #d5dce5;
+      background:#f4f7fa;
+      color:#0d2b4d;
+      border-radius:8px;
+      padding:8px 10px;
+      font-weight:700;
+      text-align:left;
+      width:100%;
     }
 
     .dts-date-button:hover {
-      background: #eaf0f6;
-      border-color: #aebccc;
+      background:#eaf0f6;
+      border-color:#aebccc;
     }
 
     .dts-status {
-      display: inline-block;
-      width: max-content;
-      padding: 5px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 700;
+      display:inline-block;
+      width:max-content;
+      padding:5px 8px;
+      border-radius:6px;
+      font-size:11px;
+      font-weight:700;
     }
 
     .dts-status.booked {
-      background: #e4f0df;
-      color: #35643e;
+      background:#e4f0df;
+      color:#35643e;
     }
 
     .dts-status.pending_payment,
     .dts-status.pending,
     .dts-status.requested {
-      background: #fff0c9;
-      color: #725600;
+      background:#fff0c9;
+      color:#725600;
     }
 
     .dts-status.waitlisted {
-      background: #eee8f8;
-      color: #594878;
+      background:#eee8f8;
+      color:#594878;
     }
 
     .dts-status.cancelled,
     .dts-status.declined {
-      background: #f1f2f4;
-      color: #777;
+      background:#f1f2f4;
+      color:#777;
     }
 
     .dts-clean-icon {
-      width: 24px;
-      height: 24px;
-      display: inline-grid;
-      place-items: center;
-      border-radius: 50%;
-      background: #e4f0df;
-      color: #35643e;
-      font-size: 13px;
-      font-weight: 800;
+      width:24px;
+      height:24px;
+      display:inline-grid;
+      place-items:center;
+      border-radius:50%;
+      background:#e4f0df;
+      color:#35643e;
+      font-size:13px;
+      font-weight:800;
     }
 
     .dts-money-paid {
-      color: #35643e;
-      font-size: 11px;
-      margin-top: 2px;
+      color:#35643e;
+      font-size:11px;
+      margin-top:2px;
     }
 
     .dts-money-due {
-      color: #a23a31;
-      font-size: 11px;
-      margin-top: 2px;
+      color:#a23a31;
+      font-size:11px;
+      margin-top:2px;
     }
 
     .dts-detail-panel {
-      position: sticky;
-      top: 24px;
-      padding: 18px;
-      min-height: 280px;
+      position:sticky;
+      top:24px;
+      padding:18px;
+      min-height:280px;
     }
 
     .dts-detail-empty {
-      color: #7d8490;
-      padding: 40px 12px;
-      text-align: center;
+      color:#7d8490;
+      padding:40px 12px;
+      text-align:center;
     }
 
     .dts-detail-panel h3 {
-      margin: 0 0 6px;
-      color: #0d2b4d;
-      font-size: 20px;
+      margin:0 0 6px;
+      color:#0d2b4d;
+      font-size:20px;
     }
 
     .dts-detail-meta {
-      color: #6f7782;
-      font-size: 13px;
-      line-height: 1.6;
+      color:#6f7782;
+      font-size:13px;
+      line-height:1.6;
     }
 
     .dts-detail-section {
-      border-top: 1px solid #e5e7eb;
-      margin-top: 16px;
-      padding-top: 16px;
+      border-top:1px solid #e5e7eb;
+      margin-top:16px;
+      padding-top:16px;
     }
 
     .dts-detail-money {
-      display: flex;
-      justify-content: space-between;
-      gap: 15px;
-      margin: 7px 0;
-      font-size: 13px;
+      display:flex;
+      justify-content:space-between;
+      gap:15px;
+      margin:7px 0;
+      font-size:13px;
     }
 
     .dts-detail-money strong {
-      color: #0d2b4d;
+      color:#0d2b4d;
     }
 
-    .dts-detail-actions {
-      display: grid;
-      gap: 8px;
-      margin-top: 16px;
+    .dts-lease-settings {
+      border-top:1px solid #e5e7eb;
+      margin-top:18px;
+      padding-top:18px;
     }
 
-    .dts-detail-actions button {
-      border: 1px solid #cfd5dd;
-      border-radius: 8px;
-      background: #fff;
-      padding: 9px 12px;
-      font-weight: 600;
+    .dts-lease-settings h4 {
+      margin:0 0 4px;
+      color:#0d2b4d;
+      font-size:18px;
     }
 
-    .dts-detail-actions .danger {
-      color: #8a2c24;
+    .dts-lease-help {
+      color:#6f7782;
+      font-size:12px;
+      line-height:1.45;
+      margin-bottom:14px;
+    }
+
+    .dts-lease-fields {
+      display:grid;
+      gap:11px;
+    }
+
+    .dts-lease-fields label {
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+      font-size:12px;
+      font-weight:700;
+      color:#303a47;
+    }
+
+    .dts-lease-fields input,
+    .dts-lease-fields textarea,
+    .dts-lease-fields select {
+      width:100%;
+      box-sizing:border-box;
+      border:1px solid #cfd5dd;
+      background:#fff;
+      border-radius:7px;
+      padding:9px 10px;
+      font:inherit;
+      font-weight:400;
+      color:#172334;
+    }
+
+    .dts-lease-fields textarea {
+      resize:vertical;
+      min-height:72px;
+    }
+
+    .dts-lease-two {
+      display:grid;
+      grid-template-columns:
+        1fr 1fr;
+      gap:10px;
+    }
+
+    .dts-amenities {
+      display:grid;
+      grid-template-columns:
+        1fr 1fr;
+      gap:7px 10px;
+      padding:10px;
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      background:#fafbfc;
+    }
+
+    .dts-amenities label {
+      display:flex;
+      flex-direction:row;
+      align-items:center;
+      gap:7px;
+      font-size:12px;
+      font-weight:600;
+    }
+
+    .dts-amenities input {
+      width:auto;
+      margin:0;
+    }
+
+    .dts-create-lease {
+      width:100%;
+      margin-top:14px;
+      border:0;
+      border-radius:8px;
+      background:#0d2b4d;
+      color:#fff;
+      padding:11px 14px;
+      font-weight:700;
+    }
+
+    .dts-create-lease:disabled {
+      opacity:.6;
+      cursor:wait;
     }
 
     .dts-full-details {
-      margin-top: 14px;
+      margin-top:14px;
     }
 
     .dts-full-details summary {
-      cursor: pointer;
-      color: #155aa8;
-      font-weight: 700;
+      cursor:pointer;
+      color:#155aa8;
+      font-weight:700;
     }
 
     .dts-full-details .card.res {
-      margin: 14px 0 0;
-      padding: 14px;
-      grid-template-columns: 1fr;
+      margin:14px 0 0;
+      padding:14px;
+      grid-template-columns:1fr;
     }
 
     .dts-full-details .actions {
-      margin-top: 10px;
+      margin-top:10px;
+    }
+
+    /*
+      Hide the old Create Lease button.
+      Lease creation now happens only after
+      the reservation-specific lease fields
+      above have been reviewed.
+    */
+    .dts-full-details
+    button[data-action="create_lease"] {
+      display:none !important;
+    }
+
+    /*
+      If the newer owner.js happens to render
+      its own Lease Settings block, hide that
+      duplicate inside the legacy controls.
+    */
+    .dts-full-details
+    details:has([data-lease-rental-type]) {
+      display:none !important;
     }
 
     .dts-empty-row {
-      padding: 28px;
-      color: #7d8490;
-      text-align: center;
+      padding:28px;
+      color:#7d8490;
+      text-align:center;
     }
 
-    @media (max-width: 1180px) {
+    @media (max-width:1180px) {
       .dts-reservation-layout {
-        grid-template-columns: 1fr;
+        grid-template-columns:1fr;
       }
 
       .dts-detail-panel {
-        position: static;
+        position:static;
       }
 
       .dts-reservation-summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns:
+          repeat(2,minmax(0,1fr));
       }
 
       .dts-reservation-row {
         grid-template-columns:
-          minmax(150px, 1.1fr)
-          minmax(130px, .9fr)
+          minmax(150px,1.1fr)
+          minmax(130px,.9fr)
           60px
           34px
           110px
           90px
           90px;
-        padding: 12px;
+        padding:12px;
       }
     }
 
-    @media (max-width: 820px) {
+    @media (max-width:820px) {
       .dts-reservation-row {
-        grid-template-columns: 1fr;
-        gap: 6px;
+        grid-template-columns:1fr;
+        gap:6px;
       }
 
       .dts-reservation-head {
-        display: none;
+        display:none;
       }
 
       .dts-toolbar input {
-        min-width: 100%;
+        min-width:100%;
       }
 
       .dts-reservation-summary {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns:
+          1fr 1fr;
+      }
+
+      .dts-lease-two,
+      .dts-amenities {
+        grid-template-columns:1fr;
       }
     }
   `;
 
-  document.head.appendChild(style);
+  document.head.appendChild(
+    style
+  );
+
+
+  function dtsEsc(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
 
   function dtsDate(value) {
-    if (!value) return "";
+    if (!value) {
+      return "";
+    }
 
     return new Date(
       `${value}T12:00:00`
     ).toLocaleDateString(
       "en-US",
       {
-        month: "short",
-        day: "numeric",
-        year: "numeric"
+        month:"short",
+        day:"numeric",
+        year:"numeric"
       }
     );
   }
+
 
   function dtsMoney(value) {
-    return Number(value || 0).toLocaleString(
+    return Number(
+      value || 0
+    ).toLocaleString(
       "en-US",
       {
-        style: "currency",
-        currency: "USD"
+        style:"currency",
+        currency:"USD"
       }
     );
   }
 
-  function dtsIsActive(reservation) {
+
+  function dtsIsActive(
+    reservation
+  ) {
     return ![
       "cancelled",
       "declined"
@@ -390,8 +525,13 @@
     );
   }
 
-  function dtsIsPast(reservation) {
-    if (!reservation.departure_date) {
+
+  function dtsIsPast(
+    reservation
+  ) {
+    if (
+      !reservation.departure_date
+    ) {
       return false;
     }
 
@@ -403,10 +543,16 @@
     const today =
       new Date();
 
-    today.setHours(0, 0, 0, 0);
+    today.setHours(
+      0,
+      0,
+      0,
+      0
+    );
 
     return departure < today;
   }
+
 
   function dtsCleaningConfirmed(
     reservation
@@ -424,12 +570,14 @@
     );
   }
 
+
   function dtsTotals(
     reservation
   ) {
     const total =
       Number(
-        reservation.amount_due || 0
+        reservation.amount_due ||
+        0
       );
 
     const paid =
@@ -440,10 +588,14 @@
             reservation.id
         )
         .reduce(
-          (sum, payment) =>
+          (
+            sum,
+            payment
+          ) =>
             sum +
             Number(
-              payment.amount || 0
+              payment.amount ||
+              0
             ),
           0
         );
@@ -451,6 +603,7 @@
     return {
       total,
       paid,
+
       balance:
         Math.max(
           0,
@@ -459,12 +612,71 @@
     };
   }
 
+
+  function dtsPropertyForReservation(
+    reservation
+  ) {
+    return (
+      currentProperties ||
+      []
+    ).find(
+      property =>
+        property.id ===
+        reservation.property_id
+    ) || null;
+  }
+
+
+  function dtsObject(value) {
+    return (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    )
+      ? value
+      : {};
+  }
+
+
+  function dtsLeaseValues(
+    reservation
+  ) {
+    const property =
+      dtsPropertyForReservation(
+        reservation
+      );
+
+    const defaults =
+      dtsObject(
+        property?.lease_defaults
+      );
+
+    const overrides =
+      dtsObject(
+        reservation.lease_overrides
+      );
+
+    return {
+      ...defaults,
+      ...overrides
+    };
+  }
+
+
+  function dtsChecked(value) {
+    return value
+      ? "checked"
+      : "";
+  }
+
+
   function dtsPropertyTabs() {
     const properties =
       currentProperties || [];
 
     if (
-      selectedPropertyId === null &&
+      selectedPropertyId ===
+        null &&
       properties.length
     ) {
       const cottage =
@@ -481,7 +693,9 @@
     }
 
     return `
-      <div class="dts-property-tabs">
+      <div
+        class="dts-property-tabs"
+      >
         ${
           properties
             .map(
@@ -494,9 +708,15 @@
                       ? "active"
                       : ""
                   }"
-                  data-dts-property="${property.id}"
+                  data-dts-property="${
+                    property.id
+                  }"
                 >
-                  ${property.name}
+                  ${
+                    dtsEsc(
+                      property.name
+                    )
+                  }
                 </button>
               `
             )
@@ -519,9 +739,12 @@
     `;
   }
 
+
   function dtsFilteredReservations() {
     let items =
-      [...currentReservations];
+      [
+        ...currentReservations
+      ];
 
     if (
       selectedPropertyId &&
@@ -598,9 +821,12 @@
         );
     }
 
-    if (searchText) {
+    if (
+      searchText
+    ) {
       const needle =
-        searchText.toLowerCase();
+        searchText
+          .toLowerCase();
 
       items =
         items.filter(
@@ -616,18 +842,25 @@
                 value =>
                   String(value)
                     .toLowerCase()
-                    .includes(needle)
+                    .includes(
+                      needle
+                    )
               )
         );
     }
 
     items.sort(
-      (a, b) => {
+      (
+        a,
+        b
+      ) => {
         const aDate =
-          a.arrival_date || "";
+          a.arrival_date ||
+          "";
 
         const bDate =
-          b.arrival_date || "";
+          b.arrival_date ||
+          "";
 
         return sortDirection ===
           "asc"
@@ -642,6 +875,7 @@
 
     return items;
   }
+
 
   function dtsCounts() {
     let source =
@@ -710,6 +944,7 @@
     };
   }
 
+
   function dtsSummary() {
     const source =
       dtsFilteredReservations();
@@ -736,61 +971,109 @@
       dtsCounts();
 
     return `
-      <div class="dts-reservation-summary">
-        <div class="dts-summary-item">
-          <div class="dts-summary-label">
+      <div
+        class="dts-reservation-summary"
+      >
+        <div
+          class="dts-summary-item"
+        >
+          <div
+            class="dts-summary-label"
+          >
             Upcoming stays
           </div>
-          <div class="dts-summary-value">
+
+          <div
+            class="dts-summary-value"
+          >
             ${counts.upcoming}
           </div>
         </div>
 
-        <div class="dts-summary-item">
-          <div class="dts-summary-label">
+        <div
+          class="dts-summary-item"
+        >
+          <div
+            class="dts-summary-label"
+          >
             Past stays
           </div>
-          <div class="dts-summary-value">
+
+          <div
+            class="dts-summary-value"
+          >
             ${counts.past}
           </div>
         </div>
 
-        <div class="dts-summary-item">
-          <div class="dts-summary-label">
+        <div
+          class="dts-summary-item"
+        >
+          <div
+            class="dts-summary-label"
+          >
             Waitlisted
           </div>
-          <div class="dts-summary-value">
+
+          <div
+            class="dts-summary-value"
+          >
             ${counts.waitlist}
           </div>
         </div>
 
-        <div class="dts-summary-item">
-          <div class="dts-summary-label">
+        <div
+          class="dts-summary-item"
+        >
+          <div
+            class="dts-summary-label"
+          >
             Balance due
           </div>
-          <div class="dts-summary-value">
-            ${dtsMoney(balance)}
+
+          <div
+            class="dts-summary-value"
+          >
+            ${
+              dtsMoney(
+                balance
+              )
+            }
           </div>
         </div>
 
-        <div class="dts-summary-item">
-          <div class="dts-summary-label">
+        <div
+          class="dts-summary-item"
+        >
+          <div
+            class="dts-summary-label"
+          >
             Payments logged
           </div>
-          <div class="dts-summary-value">
-            ${dtsMoney(revenue)}
+
+          <div
+            class="dts-summary-value"
+          >
+            ${
+              dtsMoney(
+                revenue
+              )
+            }
           </div>
         </div>
       </div>
     `;
   }
 
+
   function dtsStatusTabs() {
     const counts =
       dtsCounts();
 
     return `
-      <div class="dts-status-tabs">
+      <div
+        class="dts-status-tabs"
+      >
         <button
           type="button"
           class="dts-status-tab ${
@@ -814,7 +1097,8 @@
           }"
           data-dts-status="upcoming"
         >
-          Upcoming ${counts.upcoming}
+          Upcoming
+          ${counts.upcoming}
         </button>
 
         <button
@@ -827,7 +1111,8 @@
           }"
           data-dts-status="past"
         >
-          Past ${counts.past}
+          Past
+          ${counts.past}
         </button>
 
         <button
@@ -840,7 +1125,8 @@
           }"
           data-dts-status="cancelled"
         >
-          Cancelled ${counts.cancelled}
+          Cancelled
+          ${counts.cancelled}
         </button>
 
         <button
@@ -853,20 +1139,27 @@
           }"
           data-dts-status="waitlist"
         >
-          Waitlist ${counts.waitlist}
+          Waitlist
+          ${counts.waitlist}
         </button>
       </div>
     `;
   }
 
+
   function dtsReservationRows() {
     const items =
       dtsFilteredReservations();
 
-    if (!items.length) {
+    if (
+      !items.length
+    ) {
       return `
-        <div class="dts-empty-row">
-          No reservations match these filters.
+        <div
+          class="dts-empty-row"
+        >
+          No reservations match
+          these filters.
         </div>
       `;
     }
@@ -885,19 +1178,29 @@
             );
 
           return `
-            <div class="dts-reservation-row">
+            <div
+              class="dts-reservation-row"
+            >
               <div>
-                <div class="dts-guest-name">
+                <div
+                  class="dts-guest-name"
+                >
                   ${
-                    reservation.guest_name ||
-                    "Guest"
+                    dtsEsc(
+                      reservation.guest_name ||
+                      "Guest"
+                    )
                   }
                 </div>
 
-                <div class="dts-guest-email">
+                <div
+                  class="dts-guest-email"
+                >
                   ${
-                    reservation.guest_email ||
-                    ""
+                    dtsEsc(
+                      reservation.guest_email ||
+                      ""
+                    )
                   }
                 </div>
               </div>
@@ -906,16 +1209,29 @@
                 <button
                   type="button"
                   class="dts-date-button"
-                  data-dts-open="${reservation.id}"
+                  data-dts-open="${
+                    reservation.id
+                  }"
                 >
-                  ${dtsDate(reservation.arrival_date)}
+                  ${
+                    dtsDate(
+                      reservation.arrival_date
+                    )
+                  }
                   –
-                  ${dtsDate(reservation.departure_date)}
+                  ${
+                    dtsDate(
+                      reservation.departure_date
+                    )
+                  }
                 </button>
               </div>
 
               <div>
-                ${reservation.adults || 0}
+                ${
+                  reservation.adults ||
+                  0
+                }
               </div>
 
               <div>
@@ -936,42 +1252,60 @@
 
               <div>
                 <span
-                  class="dts-status ${reservation.status || "pending"}"
-                >
-                  ${String(
+                  class="dts-status ${
                     reservation.status ||
                     "pending"
-                  ).replaceAll(
-                    "_",
-                    " "
-                  )}
+                  }"
+                >
+                  ${
+                    dtsEsc(
+                      String(
+                        reservation.status ||
+                        "pending"
+                      ).replaceAll(
+                        "_",
+                        " "
+                      )
+                    )
+                  }
                 </span>
               </div>
 
               <div>
-                ${dtsMoney(
-                  totals.total
-                )}
+                ${
+                  dtsMoney(
+                    totals.total
+                  )
+                }
               </div>
 
               <div>
                 <strong>
-                  ${dtsMoney(
-                    totals.balance
-                  )}
+                  ${
+                    dtsMoney(
+                      totals.balance
+                    )
+                  }
                 </strong>
 
                 ${
-                  totals.balance <= 0 &&
-                  totals.total > 0
+                  totals.balance <=
+                    0 &&
+                  totals.total >
+                    0
                     ? `
-                      <div class="dts-money-paid">
+                      <div
+                        class="dts-money-paid"
+                      >
                         Paid in full
                       </div>
                     `
-                    : totals.balance > 0
+                    : totals.balance >
+                      0
                       ? `
-                        <div class="dts-money-due">
+                        <div
+                          class="dts-money-due"
+                        >
                           Balance due
                         </div>
                       `
@@ -985,12 +1319,363 @@
       .join("");
   }
 
+
+  function dtsLeaseSettingsMarkup(
+    reservation
+  ) {
+    const lease =
+      typeof leaseForReservation ===
+      "function"
+        ? leaseForReservation(
+            reservation.id
+          )
+        : null;
+
+    if (
+      lease ||
+      [
+        "cancelled",
+        "declined"
+      ].includes(
+        reservation.status
+      )
+    ) {
+      return "";
+    }
+
+    const values =
+      dtsLeaseValues(
+        reservation
+      );
+
+    const dogs =
+      Number(
+        reservation.dogs ||
+        0
+      );
+
+    const property =
+      dtsPropertyForReservation(
+        reservation
+      );
+
+    return `
+      <section
+        class="dts-lease-settings"
+        data-dts-lease-settings="${
+          reservation.id
+        }"
+      >
+        <h4>
+          Lease settings
+        </h4>
+
+        <div
+          class="dts-lease-help"
+        >
+          Review these details for
+          this reservation before
+          creating the lease.
+        </div>
+
+        <div
+          class="dts-lease-fields"
+        >
+
+          <label>
+            Lease type
+
+            <select
+              data-dts-rental-type
+            >
+              <option
+                value="standard"
+                selected
+              >
+                Regular summer
+              </option>
+            </select>
+          </label>
+
+          <div
+            class="dts-lease-two"
+          >
+            <label>
+              Check-in
+
+              <input
+                type="text"
+                value="${
+                  dtsEsc(
+                    values.check_in_time ||
+                    "2:00 PM"
+                  )
+                }"
+                data-dts-check-in
+              >
+            </label>
+
+            <label>
+              Checkout
+
+              <input
+                type="text"
+                value="${
+                  dtsEsc(
+                    values.check_out_time ||
+                    "10:00 AM"
+                  )
+                }"
+                data-dts-check-out
+              >
+            </label>
+          </div>
+
+          <label>
+            Security deposit
+
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value="${
+                Number(
+                  reservation.security_deposit ||
+                  0
+                )
+              }"
+              data-dts-security-deposit
+            >
+          </label>
+
+          <div
+            class="dts-lease-two"
+          >
+            <label>
+              Number of dogs
+
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value="${dogs}"
+                data-dts-dogs
+              >
+            </label>
+
+            <label>
+              Dog name(s)
+
+              <input
+                type="text"
+                value="${
+                  dtsEsc(
+                    reservation.dog_names ||
+                    ""
+                  )
+                }"
+                placeholder="Example: Lucy, Max"
+                data-dts-dog-names
+              >
+            </label>
+          </div>
+
+          <label>
+            Bed configuration
+
+            <input
+              type="text"
+              value="${
+                dtsEsc(
+                  values.bed_configuration ||
+                  ""
+                )
+              }"
+              placeholder="Example: 1 king, 1 queen, 2 twins"
+              data-dts-bed-configuration
+            >
+          </label>
+
+          <label>
+            Linens
+
+            <textarea
+              data-dts-linens
+              placeholder="What guests need to bring"
+            >${
+              dtsEsc(
+                values.linens_text ||
+                "Guests are responsible for bringing their own sheets, towels, and other personal linens."
+              )
+            }</textarea>
+          </label>
+
+          <div
+            class="dts-lease-two"
+          >
+            <label>
+              Beach chairs
+
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value="${
+                  Number(
+                    values.beach_chairs ||
+                    0
+                  )
+                }"
+                data-dts-beach-chairs
+              >
+            </label>
+
+            <label>
+              Beach tags
+
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value="${
+                  Number(
+                    values.beach_tags ||
+                    0
+                  )
+                }"
+                data-dts-beach-tags
+              >
+            </label>
+          </div>
+
+          <label>
+            Lost beach tag charge
+
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value="${
+                Number(
+                  values.beach_tag_replacement_fee ??
+                  50
+                )
+              }"
+              data-dts-beach-tag-fee
+            >
+          </label>
+
+          <div
+            class="dts-amenities"
+          >
+            <label>
+              <input
+                type="checkbox"
+                data-dts-washer-dryer
+                ${
+                  dtsChecked(
+                    values.washer_dryer
+                  )
+                }
+              >
+              Washer / dryer
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                data-dts-internet
+                ${
+                  dtsChecked(
+                    values.internet
+                  )
+                }
+              >
+              Internet
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                data-dts-smart-tv
+                ${
+                  dtsChecked(
+                    values.smart_tv
+                  )
+                }
+              >
+              Smart TV
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                data-dts-coffee-pot
+                ${
+                  dtsChecked(
+                    values.coffee_pot
+                  )
+                }
+              >
+              Coffee pot
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                data-dts-stocked-kitchen
+                ${
+                  dtsChecked(
+                    values.fully_stocked_kitchen
+                  )
+                }
+              >
+              Fully stocked kitchen
+            </label>
+          </div>
+
+          <div
+            class="dts-lease-help"
+          >
+            Property:
+            ${
+              dtsEsc(
+                property?.name ||
+                reservation.property_name ||
+                ""
+              )
+            }
+          </div>
+
+        </div>
+
+        <button
+          type="button"
+          class="dts-create-lease"
+          data-dts-create-lease="${
+            reservation.id
+          }"
+        >
+          Create & send lease
+        </button>
+      </section>
+    `;
+  }
+
+
   function dtsDetailPanel() {
-    if (!selectedReservationId) {
+    if (
+      !selectedReservationId
+    ) {
       return `
-        <aside class="dts-detail-panel">
-          <div class="dts-detail-empty">
-            Select a reservation by clicking its dates.
+        <aside
+          class="dts-detail-panel"
+        >
+          <div
+            class="dts-detail-empty"
+          >
+            Select a reservation
+            by clicking its dates.
           </div>
         </aside>
       `;
@@ -1003,7 +1688,9 @@
           selectedReservationId
       );
 
-    if (!reservation) {
+    if (
+      !reservation
+    ) {
       selectedReservationId =
         null;
 
@@ -1016,92 +1703,175 @@
       );
 
     return `
-      <aside class="dts-detail-panel">
+      <aside
+        class="dts-detail-panel"
+      >
         <h3>
           ${
-            reservation.guest_name ||
-            "Guest"
+            dtsEsc(
+              reservation.guest_name ||
+              "Guest"
+            )
           }
         </h3>
 
         <span
-          class="dts-status ${reservation.status || "pending"}"
-        >
-          ${String(
+          class="dts-status ${
             reservation.status ||
             "pending"
-          ).replaceAll(
-            "_",
-            " "
-          )}
+          }"
+        >
+          ${
+            dtsEsc(
+              String(
+                reservation.status ||
+                "pending"
+              ).replaceAll(
+                "_",
+                " "
+              )
+            )
+          }
         </span>
 
         <div
           class="dts-detail-meta"
           style="margin-top:12px;"
         >
-          ${dtsDate(reservation.arrival_date)}
+          ${
+            dtsDate(
+              reservation.arrival_date
+            )
+          }
           –
-          ${dtsDate(reservation.departure_date)}
+          ${
+            dtsDate(
+              reservation.departure_date
+            )
+          }
 
           <br>
 
-          ${reservation.property_name}
+          ${
+            dtsEsc(
+              reservation.property_name ||
+              ""
+            )
+          }
 
           <br>
 
-          ${reservation.adults || 0}
+          ${
+            reservation.adults ||
+            0
+          }
           guest(s)
 
           ${
             reservation.dogs
-              ? `<br>${reservation.dogs} dog(s)`
+              ? `
+                <br>
+                ${
+                  reservation.dogs
+                }
+                dog(s)
+                ${
+                  reservation.dog_names
+                    ? ` · ${dtsEsc(
+                        reservation.dog_names
+                      )}`
+                    : ""
+                }
+              `
               : ""
           }
 
           ${
             reservation.guest_email
-              ? `<br>${reservation.guest_email}`
+              ? `
+                <br>
+                ${
+                  dtsEsc(
+                    reservation.guest_email
+                  )
+                }
+              `
               : ""
           }
 
           ${
             reservation.guest_phone
-              ? `<br>${reservation.guest_phone}`
+              ? `
+                <br>
+                ${
+                  dtsEsc(
+                    reservation.guest_phone
+                  )
+                }
+              `
               : ""
           }
         </div>
 
-        <div class="dts-detail-section">
+        <div
+          class="dts-detail-section"
+        >
           <strong>
             Payment summary
           </strong>
 
-          <div class="dts-detail-money">
+          <div
+            class="dts-detail-money"
+          >
             <span>Total</span>
             <strong>
-              ${dtsMoney(totals.total)}
+              ${
+                dtsMoney(
+                  totals.total
+                )
+              }
             </strong>
           </div>
 
-          <div class="dts-detail-money">
+          <div
+            class="dts-detail-money"
+          >
             <span>Paid</span>
             <strong>
-              ${dtsMoney(totals.paid)}
+              ${
+                dtsMoney(
+                  totals.paid
+                )
+              }
             </strong>
           </div>
 
-          <div class="dts-detail-money">
+          <div
+            class="dts-detail-money"
+          >
             <span>Balance</span>
             <strong>
-              ${dtsMoney(totals.balance)}
+              ${
+                dtsMoney(
+                  totals.balance
+                )
+              }
             </strong>
           </div>
         </div>
 
-        <details class="dts-full-details">
+        ${
+          dtsLeaseSettingsMarkup(
+            reservation
+          )
+        }
+
+        <details
+          class="dts-full-details"
+        >
           <summary>
-            Payment & reservation controls
+            Payment & reservation
+            controls
           </summary>
 
           ${
@@ -1117,23 +1887,34 @@
     `;
   }
 
+
   function renderDtsReservations() {
     const mount =
       document.getElementById(
         "reservationList"
       );
 
-    if (!mount) {
+    if (
+      !mount
+    ) {
       return;
     }
 
     mount.innerHTML = `
-      <div class="dts-reservations-shell">
+      <div
+        class="dts-reservations-shell"
+      >
 
-        ${dtsPropertyTabs()}
+        ${
+          dtsPropertyTabs()
+        }
 
-        <div class="dts-toolbar">
-          ${dtsStatusTabs()}
+        <div
+          class="dts-toolbar"
+        >
+          ${
+            dtsStatusTabs()
+          }
 
           <div
             style="
@@ -1145,11 +1926,17 @@
             <input
               type="search"
               placeholder="Search guest or email"
-              value="${searchText}"
+              value="${
+                dtsEsc(
+                  searchText
+                )
+              }"
               data-dts-search
             >
 
-            <select data-dts-sort>
+            <select
+              data-dts-sort
+            >
               <option
                 value="asc"
                 ${
@@ -1177,13 +1964,19 @@
           </div>
         </div>
 
-        ${dtsSummary()}
+        ${
+          dtsSummary()
+        }
 
-        <div class="dts-reservation-layout">
+        <div
+          class="dts-reservation-layout"
+        >
           <section
             class="dts-reservation-table-card"
           >
-            <div class="dts-table-title">
+            <div
+              class="dts-table-title"
+            >
               Reservations
             </div>
 
@@ -1196,22 +1989,282 @@
               <div>Guest</div>
               <div>Dates</div>
               <div>Guests</div>
-              <div title="Cleaning confirmed">
+
+              <div
+                title="Cleaning confirmed"
+              >
                 🧹
               </div>
+
               <div>Status</div>
               <div>Total</div>
               <div>Balance</div>
             </div>
 
-            ${dtsReservationRows()}
+            ${
+              dtsReservationRows()
+            }
           </section>
 
-          ${dtsDetailPanel()}
+          ${
+            dtsDetailPanel()
+          }
         </div>
       </div>
     `;
   }
+
+
+  async function dtsSaveAndCreateLease(
+    button
+  ) {
+    const reservationId =
+      button.dataset
+        .dtsCreateLease;
+
+    const reservation =
+      currentReservations.find(
+        item =>
+          item.id ===
+          reservationId
+      );
+
+    if (
+      !reservation
+    ) {
+      throw new Error(
+        "Reservation could not be found."
+      );
+    }
+
+    const panel =
+      button.closest(
+        "[data-dts-lease-settings]"
+      );
+
+    if (
+      !panel
+    ) {
+      throw new Error(
+        "Lease settings could not be found."
+      );
+    }
+
+    const dogs =
+      Number(
+        panel.querySelector(
+          "[data-dts-dogs]"
+        ).value ||
+        0
+      );
+
+    const dogNames =
+      panel.querySelector(
+        "[data-dts-dog-names]"
+      ).value.trim();
+
+    if (
+      dogs > 0 &&
+      !dogNames
+    ) {
+      throw new Error(
+        "Enter the dog name or names."
+      );
+    }
+
+    const securityDeposit =
+      Number(
+        panel.querySelector(
+          "[data-dts-security-deposit]"
+        ).value ||
+        0
+      );
+
+    const leaseOverrides = {
+      check_in_time:
+        panel.querySelector(
+          "[data-dts-check-in]"
+        ).value.trim() ||
+        "2:00 PM",
+
+      check_out_time:
+        panel.querySelector(
+          "[data-dts-check-out]"
+        ).value.trim() ||
+        "10:00 AM",
+
+      bed_configuration:
+        panel.querySelector(
+          "[data-dts-bed-configuration]"
+        ).value.trim(),
+
+      linens_text:
+        panel.querySelector(
+          "[data-dts-linens]"
+        ).value.trim(),
+
+      beach_chairs:
+        Number(
+          panel.querySelector(
+            "[data-dts-beach-chairs]"
+          ).value ||
+          0
+        ),
+
+      beach_tags:
+        Number(
+          panel.querySelector(
+            "[data-dts-beach-tags]"
+          ).value ||
+          0
+        ),
+
+      beach_tag_replacement_fee:
+        Number(
+          panel.querySelector(
+            "[data-dts-beach-tag-fee]"
+          ).value ||
+          50
+        ),
+
+      washer_dryer:
+        panel.querySelector(
+          "[data-dts-washer-dryer]"
+        ).checked,
+
+      internet:
+        panel.querySelector(
+          "[data-dts-internet]"
+        ).checked,
+
+      smart_tv:
+        panel.querySelector(
+          "[data-dts-smart-tv]"
+        ).checked,
+
+      coffee_pot:
+        panel.querySelector(
+          "[data-dts-coffee-pot]"
+        ).checked,
+
+      fully_stocked_kitchen:
+        panel.querySelector(
+          "[data-dts-stocked-kitchen]"
+        ).checked
+    };
+
+    await updateReservation(
+      reservation.id,
+      {
+        rental_type:
+          "standard",
+
+        security_deposit:
+          securityDeposit,
+
+        dogs,
+
+        dog_names:
+          dogs > 0
+            ? dogNames
+            : null,
+
+        lease_overrides:
+          leaseOverrides
+      }
+    );
+
+    reservation.rental_type =
+      "standard";
+
+    reservation.security_deposit =
+      securityDeposit;
+
+    reservation.dogs =
+      dogs;
+
+    reservation.dog_names =
+      dogs > 0
+        ? dogNames
+        : null;
+
+    reservation.lease_overrides =
+      leaseOverrides;
+
+    const leaseResult =
+      await createLeaseForReservation(
+        reservation
+      );
+
+    return leaseResult;
+  }
+
+
+  document.addEventListener(
+    "click",
+    async event => {
+      const createButton =
+        event.target.closest(
+          "[data-dts-create-lease]"
+        );
+
+      if (
+        !createButton
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const originalText =
+        createButton.textContent;
+
+      try {
+        createButton.disabled =
+          true;
+
+        createButton.textContent =
+          "Creating lease…";
+
+        const result =
+          await dtsSaveAndCreateLease(
+            createButton
+          );
+
+        window.alert(
+          result.email_sent
+            ? "Lease created. The signing email was sent to the guest."
+            : "Lease created, but the email was not confirmed as sent."
+        );
+
+        if (
+          typeof refresh ===
+          "function"
+        ) {
+          await refresh();
+        }
+
+        renderDtsReservations();
+
+      } catch (error) {
+        window.alert(
+          `Lease error: ${
+            error.message ||
+            "Could not create lease."
+          }`
+        );
+
+        createButton.disabled =
+          false;
+
+        createButton.textContent =
+          originalText;
+      }
+    },
+    true
+  );
+
 
   document.addEventListener(
     "click",
@@ -1221,9 +2274,12 @@
           "[data-dts-property]"
         );
 
-      if (propertyButton) {
+      if (
+        propertyButton
+      ) {
         selectedPropertyId =
-          propertyButton.dataset.dtsProperty;
+          propertyButton.dataset
+            .dtsProperty;
 
         selectedReservationId =
           null;
@@ -1237,9 +2293,12 @@
           "[data-dts-status]"
         );
 
-      if (statusButton) {
+      if (
+        statusButton
+      ) {
         selectedStatus =
-          statusButton.dataset.dtsStatus;
+          statusButton.dataset
+            .dtsStatus;
 
         selectedReservationId =
           null;
@@ -1253,14 +2312,18 @@
           "[data-dts-open]"
         );
 
-      if (openButton) {
+      if (
+        openButton
+      ) {
         selectedReservationId =
-          openButton.dataset.dtsOpen;
+          openButton.dataset
+            .dtsOpen;
 
         renderDtsReservations();
       }
     }
   );
+
 
   document.addEventListener(
     "input",
@@ -1280,7 +2343,9 @@
             "[data-dts-search]"
           );
 
-        if (input) {
+        if (
+          input
+        ) {
           input.focus();
 
           input.setSelectionRange(
@@ -1291,6 +2356,7 @@
       }
     }
   );
+
 
   document.addEventListener(
     "change",
@@ -1308,12 +2374,15 @@
     }
   );
 
+
   const mount =
     document.getElementById(
       "reservationList"
     );
 
-  if (mount) {
+  if (
+    mount
+  ) {
     const observer =
       new MutationObserver(
         () => {
@@ -1333,11 +2402,12 @@
     observer.observe(
       mount,
       {
-        childList: true,
-        subtree: false
+        childList:true,
+        subtree:false
       }
     );
   }
+
 
   window.setTimeout(
     renderDtsReservations,
