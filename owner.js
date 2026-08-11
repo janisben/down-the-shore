@@ -1,6 +1,52 @@
 const cfg = window.SITE_DATA.supabase;
 
 
+const ownerPortalFixStyle =
+  document.createElement("style");
+
+ownerPortalFixStyle.textContent = `
+  .payment-summary-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .payment-summary-item {
+    min-width:0 !important;
+    overflow:hidden;
+  }
+
+  .payment-summary-value {
+    min-width:0 !important;
+    font-size:clamp(18px, 2vw, 26px) !important;
+    line-height:1.1;
+    white-space:nowrap;
+  }
+
+  .payment-log-row {
+    grid-template-columns:
+      minmax(0,1fr)
+      minmax(0,1fr)
+      auto !important;
+  }
+
+  .payment-log-row input,
+  .payment-log-row select {
+    width:100%;
+    min-width:0;
+    box-sizing:border-box;
+  }
+
+  .card.res {
+    min-width:0;
+  }
+`;
+
+document.head.appendChild(
+  ownerPortalFixStyle
+);
+
+
+
 let token =
   sessionStorage.getItem("dts_token") || "";
 
@@ -945,24 +991,52 @@ async function createLeaseForReservation(
     );
   }
 
-  const response =
-    await fetch(
-      "/api/create-lease",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-          Authorization:
-            `Bearer ${token}`
-        },
-        body:
-          JSON.stringify({
-            reservation_id:
-              reservation.id
-          })
-      }
+  const controller =
+    new AbortController();
+
+  const timeout =
+    setTimeout(
+      () => controller.abort(),
+      15000
     );
+
+  let response;
+
+  try {
+    response =
+      await fetch(
+        "/api/create-lease",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${token}`
+          },
+          body:
+            JSON.stringify({
+              reservation_id:
+                reservation.id
+            }),
+          signal:
+            controller.signal
+        }
+      );
+  } catch (error) {
+    if (
+      error.name ===
+      "AbortError"
+    ) {
+      throw new Error(
+        "The lease request timed out. The server did not respond."
+      );
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   let body = {};
 
@@ -974,7 +1048,8 @@ async function createLeaseForReservation(
   if (!response.ok) {
     throw new Error(
       body.error ||
-      "Could not create and send the lease."
+      body.message ||
+      `Lease server error (${response.status}).`
     );
   }
 
@@ -2965,15 +3040,72 @@ function paymentScheduleMarkup(
     );
 
 
-  const unscheduled =
-    Math.max(
-      0,
-      Number(
-        reservation.amount_due ||
-        0
-      ) -
-      scheduled
+  const totals =
+    paymentTotals(
+      reservation
     );
+
+
+  const unscheduled =
+    totals.balance <= 0
+      ? 0
+      : Math.max(
+          0,
+          totals.balance -
+          scheduled
+        );
+
+
+  if (
+    totals.balance <= 0
+  ) {
+    return `
+      <div
+        class="payment-history"
+        style="margin-top:14px;"
+      >
+        <h3>
+          Payment history
+        </h3>
+
+        <div class="payment-history-list">
+          ${
+            history.length
+              ? history
+                  .map(
+                    payment => `
+                      <div class="payment-history-row">
+                        <strong>
+                          ${formatMoney(payment.amount)}
+                        </strong>
+
+                        <span>
+                          ${(payment.payment_method || "").replaceAll("_", " ")}
+                        </span>
+
+                        <span class="meta">
+                          ${
+                            payment.received_at
+                              ? new Date(
+                                  payment.received_at
+                                ).toLocaleString()
+                              : ""
+                          }
+                        </span>
+                      </div>
+                    `
+                  )
+                  .join("")
+              : `
+                <div class="meta">
+                  No payments logged yet.
+                </div>
+              `
+          }
+        </div>
+      </div>
+    `;
+  }
 
 
   return `
@@ -5036,13 +5168,20 @@ reservationList.addEventListener(
           );
         }
 
-        await createLeaseForReservation(
-          reservation
-        );
+        const leaseResult =
+          await createLeaseForReservation(
+            reservation
+          );
 
         message(
           portalMessage,
           "Lease created and signing email sent to the guest."
+        );
+
+        window.alert(
+          leaseResult.email_sent
+            ? "Lease created. The signing email was sent to the guest."
+            : "Lease created, but the email was not confirmed as sent."
         );
       }
 
@@ -5326,13 +5465,20 @@ pendingReservationList.addEventListener(
           );
         }
 
-        await createLeaseForReservation(
-          reservation
-        );
+        const leaseResult =
+          await createLeaseForReservation(
+            reservation
+          );
 
         message(
           portalMessage,
           "Lease created and signing email sent to the guest."
+        );
+
+        window.alert(
+          leaseResult.email_sent
+            ? "Lease created. The signing email was sent to the guest."
+            : "Lease created, but the email was not confirmed as sent."
         );
       }
 
