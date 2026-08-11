@@ -51,6 +51,15 @@ ownerPortalFixStyle.textContent = `
     gap:12px !important;
   }
 
+  .payment-schedule-summary {
+    display:block !important;
+  }
+
+  .payment-schedule-summary .payment-summary-item {
+    width:100% !important;
+    box-sizing:border-box !important;
+  }
+
   .payment-log-row {
     grid-template-columns:
       minmax(0,1fr)
@@ -1136,6 +1145,56 @@ async function createLeaseForReservation(
 }
 
 
+async function prepareOwnerLeaseSignature(
+  reservation,
+  lease
+) {
+  if (!reservation || !lease) {
+    throw new Error(
+      "Reservation or lease could not be found."
+    );
+  }
+
+  const response =
+    await fetch(
+      "/api/owner-lease-ready",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+          Authorization:
+            `Bearer ${token}`
+        },
+        body:
+          JSON.stringify({
+            reservation_id:
+              reservation.id,
+            lease_id:
+              lease.id
+          })
+      }
+    );
+
+  let body = {};
+
+  try {
+    body =
+      await response.json();
+  } catch (_) {}
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ||
+      body.message ||
+      `Owner signing error (${response.status}).`
+    );
+  }
+
+  return body;
+}
+
+
 async function loadPayments() {
   currentPayments =
     await fetchTable(
@@ -1601,6 +1660,32 @@ async function addPayment(
           : reservation.status
     }
   );
+
+  const lease =
+    leaseForReservation(id);
+
+  if (
+    paidAfter > 0 &&
+    lease &&
+    (
+      lease.status ===
+        "awaiting_payment" ||
+      lease.status ===
+        "awaiting_owner_signature"
+    )
+  ) {
+    try {
+      await prepareOwnerLeaseSignature(
+        reservation,
+        lease
+      );
+    } catch (error) {
+      console.warn(
+        "Owner signature notification could not be prepared:",
+        error
+      );
+    }
+  }
 }
 
 
@@ -3518,6 +3603,25 @@ function reservationCard(r) {
     totals.balance > 0;
 
 
+  const ownerSignatureReady =
+    Boolean(
+      lease &&
+      totals.paid > 0 &&
+      (
+        lease.status ===
+          "awaiting_payment" ||
+        lease.status ===
+          "awaiting_owner_signature"
+      )
+    );
+
+
+  const displayLeaseStatus =
+    ownerSignatureReady
+      ? "owner_signature_required"
+      : lease?.status || "";
+
+
   return `
     <article
       class="card res"
@@ -3628,7 +3732,7 @@ function reservationCard(r) {
             ? `
               <span class="badge">
                 lease:
-                ${lease.status.replaceAll("_", " ")}
+                ${displayLeaseStatus.replaceAll("_", " ")}
               </span>
             `
             : ""
@@ -3777,6 +3881,20 @@ function reservationCard(r) {
             `
             : ""
         }
+
+        ${
+          ownerSignatureReady
+            ? `
+              <button
+                class="primary"
+                data-action="owner_sign"
+              >
+                Review & sign lease
+              </button>
+            `
+            : ""
+        }
+
 
         ${
           showCancel
@@ -5310,6 +5428,56 @@ reservationList.addEventListener(
 
       if (
         action ===
+        "owner_sign"
+      ) {
+        const reservation =
+          currentReservations.find(
+            item =>
+              item.id === id
+          );
+
+        const lease =
+          leaseForReservation(id);
+
+        if (
+          !reservation ||
+          !lease
+        ) {
+          throw new Error(
+            "Reservation or lease could not be found."
+          );
+        }
+
+        const originalText =
+          button.textContent;
+
+        button.textContent =
+          "Opening lease…";
+
+        try {
+          const result =
+            await prepareOwnerLeaseSignature(
+              reservation,
+              lease
+            );
+
+          if (!result.signing_url) {
+            throw new Error(
+              "Owner signing link was not returned."
+            );
+          }
+
+          window.location.href =
+            result.signing_url;
+        } finally {
+          button.textContent =
+            originalText;
+        }
+      }
+
+
+      if (
+        action ===
         "paid"
       ) {
 
@@ -5620,6 +5788,56 @@ pendingReservationList.addEventListener(
           );
 
           throw leaseError;
+        } finally {
+          button.textContent =
+            originalText;
+        }
+      }
+
+
+      if (
+        action ===
+        "owner_sign"
+      ) {
+        const reservation =
+          currentReservations.find(
+            item =>
+              item.id === id
+          );
+
+        const lease =
+          leaseForReservation(id);
+
+        if (
+          !reservation ||
+          !lease
+        ) {
+          throw new Error(
+            "Reservation or lease could not be found."
+          );
+        }
+
+        const originalText =
+          button.textContent;
+
+        button.textContent =
+          "Opening lease…";
+
+        try {
+          const result =
+            await prepareOwnerLeaseSignature(
+              reservation,
+              lease
+            );
+
+          if (!result.signing_url) {
+            throw new Error(
+              "Owner signing link was not returned."
+            );
+          }
+
+          window.location.href =
+            result.signing_url;
         } finally {
           button.textContent =
             originalText;
