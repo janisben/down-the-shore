@@ -945,192 +945,42 @@ async function createLeaseForReservation(
     );
   }
 
-  const rentalType =
-    reservation.rental_type ||
-    "standard";
-
-  const leasePayload = {
-    reservation_id:
-      reservation.id,
-    lease_type:
-      rentalType,
-    status:
-      "draft",
-    lease_data: {
-      reservation_id:
-        reservation.id,
-      property_id:
-        reservation.property_id,
-      property_name:
-        reservation.property_name,
-      guest_name:
-        reservation.guest_name ||
-        "",
-      guest_email:
-        reservation.guest_email ||
-        "",
-      guest_phone:
-        reservation.guest_phone ||
-        "",
-      arrival_date:
-        reservation.arrival_date,
-      departure_date:
-        reservation.departure_date,
-      adults:
-        Number(
-          reservation.adults || 0
-        ),
-      children:
-        Number(
-          reservation.children || 0
-        ),
-      dogs:
-        Number(
-          reservation.dogs || 0
-        ),
-      dog_names:
-        reservation.dog_names ||
-        "",
-      amount_due:
-        Number(
-          reservation.amount_due || 0
-        ),
-      rental_type:
-        rentalType,
-      booking_source:
-        reservation.booking_source ||
-        ""
-    }
-  };
-
-  const leaseRes =
+  const response =
     await fetch(
-      `${cfg.url}/rest/v1/leases`,
+      "/api/create-lease",
       {
         method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=representation"
-          }),
-        body:
-          JSON.stringify(
-            leasePayload
-          )
-      }
-    );
-
-  if (!leaseRes.ok) {
-    throw new Error(
-      await leaseRes.text()
-    );
-  }
-
-  const created =
-    await leaseRes.json();
-
-  const lease =
-    created[0];
-
-  if (!lease) {
-    throw new Error(
-      "Lease was created but could not be loaded."
-    );
-  }
-
-  const signerPayload = [
-    {
-      lease_id:
-        lease.id,
-      signer_role:
-        "tenant",
-      signer_name:
-        reservation.guest_name ||
-        null,
-      signer_email:
-        reservation.guest_email ||
-        null,
-      signer_phone:
-        reservation.guest_phone ||
-        null,
-      is_required:
-        true,
-      sort_order:
-        1
-    },
-    {
-      lease_id:
-        lease.id,
-      signer_role:
-        "owner",
-      signer_name:
-        "Janis Benstock",
-      signer_email:
-        null,
-      signer_phone:
-        null,
-      is_required:
-        true,
-      sort_order:
-        99
-    }
-  ];
-
-  const signerRes =
-    await fetch(
-      `${cfg.url}/rest/v1/lease_signers`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify(
-            signerPayload
-          )
-      }
-    );
-
-  if (!signerRes.ok) {
-    throw new Error(
-      await signerRes.text()
-    );
-  }
-
-  const eventRes =
-    await fetch(
-      `${cfg.url}/rest/v1/lease_events`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
+        headers: {
+          "Content-Type":
+            "application/json",
+          Authorization:
+            `Bearer ${token}`
+        },
         body:
           JSON.stringify({
-            lease_id:
-              lease.id,
-            event_type:
-              "lease_created",
-            event_data: {
-              source:
-                "owner_portal"
-            }
+            reservation_id:
+              reservation.id
           })
       }
     );
 
-  if (!eventRes.ok) {
+  let body = {};
+
+  try {
+    body =
+      await response.json();
+  } catch (_) {}
+
+  if (!response.ok) {
     throw new Error(
-      await eventRes.text()
+      body.error ||
+      "Could not create and send the lease."
     );
   }
 
-  return lease;
+  return body;
 }
+
 
 async function loadPayments() {
   currentPayments =
@@ -5192,7 +5042,7 @@ reservationList.addEventListener(
 
         message(
           portalMessage,
-          "Lease created. Next we will connect the guest signing page."
+          "Lease created and signing email sent to the guest."
         );
       }
 
@@ -5482,7 +5332,7 @@ pendingReservationList.addEventListener(
 
         message(
           portalMessage,
-          "Lease created. Next we will connect the guest signing page."
+          "Lease created and signing email sent to the guest."
         );
       }
 
