@@ -6018,7 +6018,18 @@ document.addEventListener(
     if (
       document.activeElement === event.target &&
       event.target.matches(
-        '[data-rate-weekly], [data-rate-nightly], [name="weekly_price"], [name="nightly_price"]'
+        [
+          '[name="amount_due"]',
+          '[data-amount]',
+          '[data-payment-due-amount]',
+          '[data-new-payment-amount]',
+          '[data-property-cleaning-fee]',
+          '[data-property-pet-fee]',
+          '[data-rate-weekly]',
+          '[data-rate-nightly]',
+          '[name="weekly_price"]',
+          '[name="nightly_price"]'
+        ].join(", ")
       )
     ) {
       event.target.blur();
