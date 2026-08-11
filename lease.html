@@ -3,28 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Rental Agreement | Down the Shore</title>
-  <link rel="stylesheet" href="style.css">
+
+  <title>
+    Rental Agreement | Down the Shore
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 
   <style>
-    body{
+    body {
       background:#f7f4ee;
       color:#24231f;
     }
 
-    .lease-shell{
+    .lease-shell {
       max-width:900px;
       margin:0 auto;
       padding:36px 20px 80px;
     }
 
-    .lease-card{
+    .lease-card {
       background:#fff;
       border:1px solid #ded9cf;
       padding:28px;
     }
 
-    .lease-meta{
+    .lease-meta {
       display:grid;
       grid-template-columns:
         repeat(
@@ -35,32 +42,32 @@
       margin:20px 0;
     }
 
-    .lease-meta div{
+    .lease-meta div {
       background:#f5f1e8;
       padding:12px;
     }
 
-    .lease-section{
+    .lease-section {
       margin:28px 0;
     }
 
-    .lease-section h2{
+    .lease-section h2 {
       font-family:Georgia,serif;
       font-weight:400;
     }
 
-    .initial-box{
+    .initial-box {
       display:flex;
       gap:12px;
       align-items:center;
       margin-top:12px;
     }
 
-    .initial-box input{
+    .initial-box input {
       max-width:120px;
     }
 
-    .completed-initials{
+    .completed-initials {
       display:inline-block;
       margin-top:12px;
       padding:8px 12px;
@@ -68,33 +75,45 @@
       border:1px solid #ded9cf;
     }
 
-    .tenant-signature-record{
+    .tenant-signature-record {
       margin:28px 0;
       padding:18px;
       background:#f5f1e8;
       border:1px solid #ded9cf;
     }
 
-    .tenant-signature-record h2{
+    .tenant-signature-record h2 {
       margin-top:0;
       font-family:Georgia,serif;
       font-weight:400;
     }
 
-    .signature-box{
+    .signature-box {
       margin-top:28px;
       padding-top:20px;
       border-top:1px solid #ddd;
     }
 
-    .notice{
+    .notice {
       padding:14px;
       background:#f5f1e8;
       margin:18px 0;
     }
 
-    button{
+    button {
       padding:12px 18px;
+    }
+
+    input {
+      padding:10px;
+      border:1px solid #cfc9bd;
+      border-radius:4px;
+      font:inherit;
+    }
+
+    button:disabled,
+    input:disabled {
+      opacity:.65;
     }
   </style>
 </head>
@@ -103,8 +122,13 @@
 
   <main class="lease-shell">
 
-    <h1>Down the Shore</h1>
-    <p>Summer Rental Agreement</p>
+    <h1>
+      Down the Shore
+    </h1>
+
+    <p>
+      Summer Rental Agreement
+    </p>
 
     <div
       id="leaseMessage"
@@ -124,7 +148,9 @@
         id="leaseMeta"
       ></div>
 
-      <div id="leaseBody"></div>
+      <div
+        id="leaseBody"
+      ></div>
 
       <div
         id="tenantSignatureRecord"
@@ -132,16 +158,22 @@
         hidden
       ></div>
 
-      <div class="signature-box">
+      <div
+        class="signature-box"
+      >
 
-        <h2 id="signatureHeading">
+        <h2
+          id="signatureHeading"
+        >
           Tenant signature
         </h2>
 
-        <p id="signatureIntro">
-          By signing below, I confirm that I
-          have read and agree to the rental
-          agreement above.
+        <p
+          id="signatureIntro"
+        >
+          By signing below, I confirm
+          that I have read and agree to
+          the rental agreement above.
         </p>
 
         <label>
@@ -154,7 +186,9 @@
           >
         </label>
 
-        <div style="margin-top:16px">
+        <div
+          style="margin-top:16px"
+        >
           <button
             id="signLeaseButton"
             type="button"
@@ -188,54 +222,45 @@
         "leaseMessage"
       );
 
-
     const leaseCard =
       document.getElementById(
         "leaseCard"
       );
-
 
     const leaseMeta =
       document.getElementById(
         "leaseMeta"
       );
 
-
     const leaseBody =
       document.getElementById(
         "leaseBody"
       );
-
 
     const signButton =
       document.getElementById(
         "signLeaseButton"
       );
 
-
     const signatureText =
       document.getElementById(
         "signatureText"
       );
-
 
     const signatureMessage =
       document.getElementById(
         "signatureMessage"
       );
 
-
     const signatureHeading =
       document.getElementById(
         "signatureHeading"
       );
 
-
     const signatureIntro =
       document.getElementById(
         "signatureIntro"
       );
-
 
     const tenantSignatureRecord =
       document.getElementById(
@@ -275,11 +300,32 @@
       return new Intl.NumberFormat(
         "en-US",
         {
-          style:"currency",
-          currency:"USD"
+          style:
+            "currency",
+
+          currency:
+            "USD"
         }
       ).format(
         Number(value || 0)
+      );
+    }
+
+
+    function dateDisplay(value) {
+      if (!value) {
+        return "";
+      }
+
+      return new Date(
+        `${value}T12:00:00`
+      ).toLocaleDateString(
+        "en-US",
+        {
+          month:"long",
+          day:"numeric",
+          year:"numeric"
+        }
       );
     }
 
@@ -305,27 +351,49 @@
     }
 
 
+    function tenantSigner() {
+      return (
+        leasePayload
+          ?.signers ||
+        []
+      ).find(
+        signer =>
+          signer.signer_role ===
+            "tenant"
+      ) || null;
+    }
+
+
     function tenantInitialForSection(
       sectionKey
     ) {
-      const initials =
-        leasePayload
-          ?.tenant_initials ||
-        [];
+      const tenant =
+        tenantSigner();
+
+      if (!tenant) {
+        return "";
+      }
 
       const record =
-        initials.find(
+        (
+          leasePayload
+            ?.initials ||
+          []
+        ).find(
           item =>
+            item.signer_id ===
+              tenant.id &&
             item.section_key ===
-            sectionKey
+              sectionKey
         );
 
       return record?.initials || "";
     }
 
 
-    function sectionMarkup(section) {
-
+    function sectionMarkup(
+      section
+    ) {
       const isOwner =
         leasePayload
           ?.signer
@@ -333,14 +401,17 @@
         "owner";
 
 
-      let initialsMarkup = "";
+      let initialsMarkup =
+        "";
 
 
-      if (section.requires_initials) {
+      if (
+        section.requires_initials
+      ) {
 
         if (isOwner) {
 
-          const tenantInitial =
+          const completedInitials =
             tenantInitialForSection(
               section.key
             );
@@ -353,9 +424,12 @@
               <strong>
                 Tenant initials:
               </strong>
+
               ${
-                tenantInitial
-                  ? esc(tenantInitial)
+                completedInitials
+                  ? esc(
+                      completedInitials
+                    )
                   : "Not recorded"
               }
             </div>
@@ -364,13 +438,16 @@
         } else {
 
           initialsMarkup = `
-            <div class="initial-box">
+            <div
+              class="initial-box"
+            >
               <label>
                 Initials
 
                 <input
                   type="text"
                   maxlength="6"
+                  autocomplete="off"
                   data-initial-key="${
                     esc(section.key)
                   }"
@@ -385,7 +462,9 @@
 
 
       return `
-        <section class="lease-section">
+        <section
+          class="lease-section"
+        >
 
           <h2>
             ${esc(section.title)}
@@ -404,24 +483,17 @@
 
     function showTenantSignature() {
 
-      const tenantSigners =
-        leasePayload
-          ?.tenant_signers ||
-        [];
+      const tenant =
+        tenantSigner();
 
 
-      const signedTenant =
-        tenantSigners.find(
-          signer =>
-            Boolean(
-              signer.signed_at
-            )
-        );
-
-
-      if (!signedTenant) {
+      if (
+        !tenant ||
+        !tenant.signed_at
+      ) {
         tenantSignatureRecord.hidden =
           true;
+
         return;
       }
 
@@ -435,7 +507,7 @@
           <strong>Tenant:</strong>
           ${
             esc(
-              signedTenant.signer_name ||
+              tenant.signer_name ||
               ""
             )
           }
@@ -445,8 +517,8 @@
           <strong>Signature:</strong>
           ${
             esc(
-              signedTenant.signature_text ||
-              signedTenant.signer_name ||
+              tenant.signature_text ||
+              tenant.signer_name ||
               ""
             )
           }
@@ -457,7 +529,7 @@
           ${
             esc(
               formatTimestamp(
-                signedTenant.signed_at
+                tenant.signed_at
               )
             )
           }
@@ -467,6 +539,31 @@
 
       tenantSignatureRecord.hidden =
         false;
+    }
+
+
+    function showAlreadySigned() {
+
+      signButton.disabled =
+        true;
+
+      signatureText.value =
+        leasePayload
+          .signer
+          .signature_text ||
+        "";
+
+      signatureText.disabled =
+        true;
+
+      signatureMessage.hidden =
+        false;
+
+      signatureMessage.textContent =
+        "You have already signed this rental agreement.";
+
+      signButton.textContent =
+        "Signed";
     }
 
 
@@ -481,20 +578,36 @@
       }
 
 
-      const response =
-        await fetch(
-          `/api/get-lease?token=${
-            encodeURIComponent(token)
-          }`
-        );
+      let response;
+
+      try {
+
+        response =
+          await fetch(
+            `/api/get-lease?token=${
+              encodeURIComponent(
+                token
+              )
+            }`
+          );
+
+      } catch (_) {
+
+        leaseMessage.textContent =
+          "This rental agreement could not be loaded.";
+
+        return;
+      }
 
 
       let body = {};
 
 
       try {
+
         body =
           await response.json();
+
       } catch (_) {}
 
 
@@ -515,13 +628,13 @@
       leaseMessage.hidden =
         true;
 
-
       leaseCard.hidden =
         false;
 
 
       const isOwner =
-        body.signer.signer_role ===
+        body.signer
+          .signer_role ===
         "owner";
 
 
@@ -530,10 +643,8 @@
         signatureHeading.textContent =
           "Landlord signature";
 
-
         signatureIntro.textContent =
           "I have reviewed the Tenant's completed rental agreement and confirm and execute this Agreement as Landlord.";
-
 
         signButton.textContent =
           "Sign as Landlord";
@@ -543,10 +654,8 @@
         signatureHeading.textContent =
           "Tenant signature";
 
-
         signatureIntro.textContent =
           "By signing below, I confirm that I have read and agree to the rental agreement above.";
-
 
         signButton.textContent =
           "Sign rental agreement";
@@ -556,51 +665,72 @@
 
       leaseMeta.innerHTML = `
         <div>
-          <strong>Property</strong><br>
+          <strong>
+            Property
+          </strong>
+          <br>
           ${
             esc(
               body.lease_data
-                .property_name
+                ?.property_name ||
+              ""
             )
           }
         </div>
 
         <div>
-          <strong>Signer</strong><br>
+          <strong>
+            Signer
+          </strong>
+          <br>
           ${
             esc(
               body.signer
-                .signer_name
+                ?.signer_name ||
+              ""
             )
           }
         </div>
 
         <div>
-          <strong>Arrival</strong><br>
+          <strong>
+            Arrival
+          </strong>
+          <br>
           ${
             esc(
-              body.lease_data
-                .arrival_date
+              dateDisplay(
+                body.lease_data
+                  ?.arrival_date
+              )
             )
           }
         </div>
 
         <div>
-          <strong>Departure</strong><br>
+          <strong>
+            Departure
+          </strong>
+          <br>
           ${
             esc(
-              body.lease_data
-                .departure_date
+              dateDisplay(
+                body.lease_data
+                  ?.departure_date
+              )
             )
           }
         </div>
 
         <div>
-          <strong>Total</strong><br>
+          <strong>
+            Total
+          </strong>
+          <br>
           ${
             money(
               body.lease_data
-                .amount_due
+                ?.amount_due
             )
           }
         </div>
@@ -608,12 +738,13 @@
         <div>
           <strong>
             Lease status
-          </strong><br>
-
+          </strong>
+          <br>
           ${
             esc(
               String(
-                body.status || ""
+                body.status ||
+                ""
               ).replaceAll(
                 "_",
                 " "
@@ -625,7 +756,10 @@
 
 
       leaseBody.innerHTML =
-        (body.sections || [])
+        (
+          body.sections ||
+          []
+        )
           .map(
             sectionMarkup
           )
@@ -638,30 +772,10 @@
 
 
       if (
-        body.signer.signed_at
+        body.signer
+          .signed_at
       ) {
-
-        signButton.disabled =
-          true;
-
-
-        signatureText.value =
-          body.signer
-            .signature_text ||
-          "";
-
-
-        signatureText.disabled =
-          true;
-
-
-        signatureMessage.hidden =
-          false;
-
-
-        signatureMessage.textContent =
-          "You have already signed this rental agreement.";
-
+        showAlreadySigned();
       }
 
     }
@@ -686,10 +800,8 @@
           signatureMessage.hidden =
             false;
 
-
           signatureMessage.textContent =
             "Enter your full legal name before signing.";
-
 
           return;
         }
@@ -702,7 +814,8 @@
           "owner";
 
 
-        const initials = {};
+        const initials =
+          {};
 
 
         if (!isOwner) {
@@ -729,11 +842,10 @@
           const missing =
             Object.entries(
               initials
-            )
-              .find(
-                ([,value]) =>
-                  !value
-              );
+            ).find(
+              ([, value]) =>
+                !value
+            );
 
 
           if (missing) {
@@ -741,10 +853,8 @@
             signatureMessage.hidden =
               false;
 
-
             signatureMessage.textContent =
               "Please complete all required initials before signing.";
-
 
             return;
           }
@@ -755,30 +865,53 @@
         signButton.disabled =
           true;
 
-
         signButton.textContent =
           "Signing…";
 
 
-        const response =
-          await fetch(
-            "/api/sign-lease",
-            {
-              method:"POST",
+        let response;
 
-              headers:{
-                "Content-Type":
-                  "application/json"
-              },
+        try {
 
-              body:
-                JSON.stringify({
-                  token,
-                  signature,
-                  initials
-                })
-            }
-          );
+          response =
+            await fetch(
+              "/api/sign-lease",
+              {
+                method:
+                  "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    token,
+                    signature,
+                    initials
+                  })
+              }
+            );
+
+        } catch (_) {
+
+          signButton.disabled =
+            false;
+
+          signButton.textContent =
+            isOwner
+              ? "Sign as Landlord"
+              : "Sign rental agreement";
+
+          signatureMessage.hidden =
+            false;
+
+          signatureMessage.textContent =
+            "The lease could not be signed.";
+
+          return;
+        }
 
 
         let body = {};
@@ -795,34 +928,40 @@
           signButton.disabled =
             false;
 
-
           signButton.textContent =
             isOwner
               ? "Sign as Landlord"
               : "Sign rental agreement";
 
-
           signatureMessage.hidden =
             false;
-
 
           signatureMessage.textContent =
             body.error ||
             "The lease could not be signed.";
 
-
           return;
         }
 
+
+        signatureText.disabled =
+          true;
 
         signatureMessage.hidden =
           false;
 
 
-        signatureMessage.textContent =
-          isOwner
-            ? "Signed successfully. The rental agreement is fully executed."
-            : "Signed successfully. Your payment step is next.";
+        if (isOwner) {
+
+          signatureMessage.textContent =
+            "Signed successfully. The rental agreement is fully executed.";
+
+        } else {
+
+          signatureMessage.textContent =
+            "Signed successfully. Your payment step is next.";
+
+        }
 
 
         signButton.textContent =
