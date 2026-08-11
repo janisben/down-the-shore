@@ -423,7 +423,7 @@ async function loadProperties() {
   const properties =
     await fetchTable(
       "properties",
-      "?select=id,name,cleaning_fee,pet_fee,max_dogs&order=name"
+      "?select=id,name,cleaning_fee,pet_fee,max_dogs,lease_defaults&order=name"
     );
 
 
@@ -522,7 +522,7 @@ async function loadReservations() {
 
       fetchTable(
         "properties",
-        "?select=id,name,cleaning_fee,pet_fee,max_dogs"
+        "?select=id,name,cleaning_fee,pet_fee,max_dogs,lease_defaults"
       )
     ]);
 
@@ -2723,6 +2723,16 @@ function ratePeriodCard(period) {
 function propertySettingsCard(
   property
 ) {
+  const leaseDefaults =
+    property.lease_defaults &&
+    typeof property.lease_defaults === "object" &&
+    !Array.isArray(property.lease_defaults)
+      ? property.lease_defaults
+      : {};
+
+  const checked = value =>
+    value ? "checked" : "";
+
   return `
     <article
       class="property-settings-card"
@@ -2730,11 +2740,9 @@ function propertySettingsCard(
     >
       <div class="property-settings-grid">
 
-
         <div>
           <strong>${property.name}</strong>
         </div>
-
 
         <label>
           Cleaning fee
@@ -2747,7 +2755,6 @@ function propertySettingsCard(
           >
         </label>
 
-
         <label>
           Pet fee per dog
           <input
@@ -2758,7 +2765,6 @@ function propertySettingsCard(
             data-property-pet-fee
           >
         </label>
-
 
         <label>
           Maximum dogs
@@ -2771,9 +2777,121 @@ function propertySettingsCard(
           >
         </label>
 
+        <label>
+          Check-in time
+          <input
+            type="text"
+            value="${leaseDefaults.check_in_time ?? "2:00 PM"}"
+            data-property-check-in
+          >
+        </label>
+
+        <label>
+          Checkout time
+          <input
+            type="text"
+            value="${leaseDefaults.check_out_time ?? "10:00 AM"}"
+            data-property-check-out
+          >
+        </label>
+
+        <label>
+          Beach tags
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value="${leaseDefaults.beach_tags ?? 0}"
+            data-property-beach-tags
+          >
+        </label>
+
+        <label>
+          Beach chairs
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value="${leaseDefaults.beach_chairs ?? 0}"
+            data-property-beach-chairs
+          >
+        </label>
+
+        <label>
+          Lost beach tag charge
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value="${leaseDefaults.beach_tag_replacement_fee ?? 50}"
+            data-property-beach-tag-fee
+          >
+        </label>
+
+        <label class="full">
+          Bed configuration
+          <input
+            type="text"
+            value="${leaseDefaults.bed_configuration ?? ""}"
+            placeholder="Example: 1 queen, 2 twins"
+            data-property-bed-configuration
+          >
+        </label>
+
+        <label class="full">
+          Linens
+          <textarea
+            rows="3"
+            data-property-linens
+          >${leaseDefaults.linens_text ?? ""}</textarea>
+        </label>
+
+        <label class="rate-blocked-row">
+          <input
+            type="checkbox"
+            data-property-washer-dryer
+            ${checked(leaseDefaults.washer_dryer)}
+          >
+          Washer / dryer
+        </label>
+
+        <label class="rate-blocked-row">
+          <input
+            type="checkbox"
+            data-property-internet
+            ${checked(leaseDefaults.internet)}
+          >
+          Internet
+        </label>
+
+        <label class="rate-blocked-row">
+          <input
+            type="checkbox"
+            data-property-smart-tv
+            ${checked(leaseDefaults.smart_tv)}
+          >
+          Smart TV
+        </label>
+
+        <label class="rate-blocked-row">
+          <input
+            type="checkbox"
+            data-property-coffee-pot
+            ${checked(leaseDefaults.coffee_pot)}
+          >
+          Coffee pot
+        </label>
+
+        <label class="rate-blocked-row">
+          <input
+            type="checkbox"
+            data-property-stocked-kitchen
+            ${checked(leaseDefaults.fully_stocked_kitchen)}
+          >
+          Fully stocked kitchen
+        </label>
 
       </div>
-
 
       <div
         class="row"
@@ -2783,13 +2901,12 @@ function propertySettingsCard(
           type="button"
           data-property-settings-action="save"
         >
-          Save fees
+          Save property settings
         </button>
       </div>
     </article>
   `;
 }
-
 
 
 
@@ -3748,6 +3865,159 @@ function reservationCard(r) {
                 Hold expires:
                 ${new Date(r.hold_expires_at).toLocaleString()}
               </div>
+            `
+            : ""
+        }
+
+        ${
+          !lease
+            ? `
+              <details
+                style="margin-top:14px;"
+                open
+              >
+                <summary
+                  style="cursor:pointer;font-weight:700;color:#0d2b4d;"
+                >
+                  Lease settings
+                </summary>
+
+                <div
+                  class="form-grid"
+                  style="margin-top:12px;"
+                >
+                  <label>
+                    Rental type
+                    <select data-lease-rental-type>
+                      <option
+                        value="standard"
+                        ${
+                          (r.rental_type || "standard") === "standard"
+                            ? "selected"
+                            : ""
+                        }
+                      >
+                        Regular summer
+                      </option>
+
+                      <option
+                        value="senior_week"
+                        ${
+                          r.rental_type === "senior_week"
+                            ? "selected"
+                            : ""
+                        }
+                      >
+                        Senior Week
+                      </option>
+
+                      <option
+                        value="winter"
+                        ${
+                          r.rental_type === "winter"
+                            ? "selected"
+                            : ""
+                        }
+                      >
+                        Winter rental
+                      </option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Security deposit
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value="${r.security_deposit ?? 0}"
+                      data-lease-security-deposit
+                    >
+                  </label>
+
+                  <label class="full">
+                    Linens override
+                    <textarea
+                      rows="2"
+                      placeholder="Leave blank to use property default"
+                      data-lease-linens
+                    >${r.lease_overrides?.linens_text ?? ""}</textarea>
+                  </label>
+
+                  <label class="full">
+                    Bed configuration override
+                    <input
+                      type="text"
+                      placeholder="Leave blank to use property default"
+                      value="${r.lease_overrides?.bed_configuration ?? ""}"
+                      data-lease-beds
+                    >
+                  </label>
+
+                  <label>
+                    Beach tags override
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Property default"
+                      value="${r.lease_overrides?.beach_tags ?? ""}"
+                      data-lease-beach-tags
+                    >
+                  </label>
+
+                  <label>
+                    Beach chairs override
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Property default"
+                      value="${r.lease_overrides?.beach_chairs ?? ""}"
+                      data-lease-beach-chairs
+                    >
+                  </label>
+
+                  ${[
+                    ["washer_dryer", "Washer / dryer"],
+                    ["internet", "Internet"],
+                    ["smart_tv", "Smart TV"],
+                    ["coffee_pot", "Coffee pot"],
+                    ["fully_stocked_kitchen", "Fully stocked kitchen"]
+                  ].map(([key,label]) => `
+                    <label>
+                      ${label}
+                      <select data-lease-boolean="${key}">
+                        <option value="">Property default</option>
+                        <option
+                          value="true"
+                          ${r.lease_overrides?.[key] === true ? "selected" : ""}
+                        >
+                          Yes
+                        </option>
+                        <option
+                          value="false"
+                          ${r.lease_overrides?.[key] === false ? "selected" : ""}
+                        >
+                          No
+                        </option>
+                      </select>
+                    </label>
+                  `).join("")}
+                </div>
+
+                <div
+                  class="row"
+                  style="margin-top:10px;"
+                >
+                  <button
+                    type="button"
+                    data-action="save_lease_settings"
+                  >
+                    Save lease settings
+                  </button>
+                </div>
+              </details>
             `
             : ""
         }
@@ -5372,6 +5642,112 @@ reservationList.addEventListener(
 
       if (
         action ===
+        "save_lease_settings"
+      ) {
+        const reservation =
+          currentReservations.find(
+            item =>
+              item.id === id
+          );
+
+        if (!reservation) {
+          throw new Error(
+            "Reservation could not be found."
+          );
+        }
+
+        const rentalType =
+          card.querySelector(
+            "[data-lease-rental-type]"
+          ).value;
+
+        const securityDeposit =
+          Number(
+            card.querySelector(
+              "[data-lease-security-deposit]"
+            ).value || 0
+          );
+
+        const overrides = {};
+
+        const linens =
+          card.querySelector(
+            "[data-lease-linens]"
+          ).value.trim();
+
+        const beds =
+          card.querySelector(
+            "[data-lease-beds]"
+          ).value.trim();
+
+        const beachTags =
+          card.querySelector(
+            "[data-lease-beach-tags]"
+          ).value;
+
+        const beachChairs =
+          card.querySelector(
+            "[data-lease-beach-chairs]"
+          ).value;
+
+        if (linens) {
+          overrides.linens_text =
+            linens;
+        }
+
+        if (beds) {
+          overrides.bed_configuration =
+            beds;
+        }
+
+        if (beachTags !== "") {
+          overrides.beach_tags =
+            Number(beachTags);
+        }
+
+        if (beachChairs !== "") {
+          overrides.beach_chairs =
+            Number(beachChairs);
+        }
+
+        card
+          .querySelectorAll(
+            "[data-lease-boolean]"
+          )
+          .forEach(select => {
+            if (select.value === "") {
+              return;
+            }
+
+            overrides[
+              select.dataset.leaseBoolean
+            ] =
+              select.value === "true";
+          });
+
+        await updateReservation(
+          id,
+          {
+            rental_type:
+              rentalType,
+
+            security_deposit:
+              securityDeposit,
+
+            lease_overrides:
+              overrides
+          }
+        );
+
+        message(
+          portalMessage,
+          "Lease settings saved."
+        );
+      }
+
+
+      if (
+        action ===
         "create_lease"
       ) {
         const reservation =
@@ -6152,43 +6528,50 @@ propertySettingsList.addEventListener(
         "button[data-property-settings-action]"
       );
 
-
     if (!button) {
       return;
     }
-
 
     const card =
       button.closest(
         "[data-property-settings-id]"
       );
 
-
     const id =
       card.dataset.propertySettingsId;
-
 
     const cleaningFee =
       card.querySelector(
         "[data-property-cleaning-fee]"
       ).value;
 
-
     const petFee =
       card.querySelector(
         "[data-property-pet-fee]"
       ).value;
-
 
     const maxDogs =
       card.querySelector(
         "[data-property-max-dogs]"
       ).value;
 
+    const beachTags =
+      card.querySelector(
+        "[data-property-beach-tags]"
+      ).value;
+
+    const beachChairs =
+      card.querySelector(
+        "[data-property-beach-chairs]"
+      ).value;
+
+    const beachTagFee =
+      card.querySelector(
+        "[data-property-beach-tag-fee]"
+      ).value;
 
     try {
       button.disabled = true;
-
 
       if (
         cleaningFee === "" ||
@@ -6199,7 +6582,6 @@ propertySettingsList.addEventListener(
         );
       }
 
-
       if (
         petFee === "" ||
         Number(petFee) < 0
@@ -6208,7 +6590,6 @@ propertySettingsList.addEventListener(
           "Enter a valid pet fee."
         );
       }
-
 
       if (
         maxDogs === "" ||
@@ -6219,29 +6600,113 @@ propertySettingsList.addEventListener(
         );
       }
 
+      if (
+        beachTags === "" ||
+        Number(beachTags) < 0
+      ) {
+        throw new Error(
+          "Enter a valid number of beach tags."
+        );
+      }
+
+      if (
+        beachChairs === "" ||
+        Number(beachChairs) < 0
+      ) {
+        throw new Error(
+          "Enter a valid number of beach chairs."
+        );
+      }
+
+      if (
+        beachTagFee === "" ||
+        Number(beachTagFee) < 0
+      ) {
+        throw new Error(
+          "Enter a valid lost beach tag charge."
+        );
+      }
+
+      const leaseDefaults = {
+        check_in_time:
+          card.querySelector(
+            "[data-property-check-in]"
+          ).value.trim() || "2:00 PM",
+
+        check_out_time:
+          card.querySelector(
+            "[data-property-check-out]"
+          ).value.trim() || "10:00 AM",
+
+        linens_text:
+          card.querySelector(
+            "[data-property-linens]"
+          ).value.trim(),
+
+        bed_configuration:
+          card.querySelector(
+            "[data-property-bed-configuration]"
+          ).value.trim(),
+
+        beach_tags:
+          Number(beachTags),
+
+        beach_chairs:
+          Number(beachChairs),
+
+        beach_tag_replacement_fee:
+          Number(beachTagFee),
+
+        washer_dryer:
+          card.querySelector(
+            "[data-property-washer-dryer]"
+          ).checked,
+
+        internet:
+          card.querySelector(
+            "[data-property-internet]"
+          ).checked,
+
+        smart_tv:
+          card.querySelector(
+            "[data-property-smart-tv]"
+          ).checked,
+
+        coffee_pot:
+          card.querySelector(
+            "[data-property-coffee-pot]"
+          ).checked,
+
+        fully_stocked_kitchen:
+          card.querySelector(
+            "[data-property-stocked-kitchen]"
+          ).checked
+      };
 
       await updateProperty(
         id,
         {
           cleaning_fee:
             Number(cleaningFee),
+
           pet_fee:
             Number(petFee),
+
           max_dogs:
-            Number(maxDogs)
+            Number(maxDogs),
+
+          lease_defaults:
+            leaseDefaults
         }
       );
 
-
       message(
         propertySettingsMessage,
-        "Property fees saved."
+        "Property settings saved."
       );
-
 
       await loadProperties();
       renderPropertySettings();
-
 
     } catch (err) {
       message(
@@ -6254,7 +6719,6 @@ propertySettingsList.addEventListener(
     }
   }
 );
-
 
 
 
