@@ -12,6 +12,7 @@
     .dts-reservations-shell {
       display:grid;
       gap:18px;
+      min-width:0;
     }
 
     .dts-property-tabs,
@@ -29,6 +30,7 @@
       border-radius:8px;
       padding:9px 14px;
       font-weight:600;
+      cursor:pointer;
     }
 
     .dts-property-tab.active,
@@ -44,6 +46,7 @@
       gap:12px;
       flex-wrap:wrap;
       align-items:center;
+      min-width:0;
     }
 
     .dts-toolbar input,
@@ -52,6 +55,7 @@
       background:#fff;
       border-radius:8px;
       padding:10px 12px;
+      box-sizing:border-box;
     }
 
     .dts-toolbar input {
@@ -66,11 +70,13 @@
       border-radius:12px;
       overflow:hidden;
       background:#fff;
+      min-width:0;
     }
 
     .dts-summary-item {
       padding:15px;
       border-right:1px solid #e5e7eb;
+      min-width:0;
     }
 
     .dts-summary-item:last-child {
@@ -87,15 +93,17 @@
       color:#0d2b4d;
       font-weight:700;
       font-size:20px;
+      overflow-wrap:anywhere;
     }
 
     .dts-reservation-layout {
       display:grid;
       grid-template-columns:
         minmax(0,1fr)
-        360px;
+        minmax(320px,360px);
       gap:18px;
       align-items:start;
+      min-width:0;
     }
 
     .dts-reservation-table-card,
@@ -103,6 +111,15 @@
       background:#fff;
       border:1px solid #e5e7eb;
       border-radius:14px;
+      min-width:0;
+    }
+
+    .dts-reservation-table-card {
+      overflow-x:auto;
+      overflow-y:hidden;
+    }
+
+    .dts-detail-panel {
       overflow:hidden;
     }
 
@@ -111,23 +128,26 @@
       border-bottom:1px solid #e5e7eb;
       color:#0d2b4d;
       font-weight:700;
+      min-width:720px;
     }
 
     .dts-reservation-row {
       display:grid;
       grid-template-columns:
-        minmax(170px,1.2fr)
-        minmax(145px,.95fr)
-        75px
-        38px
-        120px
-        100px
-        100px;
-      gap:10px;
+        minmax(145px,1.2fr)
+        minmax(125px,.95fr)
+        58px
+        30px
+        105px
+        85px
+        90px;
+      gap:8px;
       align-items:center;
-      padding:13px 18px;
+      padding:13px 14px;
       border-bottom:1px solid #edf0f3;
       font-size:13px;
+      min-width:720px;
+      box-sizing:border-box;
     }
 
     .dts-reservation-row:last-child {
@@ -162,6 +182,7 @@
       font-weight:700;
       text-align:left;
       width:100%;
+      cursor:pointer;
     }
 
     .dts-date-button:hover {
@@ -172,10 +193,12 @@
     .dts-status {
       display:inline-block;
       width:max-content;
+      max-width:100%;
       padding:5px 8px;
       border-radius:6px;
       font-size:11px;
       font-weight:700;
+      overflow-wrap:anywhere;
     }
 
     .dts-status.booked {
@@ -185,7 +208,10 @@
 
     .dts-status.pending_payment,
     .dts-status.pending,
-    .dts-status.requested {
+    .dts-status.requested,
+    .dts-status.approved,
+    .dts-status.held,
+    .dts-status.hold {
       background:#fff0c9;
       color:#725600;
     }
@@ -230,6 +256,7 @@
       top:24px;
       padding:18px;
       min-height:280px;
+      box-sizing:border-box;
     }
 
     .dts-detail-empty {
@@ -242,12 +269,14 @@
       margin:0 0 6px;
       color:#0d2b4d;
       font-size:20px;
+      overflow-wrap:anywhere;
     }
 
     .dts-detail-meta {
       color:#6f7782;
       font-size:13px;
       line-height:1.6;
+      overflow-wrap:anywhere;
     }
 
     .dts-detail-section {
@@ -266,6 +295,27 @@
 
     .dts-detail-money strong {
       color:#0d2b4d;
+    }
+
+    .dts-cancel-hold {
+      width:100%;
+      margin-top:14px;
+      border:1px solid #c94b43;
+      border-radius:8px;
+      background:#fff;
+      color:#a52f28;
+      padding:11px 14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .dts-cancel-hold:hover {
+      background:#fff4f3;
+    }
+
+    .dts-cancel-hold:disabled {
+      opacity:.6;
+      cursor:wait;
     }
 
     .dts-lease-settings {
@@ -361,6 +411,7 @@
       color:#fff;
       padding:11px 14px;
       font-weight:700;
+      cursor:pointer;
     }
 
     .dts-create-lease:disabled {
@@ -382,28 +433,28 @@
       margin:14px 0 0;
       padding:14px;
       grid-template-columns:1fr;
+      min-width:0;
+      overflow-wrap:anywhere;
     }
 
     .dts-full-details .actions {
       margin-top:10px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
     }
 
-    /*
-      Hide the old Create Lease button.
-      Lease creation now happens only after
-      the reservation-specific lease fields
-      above have been reviewed.
-    */
+    .dts-full-details .actions button,
+    .dts-full-details .actions a {
+      max-width:100%;
+      box-sizing:border-box;
+    }
+
     .dts-full-details
     button[data-action="create_lease"] {
       display:none !important;
     }
 
-    /*
-      If the newer owner.js happens to render
-      its own Lease Settings block, hide that
-      duplicate inside the legacy controls.
-    */
     .dts-full-details
     details:has([data-lease-rental-type]) {
       display:none !important;
@@ -413,6 +464,8 @@
       padding:28px;
       color:#7d8490;
       text-align:center;
+      min-width:720px;
+      box-sizing:border-box;
     }
 
     @media (max-width:1180px) {
@@ -428,21 +481,19 @@
         grid-template-columns:
           repeat(2,minmax(0,1fr));
       }
-
-      .dts-reservation-row {
-        grid-template-columns:
-          minmax(150px,1.1fr)
-          minmax(130px,.9fr)
-          60px
-          34px
-          110px
-          90px
-          90px;
-        padding:12px;
-      }
     }
 
     @media (max-width:820px) {
+      .dts-reservation-table-card {
+        overflow-x:visible;
+      }
+
+      .dts-table-title,
+      .dts-reservation-row,
+      .dts-empty-row {
+        min-width:0;
+      }
+
       .dts-reservation-row {
         grid-template-columns:1fr;
         gap:6px;
@@ -468,9 +519,7 @@
     }
   `;
 
-  document.head.appendChild(
-    style
-  );
+  document.head.appendChild(style);
 
 
   function dtsEsc(value) {
@@ -520,6 +569,22 @@
     return ![
       "cancelled",
       "declined"
+    ].includes(
+      reservation.status
+    );
+  }
+
+
+  function dtsCanCancelHold(
+    reservation
+  ) {
+    return [
+      "pending_payment",
+      "pending",
+      "requested",
+      "approved",
+      "held",
+      "hold"
     ].includes(
       reservation.status
     );
@@ -974,91 +1039,48 @@
       <div
         class="dts-reservation-summary"
       >
-        <div
-          class="dts-summary-item"
-        >
-          <div
-            class="dts-summary-label"
-          >
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
             Upcoming stays
           </div>
-
-          <div
-            class="dts-summary-value"
-          >
+          <div class="dts-summary-value">
             ${counts.upcoming}
           </div>
         </div>
 
-        <div
-          class="dts-summary-item"
-        >
-          <div
-            class="dts-summary-label"
-          >
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
             Past stays
           </div>
-
-          <div
-            class="dts-summary-value"
-          >
+          <div class="dts-summary-value">
             ${counts.past}
           </div>
         </div>
 
-        <div
-          class="dts-summary-item"
-        >
-          <div
-            class="dts-summary-label"
-          >
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
             Waitlisted
           </div>
-
-          <div
-            class="dts-summary-value"
-          >
+          <div class="dts-summary-value">
             ${counts.waitlist}
           </div>
         </div>
 
-        <div
-          class="dts-summary-item"
-        >
-          <div
-            class="dts-summary-label"
-          >
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
             Balance due
           </div>
-
-          <div
-            class="dts-summary-value"
-          >
-            ${
-              dtsMoney(
-                balance
-              )
-            }
+          <div class="dts-summary-value">
+            ${dtsMoney(balance)}
           </div>
         </div>
 
-        <div
-          class="dts-summary-item"
-        >
-          <div
-            class="dts-summary-label"
-          >
+        <div class="dts-summary-item">
+          <div class="dts-summary-label">
             Payments logged
           </div>
-
-          <div
-            class="dts-summary-value"
-          >
-            ${
-              dtsMoney(
-                revenue
-              )
-            }
+          <div class="dts-summary-value">
+            ${dtsMoney(revenue)}
           </div>
         </div>
       </div>
@@ -1071,14 +1093,11 @@
       dtsCounts();
 
     return `
-      <div
-        class="dts-status-tabs"
-      >
+      <div class="dts-status-tabs">
         <button
           type="button"
           class="dts-status-tab ${
-            selectedStatus ===
-            "all"
+            selectedStatus === "all"
               ? "active"
               : ""
           }"
@@ -1090,57 +1109,49 @@
         <button
           type="button"
           class="dts-status-tab ${
-            selectedStatus ===
-            "upcoming"
+            selectedStatus === "upcoming"
               ? "active"
               : ""
           }"
           data-dts-status="upcoming"
         >
-          Upcoming
-          ${counts.upcoming}
+          Upcoming ${counts.upcoming}
         </button>
 
         <button
           type="button"
           class="dts-status-tab ${
-            selectedStatus ===
-            "past"
+            selectedStatus === "past"
               ? "active"
               : ""
           }"
           data-dts-status="past"
         >
-          Past
-          ${counts.past}
+          Past ${counts.past}
         </button>
 
         <button
           type="button"
           class="dts-status-tab ${
-            selectedStatus ===
-            "cancelled"
+            selectedStatus === "cancelled"
               ? "active"
               : ""
           }"
           data-dts-status="cancelled"
         >
-          Cancelled
-          ${counts.cancelled}
+          Cancelled ${counts.cancelled}
         </button>
 
         <button
           type="button"
           class="dts-status-tab ${
-            selectedStatus ===
-            "waitlist"
+            selectedStatus === "waitlist"
               ? "active"
               : ""
           }"
           data-dts-status="waitlist"
         >
-          Waitlist
-          ${counts.waitlist}
+          Waitlist ${counts.waitlist}
         </button>
       </div>
     `;
@@ -1151,13 +1162,9 @@
     const items =
       dtsFilteredReservations();
 
-    if (
-      !items.length
-    ) {
+    if (!items.length) {
       return `
-        <div
-          class="dts-empty-row"
-        >
+        <div class="dts-empty-row">
           No reservations match
           these filters.
         </div>
@@ -1178,13 +1185,9 @@
             );
 
           return `
-            <div
-              class="dts-reservation-row"
-            >
+            <div class="dts-reservation-row">
               <div>
-                <div
-                  class="dts-guest-name"
-                >
+                <div class="dts-guest-name">
                   ${
                     dtsEsc(
                       reservation.guest_name ||
@@ -1193,9 +1196,7 @@
                   }
                 </div>
 
-                <div
-                  class="dts-guest-email"
-                >
+                <div class="dts-guest-email">
                   ${
                     dtsEsc(
                       reservation.guest_email ||
@@ -1228,10 +1229,7 @@
               </div>
 
               <div>
-                ${
-                  reservation.adults ||
-                  0
-                }
+                ${reservation.adults || 0}
               </div>
 
               <div>
@@ -1272,40 +1270,25 @@
               </div>
 
               <div>
-                ${
-                  dtsMoney(
-                    totals.total
-                  )
-                }
+                ${dtsMoney(totals.total)}
               </div>
 
               <div>
                 <strong>
-                  ${
-                    dtsMoney(
-                      totals.balance
-                    )
-                  }
+                  ${dtsMoney(totals.balance)}
                 </strong>
 
                 ${
-                  totals.balance <=
-                    0 &&
-                  totals.total >
-                    0
+                  totals.balance <= 0 &&
+                  totals.total > 0
                     ? `
-                      <div
-                        class="dts-money-paid"
-                      >
+                      <div class="dts-money-paid">
                         Paid in full
                       </div>
                     `
-                    : totals.balance >
-                      0
+                    : totals.balance > 0
                       ? `
-                        <div
-                          class="dts-money-due"
-                        >
+                        <div class="dts-money-due">
                           Balance due
                         </div>
                       `
@@ -1366,28 +1349,20 @@
           reservation.id
         }"
       >
-        <h4>
-          Lease settings
-        </h4>
+        <h4>Lease settings</h4>
 
-        <div
-          class="dts-lease-help"
-        >
+        <div class="dts-lease-help">
           Review these details for
           this reservation before
           creating the lease.
         </div>
 
-        <div
-          class="dts-lease-fields"
-        >
+        <div class="dts-lease-fields">
 
           <label>
             Lease type
 
-            <select
-              data-dts-rental-type
-            >
+            <select data-dts-rental-type>
               <option
                 value="standard"
                 selected
@@ -1397,9 +1372,7 @@
             </select>
           </label>
 
-          <div
-            class="dts-lease-two"
-          >
+          <div class="dts-lease-two">
             <label>
               Check-in
 
@@ -1448,9 +1421,7 @@
             >
           </label>
 
-          <div
-            class="dts-lease-two"
-          >
+          <div class="dts-lease-two">
             <label>
               Number of dogs
 
@@ -1510,9 +1481,7 @@
             }</textarea>
           </label>
 
-          <div
-            class="dts-lease-two"
-          >
+          <div class="dts-lease-two">
             <label>
               Beach chairs
 
@@ -1565,9 +1534,7 @@
             >
           </label>
 
-          <div
-            class="dts-amenities"
-          >
+          <div class="dts-amenities">
             <label>
               <input
                 type="checkbox"
@@ -1634,9 +1601,7 @@
             </label>
           </div>
 
-          <div
-            class="dts-lease-help"
-          >
+          <div class="dts-lease-help">
             Property:
             ${
               dtsEsc(
@@ -1664,16 +1629,10 @@
 
 
   function dtsDetailPanel() {
-    if (
-      !selectedReservationId
-    ) {
+    if (!selectedReservationId) {
       return `
-        <aside
-          class="dts-detail-panel"
-        >
-          <div
-            class="dts-detail-empty"
-          >
+        <aside class="dts-detail-panel">
+          <div class="dts-detail-empty">
             Select a reservation
             by clicking its dates.
           </div>
@@ -1688,9 +1647,7 @@
           selectedReservationId
       );
 
-    if (
-      !reservation
-    ) {
+    if (!reservation) {
       selectedReservationId =
         null;
 
@@ -1703,9 +1660,7 @@
       );
 
     return `
-      <aside
-        class="dts-detail-panel"
-      >
+      <aside class="dts-detail-panel">
         <h3>
           ${
             dtsEsc(
@@ -1761,19 +1716,14 @@
 
           <br>
 
-          ${
-            reservation.adults ||
-            0
-          }
+          ${reservation.adults || 0}
           guest(s)
 
           ${
             reservation.dogs
               ? `
                 <br>
-                ${
-                  reservation.dogs
-                }
+                ${reservation.dogs}
                 dog(s)
                 ${
                   reservation.dog_names
@@ -1813,51 +1763,49 @@
           }
         </div>
 
-        <div
-          class="dts-detail-section"
-        >
+        <div class="dts-detail-section">
           <strong>
             Payment summary
           </strong>
 
-          <div
-            class="dts-detail-money"
-          >
+          <div class="dts-detail-money">
             <span>Total</span>
             <strong>
-              ${
-                dtsMoney(
-                  totals.total
-                )
-              }
+              ${dtsMoney(totals.total)}
             </strong>
           </div>
 
-          <div
-            class="dts-detail-money"
-          >
+          <div class="dts-detail-money">
             <span>Paid</span>
             <strong>
-              ${
-                dtsMoney(
-                  totals.paid
-                )
-              }
+              ${dtsMoney(totals.paid)}
             </strong>
           </div>
 
-          <div
-            class="dts-detail-money"
-          >
+          <div class="dts-detail-money">
             <span>Balance</span>
             <strong>
-              ${
-                dtsMoney(
-                  totals.balance
-                )
-              }
+              ${dtsMoney(totals.balance)}
             </strong>
           </div>
+
+          ${
+            dtsCanCancelHold(
+              reservation
+            )
+              ? `
+                <button
+                  type="button"
+                  class="dts-cancel-hold"
+                  data-dts-cancel-hold="${
+                    reservation.id
+                  }"
+                >
+                  Cancel reservation / release hold
+                </button>
+              `
+              : ""
+          }
         </div>
 
         ${
@@ -1866,9 +1814,7 @@
           )
         }
 
-        <details
-          class="dts-full-details"
-        >
+        <details class="dts-full-details">
           <summary>
             Payment & reservation
             controls
@@ -1894,33 +1840,24 @@
         "reservationList"
       );
 
-    if (
-      !mount
-    ) {
+    if (!mount) {
       return;
     }
 
     mount.innerHTML = `
-      <div
-        class="dts-reservations-shell"
-      >
+      <div class="dts-reservations-shell">
 
-        ${
-          dtsPropertyTabs()
-        }
+        ${dtsPropertyTabs()}
 
-        <div
-          class="dts-toolbar"
-        >
-          ${
-            dtsStatusTabs()
-          }
+        <div class="dts-toolbar">
+          ${dtsStatusTabs()}
 
           <div
             style="
               display:flex;
               gap:8px;
               flex-wrap:wrap;
+              min-width:0;
             "
           >
             <input
@@ -1934,14 +1871,11 @@
               data-dts-search
             >
 
-            <select
-              data-dts-sort
-            >
+            <select data-dts-sort>
               <option
                 value="asc"
                 ${
-                  sortDirection ===
-                  "asc"
+                  sortDirection === "asc"
                     ? "selected"
                     : ""
                 }
@@ -1952,8 +1886,7 @@
               <option
                 value="desc"
                 ${
-                  sortDirection ===
-                  "desc"
+                  sortDirection === "desc"
                     ? "selected"
                     : ""
                 }
@@ -1964,19 +1897,11 @@
           </div>
         </div>
 
-        ${
-          dtsSummary()
-        }
+        ${dtsSummary()}
 
-        <div
-          class="dts-reservation-layout"
-        >
-          <section
-            class="dts-reservation-table-card"
-          >
-            <div
-              class="dts-table-title"
-            >
+        <div class="dts-reservation-layout">
+          <section class="dts-reservation-table-card">
+            <div class="dts-table-title">
               Reservations
             </div>
 
@@ -2001,17 +1926,85 @@
               <div>Balance</div>
             </div>
 
-            ${
-              dtsReservationRows()
-            }
+            ${dtsReservationRows()}
           </section>
 
-          ${
-            dtsDetailPanel()
-          }
+          ${dtsDetailPanel()}
         </div>
       </div>
     `;
+  }
+
+
+  async function dtsCancelHold(
+    button
+  ) {
+    const reservationId =
+      button.dataset
+        .dtsCancelHold;
+
+    const reservation =
+      currentReservations.find(
+        item =>
+          item.id ===
+          reservationId
+      );
+
+    if (!reservation) {
+      throw new Error(
+        "Reservation could not be found."
+      );
+    }
+
+    const guestName =
+      reservation.guest_name ||
+      "this guest";
+
+    const confirmed =
+      window.confirm(
+        `Cancel the reservation for ${guestName} and release these dates?`
+      );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    button.disabled =
+      true;
+
+    button.textContent =
+      "Cancelling…";
+
+    await updateReservation(
+      reservation.id,
+      {
+        status:
+          "cancelled",
+
+        hold_expires_at:
+          null
+      }
+    );
+
+    reservation.status =
+      "cancelled";
+
+    reservation.hold_expires_at =
+      null;
+
+    selectedReservationId =
+      reservation.id;
+
+    if (
+      typeof refresh ===
+      "function"
+    ) {
+      await refresh();
+    }
+
+    renderDtsReservations();
+
+    return true;
   }
 
 
@@ -2029,9 +2022,7 @@
           reservationId
       );
 
-    if (
-      !reservation
-    ) {
+    if (!reservation) {
       throw new Error(
         "Reservation could not be found."
       );
@@ -2042,9 +2033,7 @@
         "[data-dts-lease-settings]"
       );
 
-    if (
-      !panel
-    ) {
+    if (!panel) {
       throw new Error(
         "Lease settings could not be found."
       );
@@ -2203,14 +2192,57 @@
   document.addEventListener(
     "click",
     async event => {
+      const cancelButton =
+        event.target.closest(
+          "[data-dts-cancel-hold]"
+        );
+
+      if (!cancelButton) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      try {
+        const cancelled =
+          await dtsCancelHold(
+            cancelButton
+          );
+
+        if (cancelled) {
+          window.alert(
+            "Reservation cancelled. The hold has been released."
+          );
+        }
+      } catch (error) {
+        window.alert(
+          `Cancellation error: ${
+            error.message ||
+            "Could not cancel the reservation."
+          }`
+        );
+
+        cancelButton.disabled =
+          false;
+
+        cancelButton.textContent =
+          "Cancel reservation / release hold";
+      }
+    },
+    true
+  );
+
+
+  document.addEventListener(
+    "click",
+    async event => {
       const createButton =
         event.target.closest(
           "[data-dts-create-lease]"
         );
 
-      if (
-        !createButton
-      ) {
+      if (!createButton) {
         return;
       }
 
@@ -2274,9 +2306,7 @@
           "[data-dts-property]"
         );
 
-      if (
-        propertyButton
-      ) {
+      if (propertyButton) {
         selectedPropertyId =
           propertyButton.dataset
             .dtsProperty;
@@ -2293,9 +2323,7 @@
           "[data-dts-status]"
         );
 
-      if (
-        statusButton
-      ) {
+      if (statusButton) {
         selectedStatus =
           statusButton.dataset
             .dtsStatus;
@@ -2312,9 +2340,7 @@
           "[data-dts-open]"
         );
 
-      if (
-        openButton
-      ) {
+      if (openButton) {
         selectedReservationId =
           openButton.dataset
             .dtsOpen;
@@ -2343,9 +2369,7 @@
             "[data-dts-search]"
           );
 
-        if (
-          input
-        ) {
+        if (input) {
           input.focus();
 
           input.setSelectionRange(
@@ -2380,9 +2404,7 @@
       "reservationList"
     );
 
-  if (
-    mount
-  ) {
+  if (mount) {
     const observer =
       new MutationObserver(
         () => {
