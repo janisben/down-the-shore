@@ -32,51 +32,6 @@ function esc(value) {
     .replaceAll("'", "&#039;");
 }
 
-async function createCheckoutSession(
-  req,
-  reservationId
-) {
-  const response =
-    await fetch(
-      `${siteOrigin(req)}/api/create-checkout-session`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-
-          "Origin":
-            siteOrigin(req)
-        },
-
-        body:
-          JSON.stringify({
-            reservationId
-          })
-      }
-    );
-
-  let body = {};
-
-  try {
-    body =
-      await response.json();
-  } catch (_) {}
-
-  if (
-    !response.ok ||
-    !body.url
-  ) {
-    throw new Error(
-      body.error ||
-      "The payment page could not be created."
-    );
-  }
-
-  return body.url;
-}
-
 async function sendOwnerReadyEmail(
   req,
   {
@@ -292,6 +247,10 @@ export default async function handler(
             "owner"
         );
 
+    /*
+      OWNER SIGNATURE
+    */
+
     if (
       signer.signer_role ===
       "owner"
@@ -482,7 +441,7 @@ export default async function handler(
       });
 
     /*
-      OWNER SIGNATURE
+      OWNER SIGNATURE COMPLETES LEASE
     */
 
     if (
@@ -715,69 +674,62 @@ export default async function handler(
     }
 
     /*
-      NO PAYMENT YET:
-      MOVE LEASE TO AWAITING PAYMENT,
-      CREATE STRIPE CHECKOUT,
-      RETURN PAYMENT URL TO LEASE PAGE
+      NO PAYMENT YET
+
+      IMPORTANT:
+      DO NOT CREATE A STRIPE CHECKOUT SESSION HERE.
+
+      The guest has finished signing.
+      The next screen must allow the guest to choose
+      Zelle, Venmo, or credit/debit card.
     */
 
-    await supabase
-      .from("leases")
-      .update({
-        status:
-          "awaiting_payment",
+    const {
+      error: awaitingPaymentError
+    } =
+      await supabase
+        .from("leases")
+        .update({
+          status:
+            "awaiting_payment",
 
-        guest_completed_at:
-          signedAt,
+          guest_completed_at:
+            signedAt,
 
-        updated_at:
-          signedAt
-      })
-      .eq(
-        "id",
-        signer.lease_id
-      );
-
-    let checkoutUrl =
-      null;
-
-    try {
-      checkoutUrl =
-        await createCheckoutSession(
-          req,
-          lease.reservation_id
+          updated_at:
+            signedAt
+        })
+        .eq(
+          "id",
+          signer.lease_id
         );
 
-      await supabase
-        .from("lease_events")
-        .insert({
-          lease_id:
-            lease.id,
-
-          signer_id:
-            signer.id,
-
-          event_type:
-            "payment_checkout_created",
-
-          event_data: {
-            reservation_id:
-              lease.reservation_id
-          }
-        });
-
-    } catch (checkoutError) {
-      console.error(
-        "Checkout creation error:",
-        checkoutError
-      );
-
+    if (
+      awaitingPaymentError
+    ) {
       return res.status(500).json({
         error:
-          checkoutError.message ||
-          "Your lease was signed, but the payment page could not be opened."
+          awaitingPaymentError.message
       });
     }
+
+    await supabase
+      .from("lease_events")
+      .insert({
+        lease_id:
+          lease.id,
+
+        signer_id:
+          signer.id,
+
+        event_type:
+          "awaiting_payment_method",
+
+        event_data: {
+          reservation_id:
+            lease.reservation_id
+        }
+      });
 
     return res.status(200).json({
       success:
@@ -792,8 +744,11 @@ export default async function handler(
       awaitingOwnerSignature:
         false,
 
-      checkout_url:
-        checkoutUrl
+      choosePaymentMethod:
+        true,
+
+      reservationId:
+        lease.reservation_id
     });
 
   } catch (error) {
