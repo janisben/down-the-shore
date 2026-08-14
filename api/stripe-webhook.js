@@ -18,10 +18,7 @@ export const config = {
 
 function siteOrigin(req) {
   if (process.env.SITE_URL) {
-    return process.env.SITE_URL.replace(
-      /\/+$/,
-      ""
-    );
+    return process.env.SITE_URL.replace(/\/+$/, "");
   }
 
   const host =
@@ -111,14 +108,11 @@ async function sendOwnerEmail(
 
       <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
         <p style="margin:0 0 8px;">
-          <strong>
-            ${esc(propertyName)}
-          </strong>
+          <strong>${esc(propertyName)}</strong>
         </p>
 
         <p style="margin:0;">
-          Tenant:
-          ${esc(guestName)}
+          Tenant: ${esc(guestName)}
         </p>
       </div>
 
@@ -131,9 +125,7 @@ async function sendOwnerEmail(
         </a>
       </p>
 
-      <p>
-        Down the Shore
-      </p>
+      <p>Down the Shore</p>
     </div>
   `;
 
@@ -143,8 +135,7 @@ async function sendOwnerEmail(
       method: "POST",
 
       headers: {
-        "Content-Type":
-          "application/json"
+        "Content-Type": "application/json"
       },
 
       body: JSON.stringify({
@@ -175,15 +166,24 @@ async function handleCompletedSession(
     session.metadata?.reservation_id ||
     session.client_reference_id;
 
+  /*
+    A generic Stripe test payment may not belong
+    to a Down the Shore reservation.
+
+    Signature verification has already succeeded,
+    so acknowledge the event without changing data.
+  */
+
   if (!reservationId) {
-    throw new Error(
-      "Stripe session is missing reservation ID."
+    console.log(
+      "Stripe checkout session has no reservation ID; ignoring."
     );
+
+    return;
   }
 
   const amountPaid =
-    Number(session.amount_total || 0) /
-    100;
+    Number(session.amount_total || 0) / 100;
 
   if (amountPaid <= 0) {
     throw new Error(
@@ -214,8 +214,7 @@ async function handleCompletedSession(
   const alreadyLogged =
     existingPayments.reduce(
       (sum, payment) =>
-        sum +
-        Number(payment.amount || 0),
+        sum + Number(payment.amount || 0),
       0
     );
 
@@ -234,7 +233,8 @@ async function handleCompletedSession(
             reservation_id:
               reservationId,
 
-            amount: amountPaid,
+            amount:
+              amountPaid,
 
             payment_method:
               "credit_card",
@@ -347,14 +347,12 @@ async function handleCompletedSession(
     signers.filter(
       signer =>
         signer.is_required &&
-        signer.signer_role !==
-          "owner"
+        signer.signer_role !== "owner"
     );
 
   const guestComplete =
     guestSigners.every(
-      signer =>
-        Boolean(signer.signed_at)
+      signer => Boolean(signer.signed_at)
     );
 
   if (!guestComplete) {
@@ -364,8 +362,7 @@ async function handleCompletedSession(
   const ownerSigner =
     signers.find(
       signer =>
-        signer.signer_role ===
-        "owner"
+        signer.signer_role === "owner"
     );
 
   if (!ownerSigner) {
@@ -407,7 +404,7 @@ async function handleCompletedSession(
   }
 
   /*
-    Avoid sending duplicate owner emails.
+    Avoid duplicate owner emails.
   */
 
   const eventResponse =
@@ -446,13 +443,11 @@ async function handleCompletedSession(
           ownerSigner.signer_email,
 
         guestName:
-          lease.lease_data
-            ?.guest_name ||
+          lease.lease_data?.guest_name ||
           "Guest",
 
         propertyName:
-          lease.lease_data
-            ?.property_name ||
+          lease.lease_data?.property_name ||
           "Down the Shore rental",
 
         signingUrl
@@ -491,6 +486,43 @@ async function handleCompletedSession(
   }
 }
 
+function constructStripeEvent(
+  body,
+  signature
+) {
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET_SANDBOX,
+    process.env.STRIPE_WEBHOOK_SECRET
+  ].filter(Boolean);
+
+  if (secrets.length === 0) {
+    throw new Error(
+      "Stripe webhook configuration is missing."
+    );
+  }
+
+  let lastError = null;
+
+  for (const secret of secrets) {
+    try {
+      return stripe.webhooks.constructEvent(
+        body,
+        signature,
+        secret
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw (
+    lastError ||
+    new Error(
+      "Stripe webhook signature verification failed."
+    )
+  );
+}
+
 export default async function handler(
   req,
   res
@@ -499,49 +531,16 @@ export default async function handler(
     return res
       .status(405)
       .json({
-        error:
-          "Method not allowed"
+        error: "Method not allowed"
       });
   }
 
   try {
-    /*
-      Use the sandbox webhook signing secret
-      for Vercel Preview deployments.
-
-      Use the normal Stripe webhook secret
-      for Production deployments.
-    */
-
-    const webhookSecret =
-      process.env.VERCEL_ENV ===
-      "preview"
-        ? process.env
-            .STRIPE_WEBHOOK_SECRET_SANDBOX
-        : process.env
-            .STRIPE_WEBHOOK_SECRET;
-
-    if (!webhookSecret) {
-      return res
-        .status(500)
-        .json({
-          error:
-            "Stripe webhook configuration is missing."
-        });
-    }
-
-    /*
-      Stripe signature verification MUST use
-      the untouched raw request body.
-    */
-
     const body =
       await rawBody(req);
 
     const signature =
-      req.headers[
-        "stripe-signature"
-      ];
+      req.headers["stripe-signature"];
 
     if (!signature) {
       return res
@@ -551,11 +550,19 @@ export default async function handler(
         );
     }
 
+    /*
+      Verify against the sandbox secret first,
+      then the production secret.
+
+      This allows the same deployed endpoint
+      to receive correctly signed events from
+      either configured Stripe environment.
+    */
+
     const event =
-      stripe.webhooks.constructEvent(
+      constructStripeEvent(
         body,
-        signature,
-        webhookSecret
+        signature
       );
 
     if (
@@ -566,8 +573,7 @@ export default async function handler(
         event.data.object;
 
       if (
-        session.payment_status ===
-        "paid"
+        session.payment_status === "paid"
       ) {
         await handleCompletedSession(
           req,
