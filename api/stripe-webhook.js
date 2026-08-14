@@ -1,9 +1,8 @@
 import Stripe from "stripe";
 
-const stripe =
-  new Stripe(
-    process.env.STRIPE_SECRET_KEY
-  );
+const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY
+);
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -19,8 +18,10 @@ export const config = {
 
 function siteOrigin(req) {
   if (process.env.SITE_URL) {
-    return process.env.SITE_URL
-      .replace(/\/+$/, "");
+    return process.env.SITE_URL.replace(
+      /\/+$/,
+      ""
+    );
   }
 
   const host =
@@ -67,8 +68,7 @@ async function supabaseFetch(
       ...options,
 
       headers: {
-        apikey:
-          supabaseSecret,
+        apikey: supabaseSecret,
 
         Authorization:
           `Bearer ${supabaseSecret}`,
@@ -137,28 +137,26 @@ async function sendOwnerEmail(
     </div>
   `;
 
-  const response =
-    await fetch(
-      `${siteOrigin(req)}/api/send-email`,
-      {
-        method: "POST",
+  const response = await fetch(
+    `${siteOrigin(req)}/api/send-email`,
+    {
+      method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
 
-        body:
-          JSON.stringify({
-            to,
+      body: JSON.stringify({
+        to,
 
-            subject:
-              `Owner signature required — ${propertyName}`,
+        subject:
+          `Owner signature required — ${propertyName}`,
 
-            html
-          })
-      }
-    );
+        html
+      })
+    }
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -174,8 +172,7 @@ async function handleCompletedSession(
   session
 ) {
   const reservationId =
-    session.metadata
-      ?.reservation_id ||
+    session.metadata?.reservation_id ||
     session.client_reference_id;
 
   if (!reservationId) {
@@ -185,9 +182,8 @@ async function handleCompletedSession(
   }
 
   const amountPaid =
-    Number(
-      session.amount_total || 0
-    ) / 100;
+    Number(session.amount_total || 0) /
+    100;
 
   if (amountPaid <= 0) {
     throw new Error(
@@ -217,21 +213,13 @@ async function handleCompletedSession(
 
   const alreadyLogged =
     existingPayments.reduce(
-      (
-        sum,
-        payment
-      ) =>
+      (sum, payment) =>
         sum +
-        Number(
-          payment.amount || 0
-        ),
+        Number(payment.amount || 0),
       0
     );
 
-  if (
-    alreadyLogged <
-    amountPaid
-  ) {
+  if (alreadyLogged < amountPaid) {
     const paymentResponse =
       await supabaseFetch(
         "payments",
@@ -239,31 +227,25 @@ async function handleCompletedSession(
           method: "POST",
 
           headers: {
-            Prefer:
-              "return=minimal"
+            Prefer: "return=minimal"
           },
 
-          body:
-            JSON.stringify({
-              reservation_id:
-                reservationId,
+          body: JSON.stringify({
+            reservation_id:
+              reservationId,
 
-              amount:
-                amountPaid,
+            amount: amountPaid,
 
-              payment_method:
-                "credit_card",
+            payment_method:
+              "credit_card",
 
-              received_at:
-                new Date()
-                  .toISOString()
-            })
+            received_at:
+              new Date().toISOString()
+          })
         }
       );
 
-    if (
-      !paymentResponse.ok
-    ) {
+    if (!paymentResponse.ok) {
       throw new Error(
         "Could not log Stripe payment."
       );
@@ -275,8 +257,7 @@ async function handleCompletedSession(
   */
 
   const paymentTime =
-    new Date()
-      .toISOString();
+    new Date().toISOString();
 
   const reservationResponse =
     await supabaseFetch(
@@ -287,36 +268,29 @@ async function handleCompletedSession(
         method: "PATCH",
 
         headers: {
-          Prefer:
-            "return=minimal"
+          Prefer: "return=minimal"
         },
 
-        body:
-          JSON.stringify({
-            status:
-              "booked",
+        body: JSON.stringify({
+          status: "booked",
 
-            payment_status:
-              "paid",
+          payment_status: "paid",
 
-            payment_method:
-              "credit_card",
+          payment_method:
+            "credit_card",
 
-            amount_received:
-              amountPaid,
+          amount_received:
+            amountPaid,
 
-            payment_received_at:
-              paymentTime,
+          payment_received_at:
+            paymentTime,
 
-            hold_expires_at:
-              null
-          })
+          hold_expires_at: null
+        })
       }
     );
 
-  if (
-    !reservationResponse.ok
-  ) {
+  if (!reservationResponse.ok) {
     throw new Error(
       "Could not update reservation after Stripe payment."
     );
@@ -360,9 +334,7 @@ async function handleCompletedSession(
       )}&select=*`
     );
 
-  if (
-    !signersResponse.ok
-  ) {
+  if (!signersResponse.ok) {
     throw new Error(
       "Could not load lease signers."
     );
@@ -382,9 +354,7 @@ async function handleCompletedSession(
   const guestComplete =
     guestSigners.every(
       signer =>
-        Boolean(
-          signer.signed_at
-        )
+        Boolean(signer.signed_at)
     );
 
   if (!guestComplete) {
@@ -417,24 +387,20 @@ async function handleCompletedSession(
         method: "PATCH",
 
         headers: {
-          Prefer:
-            "return=minimal"
+          Prefer: "return=minimal"
         },
 
-        body:
-          JSON.stringify({
-            status:
-              "awaiting_owner_signature",
+        body: JSON.stringify({
+          status:
+            "awaiting_owner_signature",
 
-            updated_at:
-              paymentTime
-          })
+          updated_at:
+            paymentTime
+        })
       }
     );
 
-  if (
-    !leaseUpdateResponse.ok
-  ) {
+  if (!leaseUpdateResponse.ok) {
     throw new Error(
       "Could not advance lease to owner signature."
     );
@@ -451,8 +417,7 @@ async function handleCompletedSession(
       )}&event_type=eq.owner_signature_requested&select=id`
     );
 
-  let alreadyRequested =
-    false;
+  let alreadyRequested = false;
 
   if (eventResponse.ok) {
     const events =
@@ -468,7 +433,9 @@ async function handleCompletedSession(
     ownerSigner.access_token
   ) {
     const signingUrl =
-      `${siteOrigin(req)}/lease.html?token=${encodeURIComponent(
+      `${siteOrigin(
+        req
+      )}/lease.html?token=${encodeURIComponent(
         ownerSigner.access_token
       )}`;
 
@@ -498,30 +465,27 @@ async function handleCompletedSession(
         method: "POST",
 
         headers: {
-          Prefer:
-            "return=minimal"
+          Prefer: "return=minimal"
         },
 
-        body:
-          JSON.stringify({
-            lease_id:
-              lease.id,
+        body: JSON.stringify({
+          lease_id:
+            lease.id,
 
-            signer_id:
-              ownerSigner.id,
+          signer_id:
+            ownerSigner.id,
 
-            event_type:
-              "owner_signature_requested",
+          event_type:
+            "owner_signature_requested",
 
-            event_data: {
-              to:
-                ownerSigner
-                  .signer_email,
+          event_data: {
+            to:
+              ownerSigner.signer_email,
 
-              payment_received:
-                amountPaid
-            }
-          })
+            payment_received:
+              amountPaid
+          }
+        })
       }
     );
   }
@@ -531,10 +495,7 @@ export default async function handler(
   req,
   res
 ) {
-  if (
-    req.method !==
-    "POST"
-  ) {
+  if (req.method !== "POST") {
     return res
       .status(405)
       .json({
@@ -544,10 +505,23 @@ export default async function handler(
   }
 
   try {
-    if (
-      !process.env
-        .STRIPE_WEBHOOK_SECRET
-    ) {
+    /*
+      Use the sandbox webhook signing secret
+      for Vercel Preview deployments.
+
+      Use the normal Stripe webhook secret
+      for Production deployments.
+    */
+
+    const webhookSecret =
+      process.env.VERCEL_ENV ===
+      "preview"
+        ? process.env
+            .STRIPE_WEBHOOK_SECRET_SANDBOX
+        : process.env
+            .STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
       return res
         .status(500)
         .json({
@@ -555,6 +529,11 @@ export default async function handler(
             "Stripe webhook configuration is missing."
         });
     }
+
+    /*
+      Stripe signature verification MUST use
+      the untouched raw request body.
+    */
 
     const body =
       await rawBody(req);
@@ -573,13 +552,11 @@ export default async function handler(
     }
 
     const event =
-      stripe.webhooks
-        .constructEvent(
-          body,
-          signature,
-          process.env
-            .STRIPE_WEBHOOK_SECRET
-        );
+      stripe.webhooks.constructEvent(
+        body,
+        signature,
+        webhookSecret
+      );
 
     if (
       event.type ===
@@ -604,7 +581,6 @@ export default async function handler(
       .json({
         received: true
       });
-
   } catch (error) {
     console.error(
       "stripe-webhook error:",
