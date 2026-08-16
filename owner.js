@@ -1533,8 +1533,8 @@ async function sendCleaningAssignmentEmailForReservation(
   const reservation =
     currentReservations.find(
       item =>
-        item.id ===
-        reservationId
+        String(item.id) ===
+        String(reservationId)
     );
 
   if (!reservation) {
@@ -1543,17 +1543,40 @@ async function sendCleaningAssignmentEmailForReservation(
     );
   }
 
-  const cleanings =
-    await fetchTable(
-      "cleaning_assignments",
-      `?reservation_id=eq.${encodeURIComponent(
-        reservationId
-      )}&select=*&limit=1`
-    );
+  let cleaning = null;
 
-  const cleaning =
-    cleanings[0] ||
-    null;
+  for (
+    let attempt = 0;
+    attempt < 10;
+    attempt++
+  ) {
+    const cleanings =
+      await fetchTable(
+        "cleaning_assignments",
+        `?reservation_id=eq.${encodeURIComponent(
+          reservationId
+        )}&select=*&limit=1`
+      );
+
+    cleaning =
+      cleanings[0] || null;
+
+    if (
+      cleaning &&
+      cleaning.cleaner_email &&
+      cleaning.confirmation_token
+    ) {
+      break;
+    }
+
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          500
+        )
+    );
+  }
 
   if (!cleaning) {
     throw new Error(
@@ -1576,16 +1599,15 @@ async function sendCleaningAssignmentEmailForReservation(
   const property =
     currentProperties.find(
       item =>
-        item.id ===
-        reservation.property_id
+        String(item.id) ===
+        String(reservation.property_id)
     );
 
   const response =
     await fetch(
       "/api/cleaning-assigned",
       {
-        method:
-          "POST",
+        method: "POST",
 
         headers: {
           "Content-Type":
