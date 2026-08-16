@@ -18,15 +18,20 @@ export const config = {
 
 function siteOrigin(req) {
   if (process.env.SITE_URL) {
-    return process.env.SITE_URL.replace(/\/+$/, "");
+    return process.env.SITE_URL
+      .replace(/\/+$/, "");
   }
 
   const host =
-    req.headers["x-forwarded-host"] ||
+    req.headers[
+      "x-forwarded-host"
+    ] ||
     req.headers.host;
 
   const protocol =
-    req.headers["x-forwarded-proto"] ||
+    req.headers[
+      "x-forwarded-proto"
+    ] ||
     "https";
 
   return `${protocol}://${host}`;
@@ -34,25 +39,48 @@ function siteOrigin(req) {
 
 function esc(value) {
   return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 }
 
 async function rawBody(req) {
   const chunks = [];
 
-  for await (const chunk of req) {
+  for await (
+    const chunk of req
+  ) {
     chunks.push(
-      Buffer.isBuffer(chunk)
+      Buffer.isBuffer(
+        chunk
+      )
         ? chunk
-        : Buffer.from(chunk)
+        : Buffer.from(
+            chunk
+          )
     );
   }
 
-  return Buffer.concat(chunks);
+  return Buffer.concat(
+    chunks
+  );
 }
 
 async function supabaseFetch(
@@ -65,7 +93,8 @@ async function supabaseFetch(
       ...options,
 
       headers: {
-        apikey: supabaseSecret,
+        apikey:
+          supabaseSecret,
 
         Authorization:
           `Bearer ${supabaseSecret}`,
@@ -73,7 +102,8 @@ async function supabaseFetch(
         "Content-Type":
           "application/json",
 
-        ...(options.headers || {})
+        ...(options.headers ||
+          {})
       }
     }
   );
@@ -108,46 +138,63 @@ async function sendOwnerEmail(
 
       <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
         <p style="margin:0 0 8px;">
-          <strong>${esc(propertyName)}</strong>
+          <strong>
+            ${esc(
+              propertyName
+            )}
+          </strong>
         </p>
 
         <p style="margin:0;">
-          Tenant: ${esc(guestName)}
+          Tenant:
+          ${esc(
+            guestName
+          )}
         </p>
       </div>
 
       <p style="margin:26px 0;">
         <a
-          href="${esc(signingUrl)}"
+          href="${esc(
+            signingUrl
+          )}"
           style="display:inline-block;background:#15385f;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;"
         >
           Review and sign rental agreement
         </a>
       </p>
 
-      <p>Down the Shore</p>
+      <p>
+        Down the Shore
+      </p>
     </div>
   `;
 
-  const response = await fetch(
-    `${siteOrigin(req)}/api/send-email`,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      `${siteOrigin(
+        req
+      )}/api/send-email`,
+      {
+        method:
+          "POST",
 
-      headers: {
-        "Content-Type": "application/json"
-      },
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
 
-      body: JSON.stringify({
-        to,
+        body:
+          JSON.stringify({
+            to,
 
-        subject:
-          `Owner signature required — ${propertyName}`,
+            subject:
+              `Owner signature required — ${propertyName}`,
 
-        html
-      })
-    }
-  );
+            html
+          })
+      }
+    );
 
   if (!response.ok) {
     throw new Error(
@@ -158,20 +205,59 @@ async function sendOwnerEmail(
   return true;
 }
 
+async function loadPayments(
+  reservationId
+) {
+  const response =
+    await supabaseFetch(
+      `payments?reservation_id=eq.${encodeURIComponent(
+        reservationId
+      )}&select=amount`
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Could not load reservation payments."
+    );
+  }
+
+  return await response.json();
+}
+
+async function loadReservation(
+  reservationId
+) {
+  const response =
+    await supabaseFetch(
+      `reservations?id=eq.${encodeURIComponent(
+        reservationId
+      )}&select=*`
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Could not load reservation."
+    );
+  }
+
+  const rows =
+    await response.json();
+
+  return rows[0] || null;
+}
+
 async function handleCompletedSession(
   req,
   session
 ) {
   const reservationId =
-    session.metadata?.reservation_id ||
+    session.metadata
+      ?.reservation_id ||
     session.client_reference_id;
 
   /*
-    A generic Stripe test payment may not belong
-    to a Down the Shore reservation.
-
-    Signature verification has already succeeded,
-    so acknowledge the event without changing data.
+    Generic Stripe tests may have
+    no reservation attached.
   */
 
   if (!reservationId) {
@@ -183,53 +269,82 @@ async function handleCompletedSession(
   }
 
   const amountPaid =
-    Number(session.amount_total || 0) / 100;
+    Number(
+      session.amount_total ||
+      0
+    ) / 100;
 
-  if (amountPaid <= 0) {
+  if (
+    amountPaid <= 0
+  ) {
     throw new Error(
       "Stripe session has no paid amount."
     );
   }
 
-  /*
-    Prevent duplicate payment logging.
-  */
-
-  const paymentsResponse =
-    await supabaseFetch(
-      `payments?reservation_id=eq.${encodeURIComponent(
-        reservationId
-      )}&payment_method=eq.credit_card&select=amount`
+  const reservation =
+    await loadReservation(
+      reservationId
     );
 
-  if (!paymentsResponse.ok) {
+  if (!reservation) {
     throw new Error(
-      "Could not check existing payments."
+      "Reservation was not found for Stripe payment."
     );
   }
 
-  const existingPayments =
-    await paymentsResponse.json();
+  /*
+    Prevent Stripe from processing the
+    exact same Checkout Session twice.
 
-  const alreadyLogged =
-    existingPayments.reduce(
-      (sum, payment) =>
-        sum + Number(payment.amount || 0),
-      0
+    We store the Checkout Session ID in
+    owner_notes only as a lightweight
+    idempotency marker if it is not already
+    present.
+
+    Existing owner notes are preserved.
+  */
+
+  const sessionMarker =
+    `[stripe:${session.id}]`;
+
+  const ownerNotes =
+    String(
+      reservation.owner_notes ||
+      ""
     );
 
-  if (alreadyLogged < amountPaid) {
-    const paymentResponse =
-      await supabaseFetch(
-        "payments",
-        {
-          method: "POST",
+  if (
+    ownerNotes.includes(
+      sessionMarker
+    )
+  ) {
+    console.log(
+      "Stripe Checkout Session already processed:",
+      session.id
+    );
 
-          headers: {
-            Prefer: "return=minimal"
-          },
+    return;
+  }
 
-          body: JSON.stringify({
+  /*
+    Record this individual payment.
+  */
+
+  const paymentResponse =
+    await supabaseFetch(
+      "payments",
+      {
+        method:
+          "POST",
+
+        headers: {
+          Prefer:
+            "return=minimal"
+        },
+
+        body:
+          JSON.stringify({
             reservation_id:
               reservationId,
 
@@ -240,24 +355,68 @@ async function handleCompletedSession(
               "credit_card",
 
             received_at:
-              new Date().toISOString()
+              new Date()
+                .toISOString()
           })
-        }
-      );
+      }
+    );
 
-    if (!paymentResponse.ok) {
-      throw new Error(
-        "Could not log Stripe payment."
-      );
-    }
+  if (
+    !paymentResponse.ok
+  ) {
+    throw new Error(
+      "Could not log Stripe payment."
+    );
   }
 
   /*
-    Update reservation.
+    Recalculate cumulative amount paid.
   */
 
+  const payments =
+    await loadPayments(
+      reservationId
+    );
+
+  const totalPaid =
+    payments.reduce(
+      (
+        sum,
+        payment
+      ) =>
+        sum +
+        Number(
+          payment.amount ||
+          0
+        ),
+      0
+    );
+
+  const reservationTotal =
+    Number(
+      reservation.amount_due ||
+      0
+    );
+
+  const paidInFull =
+    reservationTotal > 0 &&
+    totalPaid >=
+      reservationTotal;
+
   const paymentTime =
-    new Date().toISOString();
+    new Date()
+      .toISOString();
+
+  const updatedOwnerNotes =
+    ownerNotes
+      ? `${ownerNotes}\n${sessionMarker}`
+      : sessionMarker;
+
+  /*
+    Update reservation without falsely
+    marking partial installment payments
+    as fully paid.
+  */
 
   const reservationResponse =
     await supabaseFetch(
@@ -265,35 +424,65 @@ async function handleCompletedSession(
         reservationId
       )}`,
       {
-        method: "PATCH",
+        method:
+          "PATCH",
 
         headers: {
-          Prefer: "return=minimal"
+          Prefer:
+            "return=minimal"
         },
 
-        body: JSON.stringify({
-          status: "booked",
+        body:
+          JSON.stringify({
+            status:
+              paidInFull
+                ? "booked"
+                : "pending_payment",
 
-          payment_status: "paid",
+            payment_status:
+              paidInFull
+                ? "paid"
+                : "partial",
 
-          payment_method:
-            "credit_card",
+            payment_method:
+              "credit_card",
 
-          amount_received:
-            amountPaid,
+            amount_received:
+              totalPaid,
 
-          payment_received_at:
-            paymentTime,
+            payment_received_at:
+              paymentTime,
 
-          hold_expires_at: null
-        })
+            hold_expires_at:
+              paidInFull
+                ? null
+                : reservation.hold_expires_at,
+
+            owner_notes:
+              updatedOwnerNotes
+          })
       }
     );
 
-  if (!reservationResponse.ok) {
+  if (
+    !reservationResponse.ok
+  ) {
     throw new Error(
       "Could not update reservation after Stripe payment."
     );
+  }
+
+  /*
+    Do not advance the lease until the
+    required reservation amount has been paid.
+  */
+
+  if (!paidInFull) {
+    console.log(
+      `Partial Stripe payment received: ${amountPaid}. Total paid: ${totalPaid}.`
+    );
+
+    return;
   }
 
   /*
@@ -307,7 +496,9 @@ async function handleCompletedSession(
       )}&select=*`
     );
 
-  if (!leaseResponse.ok) {
+  if (
+    !leaseResponse.ok
+  ) {
     throw new Error(
       "Could not load lease after Stripe payment."
     );
@@ -317,7 +508,8 @@ async function handleCompletedSession(
     await leaseResponse.json();
 
   const lease =
-    leases[0] || null;
+    leases[0] ||
+    null;
 
   if (!lease) {
     return;
@@ -334,7 +526,9 @@ async function handleCompletedSession(
       )}&select=*`
     );
 
-  if (!signersResponse.ok) {
+  if (
+    !signersResponse.ok
+  ) {
     throw new Error(
       "Could not load lease signers."
     );
@@ -347,12 +541,16 @@ async function handleCompletedSession(
     signers.filter(
       signer =>
         signer.is_required &&
-        signer.signer_role !== "owner"
+        signer.signer_role !==
+          "owner"
     );
 
   const guestComplete =
     guestSigners.every(
-      signer => Boolean(signer.signed_at)
+      signer =>
+        Boolean(
+          signer.signed_at
+        )
     );
 
   if (!guestComplete) {
@@ -362,7 +560,8 @@ async function handleCompletedSession(
   const ownerSigner =
     signers.find(
       signer =>
-        signer.signer_role === "owner"
+        signer.signer_role ===
+        "owner"
     );
 
   if (!ownerSigner) {
@@ -371,41 +570,38 @@ async function handleCompletedSession(
     );
   }
 
-  /*
-    Advance lease to owner signature.
-  */
-
   const leaseUpdateResponse =
     await supabaseFetch(
       `leases?id=eq.${encodeURIComponent(
         lease.id
       )}`,
       {
-        method: "PATCH",
+        method:
+          "PATCH",
 
         headers: {
-          Prefer: "return=minimal"
+          Prefer:
+            "return=minimal"
         },
 
-        body: JSON.stringify({
-          status:
-            "awaiting_owner_signature",
+        body:
+          JSON.stringify({
+            status:
+              "awaiting_owner_signature",
 
-          updated_at:
-            paymentTime
-        })
+            updated_at:
+              paymentTime
+          })
       }
     );
 
-  if (!leaseUpdateResponse.ok) {
+  if (
+    !leaseUpdateResponse.ok
+  ) {
     throw new Error(
       "Could not advance lease to owner signature."
     );
   }
-
-  /*
-    Avoid duplicate owner emails.
-  */
 
   const eventResponse =
     await supabaseFetch(
@@ -414,9 +610,12 @@ async function handleCompletedSession(
       )}&event_type=eq.owner_signature_requested&select=id`
     );
 
-  let alreadyRequested = false;
+  let alreadyRequested =
+    false;
 
-  if (eventResponse.ok) {
+  if (
+    eventResponse.ok
+  ) {
     const events =
       await eventResponse.json();
 
@@ -443,11 +642,13 @@ async function handleCompletedSession(
           ownerSigner.signer_email,
 
         guestName:
-          lease.lease_data?.guest_name ||
+          lease.lease_data
+            ?.guest_name ||
           "Guest",
 
         propertyName:
-          lease.lease_data?.property_name ||
+          lease.lease_data
+            ?.property_name ||
           "Down the Shore rental",
 
         signingUrl
@@ -457,30 +658,34 @@ async function handleCompletedSession(
     await supabaseFetch(
       "lease_events",
       {
-        method: "POST",
+        method:
+          "POST",
 
         headers: {
-          Prefer: "return=minimal"
+          Prefer:
+            "return=minimal"
         },
 
-        body: JSON.stringify({
-          lease_id:
-            lease.id,
+        body:
+          JSON.stringify({
+            lease_id:
+              lease.id,
 
-          signer_id:
-            ownerSigner.id,
+            signer_id:
+              ownerSigner.id,
 
-          event_type:
-            "owner_signature_requested",
+            event_type:
+              "owner_signature_requested",
 
-          event_data: {
-            to:
-              ownerSigner.signer_email,
+            event_data: {
+              to:
+                ownerSigner
+                  .signer_email,
 
-            payment_received:
-              amountPaid
-          }
-        })
+              payment_received:
+                totalPaid
+            }
+          })
       }
     );
   }
@@ -491,27 +696,37 @@ function constructStripeEvent(
   signature
 ) {
   const secrets = [
-    process.env.STRIPE_WEBHOOK_SECRET_SANDBOX,
-    process.env.STRIPE_WEBHOOK_SECRET
+    process.env
+      .STRIPE_WEBHOOK_SECRET_SANDBOX,
+
+    process.env
+      .STRIPE_WEBHOOK_SECRET
   ].filter(Boolean);
 
-  if (secrets.length === 0) {
+  if (
+    secrets.length === 0
+  ) {
     throw new Error(
       "Stripe webhook configuration is missing."
     );
   }
 
-  let lastError = null;
+  let lastError =
+    null;
 
-  for (const secret of secrets) {
+  for (
+    const secret of secrets
+  ) {
     try {
-      return stripe.webhooks.constructEvent(
-        body,
-        signature,
-        secret
-      );
+      return stripe.webhooks
+        .constructEvent(
+          body,
+          signature,
+          secret
+        );
     } catch (error) {
-      lastError = error;
+      lastError =
+        error;
     }
   }
 
@@ -527,20 +742,28 @@ export default async function handler(
   req,
   res
 ) {
-  if (req.method !== "POST") {
+  if (
+    req.method !==
+    "POST"
+  ) {
     return res
       .status(405)
       .json({
-        error: "Method not allowed"
+        error:
+          "Method not allowed"
       });
   }
 
   try {
     const body =
-      await rawBody(req);
+      await rawBody(
+        req
+      );
 
     const signature =
-      req.headers["stripe-signature"];
+      req.headers[
+        "stripe-signature"
+      ];
 
     if (!signature) {
       return res
@@ -549,15 +772,6 @@ export default async function handler(
           "Missing Stripe signature"
         );
     }
-
-    /*
-      Verify against the sandbox secret first,
-      then the production secret.
-
-      This allows the same deployed endpoint
-      to receive correctly signed events from
-      either configured Stripe environment.
-    */
 
     const event =
       constructStripeEvent(
@@ -573,7 +787,8 @@ export default async function handler(
         event.data.object;
 
       if (
-        session.payment_status === "paid"
+        session.payment_status ===
+        "paid"
       ) {
         await handleCompletedSession(
           req,
@@ -585,8 +800,10 @@ export default async function handler(
     return res
       .status(200)
       .json({
-        received: true
+        received:
+          true
       });
+
   } catch (error) {
     console.error(
       "stripe-webhook error:",
