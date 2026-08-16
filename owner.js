@@ -1524,6 +1524,120 @@ async function updateCleaning(
 
 
 
+
+
+
+async function sendCleaningAssignmentEmailForReservation(
+  reservationId
+) {
+  const reservation =
+    currentReservations.find(
+      item =>
+        item.id ===
+        reservationId
+    );
+
+  if (!reservation) {
+    throw new Error(
+      "Reservation could not be found for the cleaning email."
+    );
+  }
+
+  const cleanings =
+    await fetchTable(
+      "cleaning_assignments",
+      `?reservation_id=eq.${encodeURIComponent(
+        reservationId
+      )}&select=*&limit=1`
+    );
+
+  const cleaning =
+    cleanings[0] ||
+    null;
+
+  if (!cleaning) {
+    throw new Error(
+      "No cleaning assignment was found for this reservation."
+    );
+  }
+
+  if (!cleaning.cleaner_email) {
+    throw new Error(
+      "The cleaning assignment does not have a cleaner email."
+    );
+  }
+
+  if (!cleaning.confirmation_token) {
+    throw new Error(
+      "The cleaning assignment does not have a confirmation token."
+    );
+  }
+
+  const property =
+    currentProperties.find(
+      item =>
+        item.id ===
+        reservation.property_id
+    );
+
+  const response =
+    await fetch(
+      "/api/cleaning-assigned",
+      {
+        method:
+          "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            to:
+              cleaning.cleaner_email,
+
+            cleanerName:
+              cleaning.cleaner_name ||
+              "Melissa",
+
+            propertyName:
+              property?.name ||
+              reservation.property_name ||
+              "Down the Shore rental",
+
+            guestName:
+              reservation.guest_name ||
+              "Guest",
+
+            checkoutDate:
+              cleaning.checkout_date ||
+              reservation.departure_date,
+
+            confirmationToken:
+              cleaning.confirmation_token
+          })
+      }
+    );
+
+  let body = {};
+
+  try {
+    body =
+      await response.json();
+  } catch (_) {}
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ||
+      "The cleaner confirmation email could not be sent."
+    );
+  }
+
+  return body;
+}
+
+
 async function addPayment(
   id,
   amount,
@@ -1954,7 +2068,7 @@ function calendarItemsForDay(
         )
     )
     .map(
-      reservation => ({
+            reservation => ({
         reservation,
 
 
@@ -5544,12 +5658,27 @@ reservationList.addEventListener(
         );
 
 
+        try {
+          await sendCleaningAssignmentEmailForReservation(
+            id
+          );
 
+          message(
+            portalMessage,
+            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
+          );
+        } catch (cleaningError) {
+          console.error(
+            "Cleaner assignment email error:",
+            cleaningError
+          );
 
-        message(
-          portalMessage,
-          "Accepted. The 24-hour payment hold has started."
-        );
+          message(
+            portalMessage,
+            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
+            true
+          );
+        }
 
 
       }
@@ -6019,12 +6148,27 @@ pendingReservationList.addEventListener(
         );
 
 
+        try {
+          await sendCleaningAssignmentEmailForReservation(
+            id
+          );
 
+          message(
+            portalMessage,
+            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
+          );
+        } catch (cleaningError) {
+          console.error(
+            "Cleaner assignment email error:",
+            cleaningError
+          );
 
-        message(
-          portalMessage,
-          "Accepted. The 24-hour payment hold has started."
-        );
+          message(
+            portalMessage,
+            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
+            true
+          );
+        }
 
 
       }
@@ -6310,10 +6454,6 @@ pendingReservationList.addEventListener(
     }
   }
 );
-
-
-
-
 cleaningList.addEventListener(
   "click",
   async event => {
