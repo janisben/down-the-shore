@@ -297,6 +297,34 @@
       color:#0d2b4d;
     }
 
+    .dts-send-payment-link {
+      width:100%;
+      margin-top:14px;
+      border:0;
+      border-radius:8px;
+      background:#155aa8;
+      color:#fff;
+      padding:11px 14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .dts-send-payment-link:hover {
+      background:#104b8c;
+    }
+
+    .dts-send-payment-link:disabled {
+      opacity:.6;
+      cursor:wait;
+    }
+
+    .dts-payment-help {
+      color:#6f7782;
+      font-size:12px;
+      line-height:1.45;
+      margin-top:8px;
+    }
+
     .dts-cancel-hold {
       width:100%;
       margin-top:14px;
@@ -587,6 +615,27 @@
       "hold"
     ].includes(
       reservation.status
+    );
+  }
+
+
+  function dtsCanSendPaymentLink(
+    reservation
+  ) {
+    const totals =
+      dtsTotals(
+        reservation
+      );
+
+    return (
+      reservation.guest_email &&
+      totals.balance > 0 &&
+      ![
+        "cancelled",
+        "declined"
+      ].includes(
+        reservation.status
+      )
     );
   }
 
@@ -1790,6 +1839,30 @@
           </div>
 
           ${
+            dtsCanSendPaymentLink(
+              reservation
+            )
+              ? `
+                <button
+                  type="button"
+                  class="dts-send-payment-link"
+                  data-dts-send-payment-link="${
+                    reservation.id
+                  }"
+                >
+                  Send next Stripe payment link
+                </button>
+
+                <div class="dts-payment-help">
+                  Creates a new Stripe link for
+                  the next scheduled installment
+                  and emails it to the guest.
+                </div>
+              `
+              : ""
+          }
+
+          ${
             dtsCanCancelHold(
               reservation
             )
@@ -1933,6 +2006,261 @@
         </div>
       </div>
     `;
+  }
+
+
+  async function dtsSendPaymentLink(
+    button
+  ) {
+    const reservationId =
+      button.dataset
+        .dtsSendPaymentLink;
+
+    const reservation =
+      currentReservations.find(
+        item =>
+          item.id ===
+          reservationId
+      );
+
+    if (!reservation) {
+      throw new Error(
+        "Reservation could not be found."
+      );
+    }
+
+    if (!reservation.guest_email) {
+      throw new Error(
+        "This reservation does not have a guest email."
+      );
+    }
+
+    button.disabled =
+      true;
+
+    button.textContent =
+      "Creating payment link…";
+
+    const checkoutResponse =
+      await fetch(
+        "/api/create-checkout-session",
+        {
+          method:"POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              reservationId:
+                reservation.id
+            })
+        }
+      );
+
+    let checkout = {};
+
+    try {
+      checkout =
+        await checkoutResponse.json();
+    } catch (_) {}
+
+    if (
+      !checkoutResponse.ok ||
+      !checkout.url
+    ) {
+      throw new Error(
+        checkout.error ||
+        "Could not create the Stripe payment link."
+      );
+    }
+
+    const amount =
+      Number(
+        checkout.amount ||
+        0
+      );
+
+    const paymentLabel =
+      checkout.payment_label ||
+      "Reservation payment";
+
+    button.textContent =
+      "Sending email…";
+
+    const html = `
+      <div style="
+        max-width:640px;
+        margin:0 auto;
+        font-family:Arial,Helvetica,sans-serif;
+        line-height:1.6;
+        color:#172334;
+      ">
+
+        <h1 style="
+          font-family:Georgia,'Times New Roman',serif;
+          font-weight:400;
+          color:#0d2b4d;
+        ">
+          Down the Shore
+        </h1>
+
+        <p>
+          Hi ${
+            dtsEsc(
+              reservation.guest_name ||
+              "there"
+            )
+          },
+        </p>
+
+        <p>
+          Here is your updated secure
+          payment link for your reservation
+          at
+          <strong>
+            ${
+              dtsEsc(
+                reservation.property_name ||
+                "Down the Shore"
+              )
+            }
+          </strong>.
+        </p>
+
+        <div style="
+          background:#f7f4ef;
+          padding:20px;
+          margin:24px 0;
+        ">
+          <p style="margin:0 0 6px;">
+            <strong>
+              ${
+                dtsEsc(
+                  paymentLabel
+                )
+              }
+            </strong>
+          </p>
+
+          <p style="
+            margin:0;
+            font-size:24px;
+            font-weight:bold;
+            color:#0d2b4d;
+          ">
+            ${
+              dtsMoney(
+                amount
+              )
+            }
+          </p>
+
+          <p style="margin:8px 0 0;">
+            ${
+              dtsEsc(
+                dtsDate(
+                  reservation.arrival_date
+                )
+              )
+            }
+            –
+            ${
+              dtsEsc(
+                dtsDate(
+                  reservation.departure_date
+                )
+              )
+            }
+          </p>
+        </div>
+
+        <p style="margin:26px 0;">
+          <a
+            href="${
+              dtsEsc(
+                checkout.url
+              )
+            }"
+            style="
+              display:inline-block;
+              padding:13px 22px;
+              background:#0d2b4d;
+              color:#ffffff;
+              text-decoration:none;
+              border-radius:6px;
+              font-weight:bold;
+            "
+          >
+            Pay ${
+              dtsMoney(
+                amount
+              )
+            } securely by card
+          </a>
+        </p>
+
+        <p>
+          If you prefer to pay by Zelle,
+          Venmo, or check, you may continue
+          using those payment options instead.
+        </p>
+
+        <p>
+          Thank you,<br>
+          Janis<br>
+          Down the Shore
+        </p>
+
+      </div>
+    `;
+
+    const emailResponse =
+      await fetch(
+        "/api/send-email",
+        {
+          method:"POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              to:
+                reservation.guest_email,
+
+              subject:
+                `${paymentLabel} — ${reservation.property_name || "Down the Shore"}`,
+
+              html
+            })
+        }
+      );
+
+    let emailResult = {};
+
+    try {
+      emailResult =
+        await emailResponse.json();
+    } catch (_) {}
+
+    if (!emailResponse.ok) {
+      throw new Error(
+        emailResult.error ||
+        "The Stripe link was created, but the email could not be sent."
+      );
+    }
+
+    return {
+      amount,
+      paymentLabel,
+      url:
+        checkout.url
+    };
   }
 
 
@@ -2187,6 +2515,61 @@
 
     return leaseResult;
   }
+
+
+  document.addEventListener(
+    "click",
+    async event => {
+      const paymentButton =
+        event.target.closest(
+          "[data-dts-send-payment-link]"
+        );
+
+      if (!paymentButton) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const originalText =
+        paymentButton.textContent;
+
+      try {
+        const result =
+          await dtsSendPaymentLink(
+            paymentButton
+          );
+
+        window.alert(
+          `Payment link sent successfully for ${dtsMoney(
+            result.amount
+          )}.`
+        );
+
+        paymentButton.disabled =
+          false;
+
+        paymentButton.textContent =
+          originalText;
+
+      } catch (error) {
+        window.alert(
+          `Payment link error: ${
+            error.message ||
+            "Could not send the payment link."
+          }`
+        );
+
+        paymentButton.disabled =
+          false;
+
+        paymentButton.textContent =
+          originalText;
+      }
+    },
+    true
+  );
 
 
   document.addEventListener(
