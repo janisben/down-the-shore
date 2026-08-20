@@ -1309,15 +1309,23 @@ async function submitReservation(
         : "pending"
   };
 
-  const response =
+  const reservationId =
+  crypto.randomUUID();
+
+payload.id =
+  reservationId;
+
+const response =
   await fetch(
     `${data.supabase.url}/rest/v1/reservations`,
     {
       method: "POST",
+
       headers:
         supabaseHeaders(
-          "return=representation"
+          "return=minimal"
         ),
+
       body:
         JSON.stringify(payload)
     }
@@ -1329,21 +1337,6 @@ if (!response.ok) {
 
   throw new Error(
     `The request could not be saved. ${details}`
-  );
-}
-
-const createdRows =
-  await response.json();
-
-const createdReservation =
-  createdRows?.[0];
-
-if (
-  !createdReservation ||
-  !createdReservation.id
-) {
-  throw new Error(
-    "The reservation was saved, but its ID could not be returned."
   );
 }
 
@@ -1370,7 +1363,7 @@ const emailResult =
     isWaitlist,
 
     reservationId:
-      createdReservation.id
+      reservationId
   });
 
   return {
