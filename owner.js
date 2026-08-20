@@ -5245,15 +5245,56 @@ function showPortal() {
   loginView.hidden =
     true;
 
-
   portalView.hidden =
     false;
-
 
   loadProperties()
     .then(
       async () => {
         await refresh();
+
+        const params =
+          new URLSearchParams(
+            window.location.search
+          );
+
+        const requestedSection =
+          params.get("section");
+
+        const reservationId =
+          params.get("reservation");
+
+        if (
+          requestedSection ===
+          "pending"
+        ) {
+          showOwnerView(
+            "pending"
+          );
+
+          if (reservationId) {
+            window.setTimeout(
+              () => {
+                const card =
+                  pendingReservationList
+                    .querySelector(
+                      `[data-id="${reservationId}"]`
+                    );
+
+                if (card) {
+                  card.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                  });
+                }
+              },
+              100
+            );
+          }
+
+          return;
+        }
+
         showOwnerView(
           "dashboard"
         );
