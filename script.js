@@ -929,7 +929,8 @@ async function sendBookingEmail({
   arrival,
   departure,
   total,
-  isWaitlist
+  isWaitlist,
+  reservationId
 }) {
   const guestSubject =
     isWaitlist
@@ -1042,82 +1043,103 @@ async function sendBookingEmail({
     "janisbenstock@gmail.com";
 
   const ownerSubject =
-    isWaitlist
-      ? `WAITLIST REQUEST — ${propertyName}`
-      : `NEW BOOKING REQUEST — ${propertyName}`;
+  isWaitlist
+    ? `WAITLIST REQUEST — ${propertyName}`
+    : `NEW BOOKING REQUEST — ${propertyName}`;
 
-  const ownerHtml = `
-    <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#24231f;max-width:640px;margin:0 auto;">
+const reviewUrl =
+  `${window.location.origin}/owner.html?section=pending&reservation=${encodeURIComponent(
+    reservationId
+  )}`;
 
-      <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;">
-        New ${
-          isWaitlist
-            ? "waitlist"
-            : "booking"
-        } request
-      </h1>
+const ownerHtml = `
+  <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#24231f;max-width:640px;margin:0 auto;">
 
-      <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
+    <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;">
+      New ${
+        isWaitlist
+          ? "waitlist"
+          : "booking"
+      } request
+    </h1>
 
-        <p style="margin:0 0 10px;">
-          <strong>
-            ${escapeHtml(propertyName)}
-          </strong>
-        </p>
+    <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
 
-        <p style="margin:0 0 8px;">
-          ${escapeHtml(formatShortDate(arrival))}
-          –
-          ${escapeHtml(formatShortDate(departure))}
-        </p>
-
-        <p style="margin:0 0 8px;">
-          Guest:
-          <strong>
-            ${escapeHtml(guestName)}
-          </strong>
-        </p>
-
-        <p style="margin:0 0 8px;">
-          Email:
-          ${escapeHtml(to)}
-        </p>
-
-        ${
-          guestPhone
-            ? `
-              <p style="margin:0 0 8px;">
-                Phone:
-                ${escapeHtml(guestPhone)}
-              </p>
-            `
-            : ""
-        }
-
-        <p style="margin:0;">
-          Stay total:
-          <strong>
-            ${escapeHtml(formatMoney(total))}
-          </strong>
-        </p>
-
-      </div>
-
-      <p>
-        ${
-          isWaitlist
-            ? "This request was added to the waitlist."
-            : "This reservation is waiting for your approval in the Owner Portal."
-        }
+      <p style="margin:0 0 10px;">
+        <strong>
+          ${escapeHtml(propertyName)}
+        </strong>
       </p>
 
-      <p>
-        Down the Shore
+      <p style="margin:0 0 8px;">
+        ${escapeHtml(formatShortDate(arrival))}
+        –
+        ${escapeHtml(formatShortDate(departure))}
+      </p>
+
+      <p style="margin:0 0 8px;">
+        Guest:
+        <strong>
+          ${escapeHtml(guestName)}
+        </strong>
+      </p>
+
+      <p style="margin:0 0 8px;">
+        Email:
+        ${escapeHtml(to)}
+      </p>
+
+      ${
+        guestPhone
+          ? `
+            <p style="margin:0 0 8px;">
+              Phone:
+              ${escapeHtml(guestPhone)}
+            </p>
+          `
+          : ""
+      }
+
+      <p style="margin:0;">
+        Stay total:
+        <strong>
+          ${escapeHtml(formatMoney(total))}
+        </strong>
       </p>
 
     </div>
-  `;
 
+    <p>
+      ${
+        isWaitlist
+          ? "This request was added to the waitlist."
+          : "This reservation is waiting for your approval in the Owner Portal."
+      }
+    </p>
+
+    <p style="margin:26px 0;">
+      <a
+        href="${escapeHtml(reviewUrl)}"
+        style="
+          display:inline-block;
+          background:#15385f;
+          color:#ffffff;
+          text-decoration:none;
+          padding:13px 20px;
+          border-radius:4px;
+          font-weight:bold;
+        "
+      >
+        Review reservation
+      </a>
+    </p>
+
+    <p>
+      Down the Shore
+    </p>
+
+  </div>
+`;
   try {
     const ownerResponse =
       await fetch(
@@ -1288,29 +1310,44 @@ async function submitReservation(
   };
 
   const response =
-    await fetch(
-      `${data.supabase.url}/rest/v1/reservations`,
-      {
-        method: "POST",
-        headers:
-          supabaseHeaders(
-            "return=minimal"
-          ),
-        body:
-          JSON.stringify(payload)
-      }
-    );
+  await fetch(
+    `${data.supabase.url}/rest/v1/reservations`,
+    {
+      method: "POST",
+      headers:
+        supabaseHeaders(
+          "return=representation"
+        ),
+      body:
+        JSON.stringify(payload)
+    }
+  );
 
-  if (!response.ok) {
-    const details =
-      await response.text();
+if (!response.ok) {
+  const details =
+    await response.text();
 
-    throw new Error(
-      `The request could not be saved. ${details}`
-    );
-  }
+  throw new Error(
+    `The request could not be saved. ${details}`
+  );
+}
 
-  const emailResult =
+const createdRows =
+  await response.json();
+
+const createdReservation =
+  createdRows?.[0];
+
+if (
+  !createdReservation ||
+  !createdReservation.id
+) {
+  throw new Error(
+    "The reservation was saved, but its ID could not be returned."
+  );
+}
+
+const emailResult =
   await sendBookingEmail({
     to:
       payload.guest_email,
@@ -1330,7 +1367,10 @@ async function submitReservation(
     total:
       quote.total,
 
-    isWaitlist
+    isWaitlist,
+
+    reservationId:
+      createdReservation.id
   });
 
   return {
