@@ -923,6 +923,7 @@ function escapeHtml(value) {
 
 async function sendBookingEmail({
   to,
+  guestPhone,
   propertyName,
   guestName,
   arrival,
@@ -930,7 +931,7 @@ async function sendBookingEmail({
   total,
   isWaitlist
 }) {
-  const subject =
+  const guestSubject =
     isWaitlist
       ? `Waitlist request received — ${propertyName}`
       : `Booking request received — ${propertyName}`;
@@ -940,27 +941,46 @@ async function sendBookingEmail({
       ? "These dates currently have a pending hold. Your request has been added to the waitlist."
       : "Your dates have been received and are pending owner approval.";
 
-  const html = `
+  const guestHtml = `
     <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#24231f;max-width:640px;margin:0 auto;">
       <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;">
         Down the Shore
       </h1>
 
-      <p>Hi ${escapeHtml(guestName)},</p>
+      <p>
+        Hi ${escapeHtml(guestName)},
+      </p>
 
-      <p>${statusCopy}</p>
+      <p>
+        ${statusCopy}
+      </p>
 
       <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
-        <p style="margin:0 0 8px;"><strong>${escapeHtml(propertyName)}</strong></p>
         <p style="margin:0 0 8px;">
-          ${escapeHtml(formatShortDate(arrival))} – ${escapeHtml(formatShortDate(departure))}
+          <strong>
+            ${escapeHtml(propertyName)}
+          </strong>
         </p>
-        <p style="margin:0;"><strong>Stay total: ${escapeHtml(formatMoney(total))}</strong></p>
+
+        <p style="margin:0 0 8px;">
+          ${escapeHtml(formatShortDate(arrival))}
+          –
+          ${escapeHtml(formatShortDate(departure))}
+        </p>
+
+        <p style="margin:0;">
+          <strong>
+            Stay total:
+            ${escapeHtml(formatMoney(total))}
+          </strong>
+        </p>
       </div>
 
       <p>
-        No payment has been collected yet. Janis will review the request and,
-        if accepted, will send the lease and payment instructions.
+        No payment has been collected yet.
+        Janis will review the request and,
+        if accepted, will send the lease
+        and payment instructions.
       </p>
 
       <p>
@@ -970,51 +990,189 @@ async function sendBookingEmail({
       </p>
 
       <p style="font-size:12px;color:#716f68;margin-top:28px;">
-        Owner is a New Jersey licensed real estate broker.
+        Owner is a New Jersey licensed
+        real estate broker.
       </p>
     </div>
   `;
 
-  const response =
+  const guestResponse =
     await fetch(
       "/api/send-email",
       {
         method: "POST",
+
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type":
+            "application/json"
         },
-        body: JSON.stringify({
-          to,
-          subject,
-          html
-        })
+
+        body:
+          JSON.stringify({
+            to,
+            subject:
+              guestSubject,
+            html:
+              guestHtml
+          })
       }
     );
 
-  let details = null;
+  let guestDetails = null;
 
   try {
-    details =
-      await response.json();
-  } catch {
-    details = null;
-  }
+    guestDetails =
+      await guestResponse.json();
+  } catch (_) {}
 
-  if (!response.ok) {
+  if (!guestResponse.ok) {
     console.error(
-      "Booking email failed:",
-      details || response.statusText
+      "Guest booking email failed:",
+      guestDetails ||
+      guestResponse.statusText
     );
-
-    return {
-      sent: false,
-      details
-    };
   }
+
+
+  /*
+    OWNER NOTIFICATION
+  */
+
+  const ownerEmail =
+    "janisbenstock@gmail.com";
+
+  const ownerSubject =
+    isWaitlist
+      ? `WAITLIST REQUEST — ${propertyName}`
+      : `NEW BOOKING REQUEST — ${propertyName}`;
+
+  const ownerHtml = `
+    <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#24231f;max-width:640px;margin:0 auto;">
+
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;">
+        New ${
+          isWaitlist
+            ? "waitlist"
+            : "booking"
+        } request
+      </h1>
+
+      <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
+
+        <p style="margin:0 0 10px;">
+          <strong>
+            ${escapeHtml(propertyName)}
+          </strong>
+        </p>
+
+        <p style="margin:0 0 8px;">
+          ${escapeHtml(formatShortDate(arrival))}
+          –
+          ${escapeHtml(formatShortDate(departure))}
+        </p>
+
+        <p style="margin:0 0 8px;">
+          Guest:
+          <strong>
+            ${escapeHtml(guestName)}
+          </strong>
+        </p>
+
+        <p style="margin:0 0 8px;">
+          Email:
+          ${escapeHtml(to)}
+        </p>
+
+        ${
+          guestPhone
+            ? `
+              <p style="margin:0 0 8px;">
+                Phone:
+                ${escapeHtml(guestPhone)}
+              </p>
+            `
+            : ""
+        }
+
+        <p style="margin:0;">
+          Stay total:
+          <strong>
+            ${escapeHtml(formatMoney(total))}
+          </strong>
+        </p>
+
+      </div>
+
+      <p>
+        ${
+          isWaitlist
+            ? "This request was added to the waitlist."
+            : "This reservation is waiting for your approval in the Owner Portal."
+        }
+      </p>
+
+      <p>
+        Down the Shore
+      </p>
+
+    </div>
+  `;
+
+  try {
+    const ownerResponse =
+      await fetch(
+        "/api/send-email",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              to:
+                ownerEmail,
+
+              subject:
+                ownerSubject,
+
+              html:
+                ownerHtml
+            })
+        }
+      );
+
+    let ownerDetails = null;
+
+    try {
+      ownerDetails =
+        await ownerResponse.json();
+    } catch (_) {}
+
+    if (!ownerResponse.ok) {
+      console.error(
+        "Owner booking notification failed:",
+        ownerDetails ||
+        ownerResponse.statusText
+      );
+    }
+
+  } catch (ownerEmailError) {
+    console.error(
+      "Owner booking notification error:",
+      ownerEmailError
+    );
+  }
+
 
   return {
-    sent: true,
-    details
+    sent:
+      guestResponse.ok,
+
+    details:
+      guestDetails
   };
 }
 
@@ -1153,15 +1311,27 @@ async function submitReservation(
   }
 
   const emailResult =
-    await sendBookingEmail({
-      to: payload.guest_email,
-      propertyName: property.name,
-      guestName: payload.guest_name,
-      arrival,
-      departure,
-      total: quote.total,
-      isWaitlist
-    });
+  await sendBookingEmail({
+    to:
+      payload.guest_email,
+
+    guestPhone:
+      payload.guest_phone,
+
+    propertyName:
+      property.name,
+
+    guestName:
+      payload.guest_name,
+
+    arrival,
+    departure,
+
+    total:
+      quote.total,
+
+    isWaitlist
+  });
 
   return {
     isWaitlist,
