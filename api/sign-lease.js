@@ -6,6 +6,7 @@ const supabase =
     process.env.SUPABASE_SECRET_KEY
   );
 
+
 function siteOrigin(req) {
   if (process.env.SITE_URL) {
     return process.env.SITE_URL
@@ -23,6 +24,7 @@ function siteOrigin(req) {
   return `${protocol}://${host}`;
 }
 
+
 function esc(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -31,6 +33,72 @@ function esc(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+
+function formatDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(
+    `${value}T12:00:00`
+  ).toLocaleDateString(
+    "en-US",
+    {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }
+  );
+}
+
+
+async function sendEmail(
+  req,
+  {
+    to,
+    subject,
+    html
+  }
+) {
+  const response =
+    await fetch(
+      `${siteOrigin(req)}/api/send-email`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            to,
+            subject,
+            html
+          })
+      }
+    );
+
+  let body = {};
+
+  try {
+    body =
+      await response.json();
+  } catch (_) {}
+
+  if (!response.ok) {
+    throw new Error(
+      body.error ||
+      body.message ||
+      "Email could not be sent."
+    );
+  }
+
+  return body;
+}
+
 
 async function sendOwnerReadyEmail(
   req,
@@ -55,8 +123,7 @@ async function sendOwnerReadyEmail(
 
       <p>
         The tenant has completed the rental agreement
-        and the required initial payment has been received.
-        The agreement is ready for your signature.
+        and the agreement is ready for your signature.
       </p>
 
       <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
@@ -84,9 +151,169 @@ async function sendOwnerReadyEmail(
     </div>
   `;
 
+  await sendEmail(
+    req,
+    {
+      to,
+
+      subject:
+        `Owner signature required — ${propertyName}`,
+
+      html
+    }
+  );
+
+  return true;
+}
+
+
+async function notificationAlreadySent(
+  reservationId,
+  notificationType,
+  recipientEmail
+) {
+  const {
+    data,
+    error
+  } =
+    await supabase
+      .from(
+        "reservation_notifications"
+      )
+      .select("id")
+      .eq(
+        "reservation_id",
+        reservationId
+      )
+      .eq(
+        "notification_type",
+        notificationType
+      )
+      .eq(
+        "recipient_email",
+        recipientEmail
+      )
+      .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(
+    data &&
+    data.length
+  );
+}
+
+
+async function recordNotification(
+  reservationId,
+  notificationType,
+  recipientEmail,
+  details = {}
+) {
+  const {
+    error
+  } =
+    await supabase
+      .from(
+        "reservation_notifications"
+      )
+      .insert({
+        reservation_id:
+          reservationId,
+
+        notification_type:
+          notificationType,
+
+        recipient_email:
+          recipientEmail,
+
+        sent_at:
+          new Date().toISOString(),
+
+        details
+      });
+
+  if (
+    error &&
+    error.code !== "23505"
+  ) {
+    throw error;
+  }
+}
+
+
+async function sendCleanerNotification(
+  req,
+  reservation
+) {
+  const {
+    data: cleanings,
+    error: cleaningError
+  } =
+    await supabase
+      .from(
+        "cleaning_assignments"
+      )
+      .select("*")
+      .eq(
+        "reservation_id",
+        reservation.id
+      )
+      .limit(1);
+
+  if (cleaningError) {
+    throw cleaningError;
+  }
+
+  const cleaning =
+    cleanings?.[0] ||
+    null;
+
+  if (!cleaning) {
+    throw new Error(
+      "No cleaning assignment exists for this reservation."
+    );
+  }
+
+  if (
+    cleaning.status ===
+      "confirmed" ||
+    cleaning.status ===
+      "completed"
+  ) {
+    return {
+      skipped: true,
+      reason:
+        "Cleaner already confirmed."
+    };
+  }
+
+  if (!cleaning.cleaner_email) {
+    throw new Error(
+      "Cleaning assignment does not have a cleaner email."
+    );
+  }
+
+  const alreadySent =
+    await notificationAlreadySent(
+      reservation.id,
+      "cleaner_assignment",
+      cleaning.cleaner_email
+    );
+
+  if (alreadySent) {
+    return {
+      skipped: true,
+      reason:
+        "Cleaner email already sent."
+    };
+  }
+
   const response =
     await fetch(
-      `${siteOrigin(req)}/api/send-email`,
+      `${siteOrigin(req)}/api/cleaning-assigned`,
       {
         method: "POST",
 
@@ -97,33 +324,374 @@ async function sendOwnerReadyEmail(
 
         body:
           JSON.stringify({
-            to,
-
-            subject:
-              `Owner signature required — ${propertyName}`,
-
-            html
+            reservationId:
+              reservation.id
           })
       }
     );
 
+  let body = {};
+
+  try {
+    body =
+      await response.json();
+  } catch (_) {}
+
   if (!response.ok) {
-    let body = {};
-
-    try {
-      body =
-        await response.json();
-    } catch (_) {}
-
     throw new Error(
       body.error ||
       body.message ||
-      "Owner-signature email could not be sent."
+      "Cleaner email could not be sent."
     );
   }
 
-  return true;
+  await recordNotification(
+    reservation.id,
+    "cleaner_assignment",
+    cleaning.cleaner_email,
+    {
+      cleaning_assignment_id:
+        cleaning.id,
+
+      checkout_date:
+        cleaning.checkout_date ||
+        reservation.departure_date
+    }
+  );
+
+  return {
+    sent: true,
+    to:
+      cleaning.cleaner_email
+  };
 }
+
+
+async function sendBrokerNotifications(
+  req,
+  reservation,
+  property
+) {
+  /*
+    Brokerage-originated reservations
+    do not need the owner's listing
+    contacts notified by this workflow.
+  */
+  if (
+    reservation.booking_source ===
+    "brokerage"
+  ) {
+    return {
+      skipped: true,
+      reason:
+        "Brokerage reservation."
+    };
+  }
+
+  const {
+    data: contacts,
+    error: contactsError
+  } =
+    await supabase
+      .from(
+        "property_notification_contacts"
+      )
+      .select(
+        "id,name,email,active"
+      )
+      .eq(
+        "property_id",
+        reservation.property_id
+      )
+      .eq(
+        "active",
+        true
+      );
+
+  if (contactsError) {
+    throw contactsError;
+  }
+
+  if (
+    !contacts ||
+    !contacts.length
+  ) {
+    return {
+      skipped: true,
+      reason:
+        "No active listing contacts."
+    };
+  }
+
+  const arrival =
+    formatDate(
+      reservation.arrival_date
+    );
+
+  const departure =
+    formatDate(
+      reservation.departure_date
+    );
+
+  const propertyName =
+    property?.name ||
+    "Down the Shore property";
+
+  const propertyAddress =
+    property?.address ||
+    "";
+
+  const results = [];
+
+  for (
+    const contact of contacts
+  ) {
+    if (!contact.email) {
+      continue;
+    }
+
+    const alreadySent =
+      await notificationAlreadySent(
+        reservation.id,
+        "listing_block_dates",
+        contact.email
+      );
+
+    if (alreadySent) {
+      results.push({
+        email:
+          contact.email,
+        skipped:
+          true
+      });
+
+      continue;
+    }
+
+    const displayName =
+      contact.name ||
+      "there";
+
+    const html = `
+      <div style="
+        font-family:Arial,Helvetica,sans-serif;
+        max-width:620px;
+        margin:0 auto;
+        line-height:1.6;
+        color:#172334;
+      ">
+
+        <h2 style="
+          color:#0d2b4d;
+          font-family:Georgia,'Times New Roman',serif;
+          font-weight:400;
+        ">
+          Down the Shore
+        </h2>
+
+        <p>
+          Hi ${esc(displayName)},
+        </p>
+
+        <p>
+          An owner rental has been confirmed.
+          Please block the following dates
+          on your rental calendar.
+        </p>
+
+        <div style="
+          background:#f7f4ef;
+          padding:18px;
+          margin:20px 0;
+        ">
+
+          <strong>
+            ${esc(propertyName)}
+          </strong>
+
+          ${
+            propertyAddress
+              ? `
+                <br>
+                ${esc(propertyAddress)}
+              `
+              : ""
+          }
+
+          <br><br>
+
+          <strong>
+            ${esc(arrival)}
+            –
+            ${esc(departure)}
+          </strong>
+
+        </div>
+
+        <p>
+          Thank you,<br>
+          Janis<br>
+          Down the Shore
+        </p>
+
+      </div>
+    `;
+
+    await sendEmail(
+      req,
+      {
+        to:
+          contact.email,
+
+        subject:
+          `Block dates — ${propertyName}${propertyAddress ? ` — ${propertyAddress}` : ""}`,
+
+        html
+      }
+    );
+
+    await recordNotification(
+      reservation.id,
+      "listing_block_dates",
+      contact.email,
+      {
+        contact_id:
+          contact.id,
+
+        property_id:
+          reservation.property_id,
+
+        property_name:
+          propertyName,
+
+        property_address:
+          propertyAddress,
+
+        arrival_date:
+          reservation.arrival_date,
+
+        departure_date:
+          reservation.departure_date
+      }
+    );
+
+    results.push({
+      email:
+        contact.email,
+      sent:
+        true
+    });
+  }
+
+  return {
+    results
+  };
+}
+
+
+async function runOwnerCompletionNotifications(
+  req,
+  reservationId
+) {
+  const {
+    data: reservation,
+    error: reservationError
+  } =
+    await supabase
+      .from("reservations")
+      .select("*")
+      .eq(
+        "id",
+        reservationId
+      )
+      .single();
+
+  if (
+    reservationError ||
+    !reservation
+  ) {
+    throw new Error(
+      reservationError?.message ||
+      "Reservation could not be found."
+    );
+  }
+
+  const {
+    data: property,
+    error: propertyError
+  } =
+    await supabase
+      .from("properties")
+      .select(
+        "id,name,address"
+      )
+      .eq(
+        "id",
+        reservation.property_id
+      )
+      .single();
+
+  if (
+    propertyError ||
+    !property
+  ) {
+    throw new Error(
+      propertyError?.message ||
+      "Property could not be found."
+    );
+  }
+
+  const results = {
+    cleaner: null,
+    brokers: null
+  };
+
+  /*
+    Each notification is deliberately
+    independent. A temporary email failure
+    must NOT undo or block the completed lease.
+  */
+
+  try {
+    results.cleaner =
+      await sendCleanerNotification(
+        req,
+        reservation
+      );
+  } catch (error) {
+    console.error(
+      "Automatic cleaner notification error:",
+      error
+    );
+
+    results.cleaner = {
+      error:
+        error.message
+    };
+  }
+
+  try {
+    results.brokers =
+      await sendBrokerNotifications(
+        req,
+        reservation,
+        property
+      );
+  } catch (error) {
+    console.error(
+      "Automatic broker notification error:",
+      error
+    );
+
+    results.brokers = {
+      error:
+        error.message
+    };
+  }
+
+  return results;
+}
+
 
 export default async function handler(
   req,
@@ -247,8 +815,15 @@ export default async function handler(
             "owner"
         );
 
+
     /*
       OWNER SIGNATURE
+
+      Guest signatures must be complete.
+
+      Payment is intentionally NOT checked
+      here. The owner's signature is the
+      authoritative confirmation trigger.
     */
 
     if (
@@ -271,52 +846,8 @@ export default async function handler(
             "The required guest signatures are not complete yet."
         });
       }
-
-      const {
-        data: payments,
-        error: paymentError
-      } =
-        await supabase
-          .from("payments")
-          .select("amount")
-          .eq(
-            "reservation_id",
-            lease.reservation_id
-          );
-
-      if (
-        paymentError
-      ) {
-        return res.status(500).json({
-          error:
-            paymentError.message
-        });
-      }
-
-      const paid =
-        (payments || [])
-          .reduce(
-            (
-              total,
-              payment
-            ) =>
-              total +
-              Number(
-                payment.amount ||
-                0
-              ),
-            0
-          );
-
-      if (
-        paid <= 0
-      ) {
-        return res.status(409).json({
-          error:
-            "A payment must be received before the owner signs."
-        });
-      }
     }
+
 
     const signedAt =
       new Date()
@@ -354,6 +885,7 @@ export default async function handler(
           updateError.message
       });
     }
+
 
     const initialRows =
       Object.entries(
@@ -419,6 +951,7 @@ export default async function handler(
       }
     }
 
+
     await supabase
       .from("lease_events")
       .insert({
@@ -440,8 +973,10 @@ export default async function handler(
         }
       });
 
+
     /*
       OWNER SIGNATURE COMPLETES LEASE
+      AND FIRES AUTOMATIONS
     */
 
     if (
@@ -474,6 +1009,7 @@ export default async function handler(
         });
       }
 
+
       await supabase
         .from("lease_events")
         .insert({
@@ -492,6 +1028,53 @@ export default async function handler(
           }
         });
 
+
+      let notifications = {};
+
+      try {
+        notifications =
+          await runOwnerCompletionNotifications(
+            req,
+            lease.reservation_id
+          );
+      } catch (notificationError) {
+        /*
+          Never fail the lease signature
+          because of an email problem.
+        */
+        console.error(
+          "Owner completion notification error:",
+          notificationError
+        );
+
+        notifications = {
+          error:
+            notificationError.message
+        };
+      }
+
+
+      await supabase
+        .from("lease_events")
+        .insert({
+          lease_id:
+            signer.lease_id,
+
+          signer_id:
+            signer.id,
+
+          event_type:
+            "owner_completion_notifications",
+
+          event_data: {
+            triggered_at:
+              signedAt,
+
+            notifications
+          }
+        });
+
+
       return res.status(200).json({
         success:
           true,
@@ -500,9 +1083,12 @@ export default async function handler(
           true,
 
         completed:
-          true
+          true,
+
+        notifications
       });
     }
+
 
     /*
       TENANT / GUEST SIGNATURE
@@ -530,6 +1116,7 @@ export default async function handler(
       });
     }
 
+
     const {
       data: payments,
       error: paymentError
@@ -551,6 +1138,7 @@ export default async function handler(
       });
     }
 
+
     const paid =
       (payments || [])
         .reduce(
@@ -566,6 +1154,7 @@ export default async function handler(
           0
         );
 
+
     const ownerSigner =
       (requiredSigners || [])
         .find(
@@ -574,6 +1163,7 @@ export default async function handler(
             "owner"
         );
 
+
     /*
       PAYMENT ALREADY EXISTS
     */
@@ -581,22 +1171,35 @@ export default async function handler(
     if (
       paid > 0
     ) {
-      await supabase
-        .from("leases")
-        .update({
-          status:
-            "awaiting_owner_signature",
+      const {
+        error: ownerReadyError
+      } =
+        await supabase
+          .from("leases")
+          .update({
+            status:
+              "awaiting_owner_signature",
 
-          guest_completed_at:
-            signedAt,
+            guest_completed_at:
+              signedAt,
 
-          updated_at:
-            signedAt
-        })
-        .eq(
-          "id",
-          signer.lease_id
-        );
+            updated_at:
+              signedAt
+          })
+          .eq(
+            "id",
+            signer.lease_id
+          );
+
+      if (
+        ownerReadyError
+      ) {
+        return res.status(500).json({
+          error:
+            ownerReadyError.message
+        });
+      }
+
 
       if (
         ownerSigner &&
@@ -629,6 +1232,7 @@ export default async function handler(
             }
           );
 
+
           await supabase
             .from("lease_events")
             .insert({
@@ -658,6 +1262,7 @@ export default async function handler(
         }
       }
 
+
       return res.status(200).json({
         success:
           true,
@@ -673,15 +1278,14 @@ export default async function handler(
       });
     }
 
+
     /*
       NO PAYMENT YET
 
-      IMPORTANT:
-      DO NOT CREATE A STRIPE CHECKOUT SESSION HERE.
-
       The guest has finished signing.
-      The next screen must allow the guest to choose
-      Zelle, Venmo, or credit/debit card.
+
+      Payment method selection remains
+      separate from lease signing.
     */
 
     const {
@@ -713,6 +1317,7 @@ export default async function handler(
       });
     }
 
+
     await supabase
       .from("lease_events")
       .insert({
@@ -730,6 +1335,7 @@ export default async function handler(
             lease.reservation_id
         }
       });
+
 
     return res.status(200).json({
       success:
