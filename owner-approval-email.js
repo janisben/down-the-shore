@@ -39,152 +39,8 @@ document.addEventListener(
     const holdExpiresAt =
       new Date(
         Date.now() +
-        24 *
-        60 *
-        60 *
-        1000
+        24 * 60 * 60 * 1000
       ).toISOString();
-
-
-    async function findCleaningAssignment() {
-      /*
-        The reservation update and the
-        cleaning-assignment creation may
-        happen a fraction of a second apart.
-
-        Retry briefly so we do not miss the
-        newly-created cleaning record.
-      */
-      for (
-        let attempt = 0;
-        attempt < 6;
-        attempt++
-      ) {
-        try {
-          const rows =
-            await fetchTable(
-              "cleaning_assignments",
-              `?reservation_id=eq.${encodeURIComponent(
-                reservation.id
-              )}&select=*&limit=1`
-            );
-
-          if (
-            rows &&
-            rows.length
-          ) {
-            return rows[0];
-          }
-        } catch (error) {
-          console.warn(
-            "Cleaning assignment lookup attempt failed:",
-            error
-          );
-        }
-
-        await new Promise(
-          resolve =>
-            window.setTimeout(
-              resolve,
-              500
-            )
-        );
-      }
-
-      return null;
-    }
-
-
-    async function sendCleanerEmail() {
-      const cleaning =
-        await findCleaningAssignment();
-
-      if (!cleaning) {
-        console.error(
-          "No cleaning assignment was found for reservation:",
-          reservation.id
-        );
-
-        return;
-      }
-
-      if (!cleaning.cleaner_email) {
-        console.error(
-          "Cleaning assignment does not have a cleaner email:",
-          cleaning.id
-        );
-
-        return;
-      }
-
-      if (!cleaning.confirmation_token) {
-        console.error(
-          "Cleaning assignment does not have a confirmation token:",
-          cleaning.id
-        );
-
-        return;
-      }
-
-      const response =
-        await fetch(
-          "/api/cleaning-assigned",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-
-            body:
-              JSON.stringify({
-                to:
-                  cleaning.cleaner_email,
-
-                cleanerName:
-                  cleaning.cleaner_name ||
-                  "Melissa",
-
-                propertyName:
-                  reservation.property_name,
-
-                guestName:
-                  reservation.guest_name ||
-                  "",
-
-                checkoutDate:
-                  cleaning.checkout_date ||
-                  reservation.departure_date,
-
-                confirmationToken:
-                  cleaning.confirmation_token
-              })
-          }
-        );
-
-      let result = {};
-
-      try {
-        result =
-          await response.json();
-      } catch (_) {}
-
-      if (!response.ok) {
-        console.error(
-          "Automatic cleaner email failed:",
-          result
-        );
-
-        return;
-      }
-
-      console.log(
-        "Automatic cleaner assignment email sent.",
-        result
-      );
-    }
-
 
     window.setTimeout(
       async () => {
@@ -226,8 +82,12 @@ document.addEventListener(
               }
             );
 
-          const checkoutResult =
-            await checkoutResponse.json();
+          let checkoutResult = {};
+
+          try {
+            checkoutResult =
+              await checkoutResponse.json();
+          } catch (_) {}
 
           if (
             !checkoutResponse.ok ||
@@ -240,7 +100,6 @@ document.addEventListener(
 
             return;
           }
-
 
           const emailResponse =
             await fetch(
@@ -278,8 +137,12 @@ document.addEventListener(
               }
             );
 
-          const emailResult =
-            await emailResponse.json();
+          let emailResult = {};
+
+          try {
+            emailResult =
+              await emailResponse.json();
+          } catch (_) {}
 
           if (!emailResponse.ok) {
             console.error(
@@ -291,22 +154,9 @@ document.addEventListener(
           }
 
           console.log(
-            "Approval email with Stripe payment link sent."
+            "Approval email with Stripe payment link sent.",
+            emailResult
           );
-
-
-          /*
-            Guest email succeeded.
-            Now automatically notify Melissa.
-          */
-          try {
-            await sendCleanerEmail();
-          } catch (cleanerError) {
-            console.error(
-              "Automatic cleaner assignment email error:",
-              cleanerError
-            );
-          }
 
         } catch (error) {
           console.error(
@@ -334,10 +184,6 @@ document.addEventListener(
       return;
     }
 
-    console.log(
-      "Cleaner Save button detected."
-    );
-
     const card =
       button.closest(
         "[data-cleaning-id]"
@@ -360,7 +206,7 @@ document.addEventListener(
           "[data-cleaner-name]"
         )
         ?.value
-        .trim();
+        .trim() || "";
 
     const cleanerEmail =
       card
@@ -368,14 +214,7 @@ document.addEventListener(
           "[data-cleaner-email]"
         )
         ?.value
-        .trim();
-
-    const cleaning =
-      currentCleanings.find(
-        item =>
-          String(item.id) ===
-          String(cleaningId)
-      );
+        .trim() || "";
 
     if (!cleanerEmail) {
       console.error(
@@ -385,31 +224,98 @@ document.addEventListener(
       return;
     }
 
-    if (!cleaning) {
-      console.error(
-        "Cleaning record not found:",
-        cleaningId
-      );
-
-      return;
-    }
-
-    if (
-      !cleaning.confirmation_token
-    ) {
-      console.error(
-        "Cleaning confirmation token is missing:",
-        cleaningId
-      );
-
-      return;
-    }
+    button.disabled = true;
 
     try {
+      /*
+        First save Melissa's current
+        name and email to the cleaning
+        assignment.
+      */
+      await updateCleaning(
+        cleaningId,
+        {
+          cleaner_name:
+            cleanerName,
+
+          cleaner_email:
+            cleanerEmail
+        }
+      );
+
+
+      /*
+        Reload the cleaning assignments
+        so we use the current database
+        record and confirmation token.
+      */
+      await loadCleanings();
+
+
+      const cleaning =
+        currentCleanings.find(
+          item =>
+            String(item.id) ===
+            String(cleaningId)
+        );
+
+
+      if (!cleaning) {
+        throw new Error(
+          "Cleaning assignment could not be reloaded."
+        );
+      }
+
+
+      if (
+        !cleaning.confirmation_token
+      ) {
+        throw new Error(
+          "Cleaning confirmation token is missing."
+        );
+      }
+
+
+      const reservation =
+        currentReservations.find(
+          item =>
+            String(item.id) ===
+            String(
+              cleaning.reservation_id
+            )
+        );
+
+
+      const propertyName =
+        cleaning.property_name ||
+        reservation?.property_name ||
+        "Down the Shore property";
+
+
+      const guestName =
+        reservation?.guest_name ||
+        cleaning.reservation
+          ?.guest_name ||
+        "";
+
+
+      const checkoutDate =
+        cleaning.checkout_date ||
+        reservation?.departure_date;
+
+
+      if (!checkoutDate) {
+        throw new Error(
+          "Cleaning checkout date is missing."
+        );
+      }
+
+
       console.log(
         "Sending cleaner assignment email to:",
         cleanerEmail
       );
+
 
       const response =
         await fetch(
@@ -429,24 +335,20 @@ document.addEventListener(
 
                 cleanerName:
                   cleanerName ||
-                  "",
+                  "Melissa",
 
-                propertyName:
-                  cleaning.property_name,
+                propertyName,
 
-                guestName:
-                  cleaning.reservation
-                    ?.guest_name ||
-                  "",
+                guestName,
 
-                checkoutDate:
-                  cleaning.checkout_date,
+                checkoutDate,
 
                 confirmationToken:
                   cleaning.confirmation_token
               })
           }
         );
+
 
       let result = {};
 
@@ -455,25 +357,50 @@ document.addEventListener(
           await response.json();
       } catch (_) {}
 
-      if (!response.ok) {
-        console.error(
-          "Cleaner email failed:",
-          result
-        );
 
-        return;
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+          result.details?.message ||
+          "Cleaner email failed."
+        );
       }
 
+
       console.log(
-        "Cleaner assignment email sent.",
+        "Cleaner assignment email sent successfully.",
         result
       );
+
+
+      if (cleaningMessage) {
+        message(
+          cleaningMessage,
+          `Cleaner saved and email sent to ${cleanerEmail}.`
+        );
+      }
+
+
+      renderCleaningDashboard();
 
     } catch (error) {
       console.error(
         "Cleaner assignment email error:",
         error
       );
+
+
+      if (cleaningMessage) {
+        message(
+          cleaningMessage,
+          error.message ||
+          "Cleaner email could not be sent.",
+          true
+        );
+      }
+
+    } finally {
+      button.disabled = false;
     }
   },
   true
