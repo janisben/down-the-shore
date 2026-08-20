@@ -40,60 +40,159 @@ export default async function handler(
 
   try {
     const {
-      reservationId
+      reservationId,
+
+      to,
+      cleanerName:
+        suppliedCleanerName,
+      propertyName:
+        suppliedPropertyName,
+      guestName:
+        suppliedGuestName,
+      checkoutDate:
+        suppliedCheckoutDate,
+      confirmationToken:
+        suppliedConfirmationToken
     } = req.body || {};
 
-    if (!reservationId) {
-      return res.status(400).json({
-        error:
-          "Missing reservation ID"
-      });
-    }
 
-    if (
-      !process.env.RESEND_API_KEY ||
-      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-      !process.env.SUPABASE_SECRET_KEY
-    ) {
+    if (!process.env.RESEND_API_KEY) {
       return res.status(500).json({
         error:
-          "Server configuration is incomplete"
+          "RESEND_API_KEY is not configured"
       });
     }
 
 
-    const supabaseUrl =
-      process.env
-        .NEXT_PUBLIC_SUPABASE_URL;
+    let cleanerEmail =
+      to || null;
 
-    const secretKey =
-      process.env
-        .SUPABASE_SECRET_KEY;
+    let cleanerName =
+      suppliedCleanerName ||
+      "Melissa";
 
+    let propertyName =
+      suppliedPropertyName ||
+      null;
 
-    const authHeaders = {
-      apikey:
-        secretKey,
+    let guestName =
+      suppliedGuestName ||
+      "Guest";
 
-      Authorization:
-        `Bearer ${secretKey}`
-    };
+    let checkoutDate =
+      suppliedCheckoutDate ||
+      null;
+
+    let confirmationToken =
+      suppliedConfirmationToken ||
+      null;
 
 
     /*
-      Wait briefly for the cleaning
-      assignment to exist.
-    */
-    let cleaning = null;
+      If reservationId was supplied,
+      load the cleaning assignment,
+      reservation, and property from
+      Supabase.
 
-    for (
-      let attempt = 0;
-      attempt < 10;
-      attempt++
-    ) {
-      const response =
+      This keeps the API compatible
+      with both calling methods.
+    */
+    if (reservationId) {
+      if (
+        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+        !process.env.SUPABASE_SECRET_KEY
+      ) {
+        return res.status(500).json({
+          error:
+            "Server configuration is incomplete"
+        });
+      }
+
+
+      const supabaseUrl =
+        process.env
+          .NEXT_PUBLIC_SUPABASE_URL;
+
+      const secretKey =
+        process.env
+          .SUPABASE_SECRET_KEY;
+
+
+      const authHeaders = {
+        apikey:
+          secretKey,
+
+        Authorization:
+          `Bearer ${secretKey}`
+      };
+
+
+      let cleaning = null;
+
+
+      for (
+        let attempt = 0;
+        attempt < 10;
+        attempt++
+      ) {
+        const cleaningResponse =
+          await fetch(
+            `${supabaseUrl}/rest/v1/cleaning_assignments?reservation_id=eq.${encodeURIComponent(
+              reservationId
+            )}&select=*&limit=1`,
+            {
+              headers:
+                authHeaders
+            }
+          );
+
+
+        if (!cleaningResponse.ok) {
+          throw new Error(
+            `Could not load cleaning assignment: ${await cleaningResponse.text()}`
+          );
+        }
+
+
+        const cleaningRows =
+          await cleaningResponse.json();
+
+
+        cleaning =
+          cleaningRows[0] ||
+          null;
+
+
+        if (
+          cleaning &&
+          cleaning.cleaner_email &&
+          cleaning.confirmation_token
+        ) {
+          break;
+        }
+
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              500
+            )
+        );
+      }
+
+
+      if (!cleaning) {
+        return res.status(404).json({
+          error:
+            "No cleaning assignment was found for this reservation"
+        });
+      }
+
+
+      const reservationResponse =
         await fetch(
-          `${supabaseUrl}/rest/v1/cleaning_assignments?reservation_id=eq.${encodeURIComponent(
+          `${supabaseUrl}/rest/v1/reservations?id=eq.${encodeURIComponent(
             reservationId
           )}&select=*&limit=1`,
           {
@@ -102,137 +201,142 @@ export default async function handler(
           }
         );
 
-      if (!response.ok) {
+
+      if (!reservationResponse.ok) {
         throw new Error(
-          `Could not load cleaning assignment: ${await response.text()}`
+          `Could not load reservation: ${await reservationResponse.text()}`
         );
       }
 
-      const rows =
-        await response.json();
 
-      cleaning =
-        rows[0] || null;
+      const reservationRows =
+        await reservationResponse.json();
 
-      if (
-        cleaning &&
-        cleaning.cleaner_email &&
-        cleaning.confirmation_token
-      ) {
-        break;
+
+      const reservation =
+        reservationRows[0] ||
+        null;
+
+
+      if (!reservation) {
+        return res.status(404).json({
+          error:
+            "Reservation could not be found"
+        });
       }
 
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            500
-          )
-      );
+
+      let property = null;
+
+
+      if (reservation.property_id) {
+        const propertyResponse =
+          await fetch(
+            `${supabaseUrl}/rest/v1/properties?id=eq.${encodeURIComponent(
+              reservation.property_id
+            )}&select=id,name&limit=1`,
+            {
+              headers:
+                authHeaders
+            }
+          );
+
+
+        if (!propertyResponse.ok) {
+          throw new Error(
+            `Could not load property: ${await propertyResponse.text()}`
+          );
+        }
+
+
+        const propertyRows =
+          await propertyResponse.json();
+
+
+        property =
+          propertyRows[0] ||
+          null;
+      }
+
+
+      cleanerEmail =
+        cleaning.cleaner_email ||
+        cleanerEmail;
+
+
+      cleanerName =
+        cleaning.cleaner_name ||
+        cleanerName;
+
+
+      propertyName =
+        property?.name ||
+        suppliedPropertyName ||
+        "Down the Shore rental";
+
+
+      guestName =
+        reservation.guest_name ||
+        suppliedGuestName ||
+        "Guest";
+
+
+      checkoutDate =
+        cleaning.checkout_date ||
+        reservation.departure_date ||
+        suppliedCheckoutDate;
+
+
+      confirmationToken =
+        cleaning.confirmation_token ||
+        suppliedConfirmationToken;
     }
 
 
-    if (!cleaning) {
-      return res.status(404).json({
-        error:
-          "No cleaning assignment was found for this reservation"
-      });
-    }
+    /*
+      Direct-data mode.
 
-
-    if (!cleaning.cleaner_email) {
+      This is what the restored
+      owner.js and the Save cleaner
+      button currently send.
+    */
+    if (!cleanerEmail) {
       return res.status(400).json({
         error:
-          "The cleaning assignment does not have a cleaner email"
+          "Missing cleaner email"
       });
     }
 
 
-    if (!cleaning.confirmation_token) {
+    if (!propertyName) {
       return res.status(400).json({
         error:
-          "The cleaning assignment does not have a confirmation token"
+          "Missing property name"
       });
     }
 
 
-    const reservationResponse =
-      await fetch(
-        `${supabaseUrl}/rest/v1/reservations?id=eq.${encodeURIComponent(
-          reservationId
-        )}&select=*&limit=1`,
-        {
-          headers:
-            authHeaders
-        }
-      );
-
-    if (!reservationResponse.ok) {
-      throw new Error(
-        `Could not load reservation: ${await reservationResponse.text()}`
-      );
-    }
-
-    const reservationRows =
-      await reservationResponse.json();
-
-    const reservation =
-      reservationRows[0];
-
-    if (!reservation) {
-      return res.status(404).json({
+    if (!checkoutDate) {
+      return res.status(400).json({
         error:
-          "Reservation could not be found"
+          "Missing checkout date"
       });
     }
 
 
-    const propertyResponse =
-      await fetch(
-        `${supabaseUrl}/rest/v1/properties?id=eq.${encodeURIComponent(
-          reservation.property_id
-        )}&select=id,name&limit=1`,
-        {
-          headers:
-            authHeaders
-        }
-      );
-
-    if (!propertyResponse.ok) {
-      throw new Error(
-        `Could not load property: ${await propertyResponse.text()}`
-      );
+    if (!confirmationToken) {
+      return res.status(400).json({
+        error:
+          "Missing cleaning confirmation token"
+      });
     }
-
-    const propertyRows =
-      await propertyResponse.json();
-
-    const property =
-      propertyRows[0] || null;
-
-
-    const cleanerName =
-      cleaning.cleaner_name ||
-      "Melissa";
-
-    const propertyName =
-      property?.name ||
-      "Down the Shore rental";
-
-    const guestName =
-      reservation.guest_name ||
-      "Guest";
-
-    const checkoutDate =
-      cleaning.checkout_date ||
-      reservation.departure_date;
 
 
     const confirmationUrl =
       `${siteOrigin(
         req
       )}/cleaning-confirm.html?token=${encodeURIComponent(
-        cleaning.confirmation_token
+        confirmationToken
       )}`;
 
 
@@ -282,10 +386,15 @@ export default async function handler(
             ${esc(checkoutDate)}
           </strong>
 
-          <br>
-
-          Guest:
-          ${esc(guestName)}
+          ${
+            guestName
+              ? `
+                <br>
+                Guest:
+                ${esc(guestName)}
+              `
+              : ""
+          }
 
         </div>
 
@@ -343,7 +452,7 @@ export default async function handler(
                 "Down the Shore <bookings@mail.downtheshore.me>",
 
               to: [
-                cleaning.cleaner_email
+                cleanerEmail
               ],
 
               subject,
@@ -354,8 +463,13 @@ export default async function handler(
       );
 
 
-    const emailData =
-      await emailResponse.json();
+    let emailData = {};
+
+
+    try {
+      emailData =
+        await emailResponse.json();
+    } catch (_) {}
 
 
     if (!emailResponse.ok) {
@@ -363,6 +477,7 @@ export default async function handler(
         "Cleaner email Resend error:",
         emailData
       );
+
 
       return res
         .status(
@@ -390,6 +505,7 @@ export default async function handler(
       "cleaning-assigned error:",
       error
     );
+
 
     return res.status(500).json({
       error:
