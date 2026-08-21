@@ -6256,6 +6256,64 @@ pendingReservationList.addEventListener(
             true
           );
         }
+try {
+  const reservation =
+    currentReservations.find(
+      item =>
+        String(item.id) ===
+        String(id)
+    );
+
+  if (
+    reservation &&
+    reservation.agent_email
+  ) {
+    const property =
+      currentProperties.find(
+        item =>
+          String(item.id) ===
+          String(reservation.property_id)
+      );
+
+    const agentResponse =
+      await fetch(
+        "/api/send-email",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body:
+            JSON.stringify({
+              to:
+                reservation.agent_email,
+              subject:
+                `Reservation accepted — ${reservation.guest_name || "Guest"}`,
+              html:
+                `<p>Hi ${reservation.agent_name || "there"},</p>
+                 <p>The reservation for <strong>${reservation.guest_name || "Guest"}</strong> has been accepted.</p>
+                 <p><strong>${property?.name || reservation.property_name || "Down the Shore"}</strong><br>
+                 ${reservation.arrival_date} through ${reservation.departure_date}</p>
+                 <p>The 24-hour payment hold has started.</p>
+                 <p>Thank you,<br>Down the Shore</p>`
+            })
+        }
+      );
+
+    if (!agentResponse.ok) {
+      throw new Error(
+        "Agent email could not be sent."
+      );
+    }
+  }
+} catch (agentError) {
+  console.error(
+    "Agent email error:",
+    agentError
+  );
+}
+        await refresh();
 
 
       }
