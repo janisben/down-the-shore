@@ -472,18 +472,7 @@ async function handleCompletedSession(
     );
   }
 
-  /*
-    Do not advance the lease until the
-    required reservation amount has been paid.
-  */
-
-  if (!paidInFull) {
-    console.log(
-      `Partial Stripe payment received: ${amountPaid}. Total paid: ${totalPaid}.`
-    );
-
-    return;
-  }
+  
 
   /*
     Find lease for reservation.
