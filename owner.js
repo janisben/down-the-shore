@@ -6086,22 +6086,45 @@ reservationList.addEventListener(
 
 
 
-        await addPayment(
-          id,
-          amount,
-          method
-        );
+    await addPayment(
+  id,
+  amount,
+  method
+);
 
+const reservation =
+  currentReservations.find(
+    item =>
+      item.id === id
+  );
 
+if (!reservation) {
+  throw new Error(
+    "Reservation could not be found."
+  );
+}
 
+const existingLease =
+  leaseForReservation(id);
 
-        message(
-          portalMessage,
-          `Payment recorded as ${method.replaceAll("_", " ")}.`
-        );
+let leaseCreated =
+  false;
 
+if (!existingLease) {
+  await createLeaseForReservation(
+    reservation
+  );
 
-      }
+  leaseCreated =
+    true;
+}
+
+message(
+  portalMessage,
+  leaseCreated
+    ? `Payment recorded as ${method.replaceAll("_", " ")}. Lease created and signing email sent to the guest.`
+    : `Payment recorded as ${method.replaceAll("_", " ")}.`
+);
 
 
 
@@ -6470,23 +6493,45 @@ pendingReservationList.addEventListener(
 
 
 
-        await addPayment(
-          id,
-          amount,
-          method
-        );
+     await addPayment(
+  id,
+  amount,
+  method
+);
 
+const reservation =
+  currentReservations.find(
+    item =>
+      item.id === id
+  );
 
+if (!reservation) {
+  throw new Error(
+    "Reservation could not be found."
+  );
+}
 
+const existingLease =
+  leaseForReservation(id);
 
-        message(
-          portalMessage,
-          `Payment recorded as ${method.replaceAll("_", " ")}.`
-        );
+let leaseCreated =
+  false;
 
+if (!existingLease) {
+  await createLeaseForReservation(
+    reservation
+  );
 
-      }
+  leaseCreated =
+    true;
+}
 
+message(
+  portalMessage,
+  leaseCreated
+    ? `Payment recorded as ${method.replaceAll("_", " ")}. Lease created and signing email sent to the guest.`
+    : `Payment recorded as ${method.replaceAll("_", " ")}.`
+);
 
 
 
