@@ -6453,116 +6453,87 @@ pendingReservationList.addEventListener(
 
 
       if (
-        action ===
-        "paid"
-      ) {
+  action ===
+  "paid"
+) {
+  const amount =
+    card
+      .querySelector(
+        "[data-amount]"
+      )
+      .value;
 
+  const method =
+    card
+      .querySelector(
+        "[data-method]"
+      )
+      .value;
 
-        const amount =
-          card
-            .querySelector(
-              "[data-amount]"
-            )
-            .value;
+  try {
+    if (
+      !amount ||
+      Number(amount) <= 0
+    ) {
+      throw new Error(
+        "Enter the payment amount first."
+      );
+    }
 
+    await addPayment(
+      id,
+      amount,
+      method
+    );
 
-
-
-        const method =
-          card
-            .querySelector(
-              "[data-method]"
-            )
-            .value;
-
-
-
-
-        if (
-          !amount ||
-          Number(amount) <= 0
-        ) {
-
-
-          throw new Error(
-            "Enter the payment amount first."
-          );
-
-
-        }
-
-
-
-
-     await addPayment(
-  id,
-  amount,
-  method
-);
-
-const reservation =
-  currentReservations.find(
-    item =>
-      item.id === id
-  );
-
-if (!reservation) {
-  throw new Error(
-    "Reservation could not be found."
-  );
-}
-
-const existingLease =
-  leaseForReservation(id);
-
-let leaseCreated =
-  false;
-
-if (!existingLease) {
-  await createLeaseForReservation(
-    reservation
-  );
-
-  leaseCreated =
-    true;
-}
-
-message(
-  portalMessage,
-  leaseCreated
-    ? `Payment recorded as ${method.replaceAll("_", " ")}. Lease created and signing email sent to the guest.`
-    : `Payment recorded as ${method.replaceAll("_", " ")}.`
-);
-
-
-
-      await refresh();
-
-
-
-
-    } catch (err) {
-
-
-      message(
-        portalMessage,
-        err.message,
-        true
+    const reservation =
+      currentReservations.find(
+        item =>
+          item.id === id
       );
 
-
-
-
-    } finally {
-
-
-      button.disabled =
-        false;
-
-
+    if (!reservation) {
+      throw new Error(
+        "Reservation could not be found."
+      );
     }
+
+    const existingLease =
+      leaseForReservation(id);
+
+    let leaseCreated =
+      false;
+
+    if (!existingLease) {
+      await createLeaseForReservation(
+        reservation
+      );
+
+      leaseCreated =
+        true;
+    }
+
+    message(
+      portalMessage,
+      leaseCreated
+        ? `Payment recorded as ${method.replaceAll("_", " ")}. Lease created and signing email sent to the guest.`
+        : `Payment recorded as ${method.replaceAll("_", " ")}.`
+    );
+
+    await refresh();
+
+  } catch (err) {
+    message(
+      portalMessage,
+      err.message,
+      true
+    );
+
+  } finally {
+    button.disabled =
+      false;
   }
-);
+}
 cleaningList.addEventListener(
   "click",
   async event => {
