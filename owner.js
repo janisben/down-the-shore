@@ -6534,6 +6534,19 @@ pendingReservationList.addEventListener(
       false;
   }
 }
+      
+    } catch (err) {
+      message(
+        portalMessage,
+        err.message,
+        true
+      );
+    } finally {
+      button.disabled = false;
+    }
+  }
+);
+
 cleaningList.addEventListener(
   "click",
   async event => {
