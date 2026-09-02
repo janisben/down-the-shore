@@ -101,8 +101,6 @@ function renderHome() {
         </article>
       `)
       .join("");
-
-  refreshHomeCardPhotos();
 }
 
 function supabaseHeaders(prefer = "") {
@@ -2110,48 +2108,6 @@ async function renderProperty() {
 
   const propertyId =
     propertyRecord.id;
-
-  const managedPhotos =
-    await getPropertyPhotos(
-      propertyId
-    );
-
-  const managedHero =
-    choosePrimaryPhoto(
-      property,
-      managedPhotos
-    );
-
-  if (managedHero) {
-    hero.style.backgroundImage =
-      `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${managedHero}')`;
-  }
-
-  if (managedPhotos.length) {
-    const description =
-      document.querySelector(
-        "[data-property-description]"
-      );
-
-    const existingGallery =
-      document.querySelector(
-        "[data-managed-photo-gallery]"
-      );
-
-    if (existingGallery) {
-      existingGallery.remove();
-    }
-
-    if (description) {
-      description.insertAdjacentHTML(
-        "afterend",
-        propertyGalleryMarkup(
-          property,
-          managedPhotos
-        )
-      );
-    }
-  }
 
   let availability =
     await getAvailability(
