@@ -1,1880 +1,388 @@
-const cfg = window.SITE_DATA.supabase;
+const data = window.SITE_DATA;
 
-
-const ownerPortalFixStyle =
-  document.createElement("style");
-
-ownerPortalFixStyle.textContent = `
-  .payment-summary-grid {
-    display:block !important;
+function propertyImage(property) {
+  if (property.image) {
+    return `
+      <div class="property-image">
+        <img
+          src="${property.image}"
+          alt="${property.name}"
+          style="object-position:${property.imagePosition || "center"}"
+        >
+      </div>
+    `;
   }
 
-  .payment-summary-item {
-    display:flex !important;
-    align-items:center !important;
-    justify-content:space-between !important;
-    gap:18px !important;
-    min-width:0 !important;
-    overflow:visible !important;
-    padding:10px 0 !important;
-    border:0 !important;
-    border-bottom:1px solid var(--line) !important;
-    background:transparent !important;
-  }
+  return `
+    <div class="placeholder-image">
+      ${property.placeholderLabel || "New photography coming soon"}
+    </div>
+  `;
+}
 
-  .payment-summary-item:last-child {
-    border-bottom:0 !important;
-  }
+function renderHome() {
+  const brand = data.brand;
 
-  .payment-summary-label {
-    min-width:0 !important;
-    font-size:15px !important;
-    line-height:1.25 !important;
-  }
+  document.title =
+    `${brand.name} | Ocean City, NJ Vacation Homes`;
 
-  .payment-summary-value {
-    flex:0 0 auto !important;
-    min-width:0 !important;
-    font-size:20px !important;
-    line-height:1.15 !important;
-    white-space:nowrap !important;
-    overflow:visible !important;
-  }
+  document
+    .querySelectorAll("[data-brand]")
+    .forEach(el => {
+      el.textContent = brand.name;
+    });
 
-  .payment-history-row {
-    display:grid !important;
-    grid-template-columns:
-      max-content
-      minmax(70px,1fr)
-      minmax(120px,auto) !important;
-    align-items:center !important;
-    gap:12px !important;
-  }
+  document.querySelector("[data-eyebrow]").textContent =
+    brand.eyebrow;
 
-  .payment-schedule-summary {
-    display:block !important;
-  }
+  document.querySelector("[data-headline]").textContent =
+    brand.headline;
 
-  .payment-schedule-summary .payment-summary-item {
-    width:100% !important;
-    box-sizing:border-box !important;
-  }
+  document.querySelector("[data-intro]").textContent =
+    brand.intro;
 
-  .payment-log-row {
-    grid-template-columns:
-      minmax(0,1fr)
-      minmax(0,1fr)
-      auto !important;
-  }
+  document.querySelector("[data-domain]").textContent =
+    brand.domain;
 
-  .payment-log-row input,
-  .payment-log-row select {
-    width:100% !important;
-    min-width:0 !important;
-    box-sizing:border-box !important;
-  }
+  const contact =
+    document.querySelector("[data-contact]");
 
-  .card.res,
-  .card.res * {
-    min-width:0;
-  }
-
-  .card.res .actions {
-    position:relative;
-    z-index:2;
-  }
-
-  .card.res button[data-action="create_lease"] {
-    pointer-events:auto !important;
-    cursor:pointer !important;
-  }
-
-  @media (max-width:700px) {
-    .payment-history-row {
-      grid-template-columns:1fr !important;
-      gap:4px !important;
-    }
-
-    .payment-log-row {
-      grid-template-columns:1fr !important;
+  if (contact) {
+    if (brand.contactEmail) {
+      contact.href =
+        `mailto:${brand.contactEmail}`;
+    } else {
+      contact.removeAttribute("href");
+      contact.textContent =
+        "Contact Janis";
     }
   }
-`;
 
-document.head.appendChild(
-  ownerPortalFixStyle
-);
+  const grid =
+    document.querySelector("[data-property-grid]");
 
+  grid.innerHTML =
+    data.properties
+      .map(property => `
+        <article class="property-card">
 
+          <a
+            href="property.html?id=${property.id}"
+            aria-label="View ${property.name}"
+          >
+            ${propertyImage(property)}
+          </a>
 
-let token =
-  sessionStorage.getItem("dts_token") || "";
+          <div class="property-copy">
 
+            <div class="property-meta">
+              ${property.location}
+              · ${property.bedrooms} BR
+              · Sleeps ${property.sleeps}
+            </div>
 
-let calendarDate =
-  new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    1
-  );
+            <h3>
+              <a href="property.html?id=${property.id}">
+                ${property.name}
+              </a>
+            </h3>
 
+            <p>${property.tagline}</p>
 
-let currentReservations = [];
-let currentProperties = [];
-let currentCleanings = [];
-let currentRatePeriods = [];
-let currentPayments = [];
-let currentPaymentSchedule = [];
-let currentPropertyPhotos = [];
-let currentLeases = [];
+            <a
+              class="text-link"
+              href="property.html?id=${property.id}"
+            >
+              View home & book
+            </a>
 
+          </div>
 
+        </article>
+      `)
+      .join("");
 
+  refreshHomeCardPhotos();
+}
 
-const loginView =
-  document.getElementById("loginView");
+function supabaseHeaders(prefer = "") {
+  const headers = {
+    apikey: data.supabase.publishableKey,
+    Authorization: `Bearer ${data.supabase.publishableKey}`,
+    "Content-Type": "application/json"
+  };
 
+  if (prefer) {
+    headers.Prefer = prefer;
+  }
 
-const portalView =
-  document.getElementById("portalView");
+  return headers;
+}
 
+async function getPropertyRecord(databaseName) {
+  const url =
+    `${data.supabase.url}/rest/v1/properties` +
+    `?select=id,name,cleaning_fee,pet_fee,max_dogs` +
+    `&name=eq.${encodeURIComponent(databaseName)}` +
+    `&limit=1`;
 
-const loginForm =
-  document.getElementById("loginForm");
+  const response =
+    await fetch(url, {
+      headers: supabaseHeaders()
+    });
 
-
-const loginMessage =
-  document.getElementById("loginMessage");
-
-
-const portalMessage =
-  document.getElementById("portalMessage");
-
-
-const reservationList =
-  document.getElementById("reservationList");
-
-
-const logoutButton =
-  document.getElementById("logoutButton");
-
-
-const manualReservationForm =
-  document.getElementById("manualReservationForm");
-
-
-const manualReservationMessage =
-  document.getElementById("manualReservationMessage");
-
-
-const manualAmountDueInput =
-  manualReservationForm
-    ?.querySelector(
-      '[name="amount_due"]'
+  if (!response.ok) {
+    throw new Error(
+      "Could not load this property."
     );
+  }
 
-if (manualAmountDueInput) {
-  manualAmountDueInput.type =
-    "text";
+  const records =
+    await response.json();
 
-  manualAmountDueInput.inputMode =
-    "decimal";
+  if (!records.length) {
+    throw new Error(
+      `No database property matches "${databaseName}".`
+    );
+  }
 
-  manualAmountDueInput.removeAttribute(
-    "min"
-  );
-
-  manualAmountDueInput.removeAttribute(
-    "step"
-  );
-
-  manualAmountDueInput.setAttribute(
-    "autocomplete",
-    "off"
-  );
+  return records[0];
 }
 
-
-const manualProperty =
-  document.getElementById("manualProperty");
-
-
-const bookingSource =
-  document.getElementById("bookingSource");
-
-
-const brokerageFields =
-  document.getElementById("brokerageFields");
-
-
-const ownerCalendar =
-  document.getElementById("ownerCalendar");
-
-
-const calendarPrev =
-  document.getElementById("calendarPrev");
-
-
-const calendarNext =
-  document.getElementById("calendarNext");
-
-
-const calendarToday =
-  document.getElementById("calendarToday");
-
-
-const cleaningList =
-  document.getElementById("cleaningList");
-
-
-const cleaningMessage =
-  document.getElementById("cleaningMessage");
-
-
-const ratePeriodForm =
-  document.getElementById("ratePeriodForm");
-
-
-const ratePeriodMessage =
-  document.getElementById("ratePeriodMessage");
-
-
-const ratePeriodsList =
-  document.getElementById("ratePeriodsList");
-
-
-const rateProperty =
-  document.getElementById("rateProperty");
-
-
-const rateStayRule =
-  document.getElementById("rateStayRule");
-
-
-const propertySettingsList =
-  document.getElementById("propertySettingsList");
-
-
-const propertySettingsMessage =
-  document.getElementById("propertySettingsMessage");
-
-
-
-
-const dashboardStats =
-  document.getElementById("dashboardStats");
-
-
-const dashboardCalendar =
-  document.getElementById("dashboardCalendar");
-
-
-const dashboardPendingList =
-  document.getElementById("dashboardPendingList");
-
-
-const dashboardUpcoming =
-  document.getElementById("dashboardUpcoming");
-
-
-const pendingReservationList =
-  document.getElementById("pendingReservationList");
-
-
-const sidebarPendingCount =
-  document.getElementById("sidebarPendingCount");
-
-
-const ownerPageTitle =
-  document.getElementById("ownerPageTitle");
-
-
-const ownerPageSubtitle =
-  document.getElementById("ownerPageSubtitle");
-
-
-const photoProperty =
-  document.getElementById("photoProperty");
-
-const photoFiles =
-  document.getElementById("photoFiles");
-
-const uploadPhotosButton =
-  document.getElementById("uploadPhotosButton");
-
-const photoManagerMessage =
-  document.getElementById("photoManagerMessage");
-
-const photoGrid =
-  document.getElementById("photoGrid");
-
-
-
-
-const headers = (extra = {}) => ({
-  apikey: cfg.publishableKey,
-  Authorization: `Bearer ${token}`,
-  "Content-Type": "application/json",
-  ...extra
-});
-
-
-
-
-function message(
-  el,
-  text,
-  isError = false
-) {
-  el.className =
-    isError
-      ? "notice error"
-      : "notice";
-
-
-  el.textContent = text;
-}
-
-
-
-
-async function login(
-  email,
-  password
-) {
-  const res =
+async function getAvailability(propertyId) {
+  const response =
     await fetch(
-      `${cfg.url}/auth/v1/token?grant_type=password`,
+      `${data.supabase.url}/rest/v1/rpc/get_property_availability`,
       {
         method: "POST",
-
-
-        headers: {
-          apikey:
-            cfg.publishableKey,
-
-
-          "Content-Type":
-            "application/json"
-        },
-
-
-        body:
-          JSON.stringify({
-            email,
-            password
-          })
-      }
-    );
-
-
-  const body =
-    await res.json();
-
-
-  if (!res.ok) {
-    throw new Error(
-      body.msg ||
-      "Could not sign in."
-    );
-  }
-
-
-  token =
-    body.access_token;
-
-
-  sessionStorage.setItem(
-    "dts_token",
-    token
-  );
-}
-
-
-
-
-async function fetchTable(
-  table,
-  query = ""
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/${table}${query}`,
-      {
-        headers: headers()
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-
-
-  return res.json();
-}
-
-
-
-
-async function loadProperties() {
-  const properties =
-    await fetchTable(
-      "properties",
-      "?select=id,name,cleaning_fee,pet_fee,max_dogs,lease_defaults&order=name"
-    );
-
-
-  currentProperties =
-    properties;
-
-
-  const propertyOptions =
-    `<option value="">
-      Choose property
-    </option>` +
-
-
-    properties
-      .map(
-        property => `
-          <option value="${property.id}">
-            ${property.name}
-          </option>
-        `
-      )
-      .join("");
-
-
-  manualProperty.innerHTML =
-    propertyOptions;
-
-
-  rateProperty.innerHTML =
-    propertyOptions;
-
-
-  if (photoProperty) {
-    const existing =
-      photoProperty.value;
-
-    photoProperty.innerHTML =
-      propertyOptions;
-
-    if (existing) {
-      photoProperty.value =
-        existing;
-    }
-  }
-
-
-  return properties;
-}
-
-
-
-
-
-
-async function updateProperty(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/properties?id=eq.${id}`,
-      {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify(changes)
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function loadReservations() {
-  const [
-    reservations,
-    properties
-  ] =
-    await Promise.all([
-      fetchTable(
-        "reservations",
-        "?select=*&order=created_at.desc"
-      ),
-
-
-      fetchTable(
-        "properties",
-        "?select=id,name,cleaning_fee,pet_fee,max_dogs,lease_defaults"
-      )
-    ]);
-
-
-  currentProperties =
-    properties;
-
-
-  // Keep every property selector in sync with the latest property list.
-  // This is especially important for the Photos view because refresh()
-  // reloads properties as part of the reservation query.
-  const refreshedPropertyOptions =
-    `<option value="">
-      Choose property
-    </option>` +
-    properties
-      .map(
-        property => `
-          <option value="${property.id}">
-            ${property.name}
-          </option>
-        `
-      )
-      .join("");
-
-  if (photoProperty) {
-    const selectedPhotoProperty =
-      photoProperty.value;
-
-    photoProperty.innerHTML =
-      refreshedPropertyOptions;
-
-    if (selectedPhotoProperty) {
-      photoProperty.value =
-        selectedPhotoProperty;
-    }
-  }
-
-
-  const propertyMap =
-    Object.fromEntries(
-      properties.map(
-        property => [
-          property.id,
-          property.name
-        ]
-      )
-    );
-
-
-  currentReservations =
-    reservations.map(
-      reservation => ({
-        ...reservation,
-
-
-        property_name:
-          propertyMap[
-            reservation.property_id
-          ] ||
-          "Property"
-      })
-    );
-
-
-  return currentReservations;
-}
-
-
-
-
-async function loadCleanings() {
-  const cleanings =
-    await fetchTable(
-      "cleaning_assignments",
-      "?select=*&order=checkout_date.asc"
-    );
-
-
-  const propertyMap =
-    Object.fromEntries(
-      currentProperties.map(
-        property => [
-          property.id,
-          property.name
-        ]
-      )
-    );
-
-
-  const reservationMap =
-    Object.fromEntries(
-      currentReservations.map(
-        reservation => [
-          reservation.id,
-          reservation
-        ]
-      )
-    );
-
-
-  currentCleanings =
-    cleanings.map(
-      cleaning => ({
-        ...cleaning,
-
-
-        property_name:
-          propertyMap[
-            cleaning.property_id
-          ] ||
-          "Property",
-
-
-        reservation:
-          reservationMap[
-            cleaning.reservation_id
-          ] ||
-          null
-      })
-    );
-
-
-  return currentCleanings;
-}
-
-
-
-
-
-
-async function loadRatePeriods() {
-  const periods =
-    await fetchTable(
-      "rate_periods",
-      "?select=*&order=start_date.asc"
-    );
-
-
-  const propertyMap =
-    Object.fromEntries(
-      currentProperties.map(
-        property => [
-          property.id,
-          property.name
-        ]
-      )
-    );
-
-
-  currentRatePeriods =
-    periods.map(
-      period => ({
-        ...period,
-        property_name:
-          propertyMap[
-            period.property_id
-          ] ||
-          "Property"
-      })
-    );
-
-
-  return currentRatePeriods;
-}
-
-
-
-
-
-
-async function loadPropertyPhotos() {
-  currentPropertyPhotos =
-    await fetchTable(
-      "property_photos",
-      "?select=*&order=sort_order.asc,created_at.asc"
-    );
-
-  return currentPropertyPhotos;
-}
-
-
-function photosForProperty(propertyId) {
-  return currentPropertyPhotos
-    .filter(
-      photo =>
-        photo.property_id ===
-          propertyId
-    )
-    .slice()
-    .sort(
-      (a, b) =>
-        Number(a.sort_order || 0) -
-          Number(b.sort_order || 0) ||
-        new Date(a.created_at) -
-          new Date(b.created_at)
-    );
-}
-
-
-function selectedPhotoPropertyId() {
-  return photoProperty
-    ? photoProperty.value
-    : "";
-}
-
-
-function renderPhotoManager() {
-  if (!photoGrid || !photoProperty) {
-    return;
-  }
-
-  const propertyId =
-    selectedPhotoPropertyId();
-
-  if (!propertyId) {
-    photoGrid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1;">
-        Choose a property to manage its photos.
-      </div>
-    `;
-    return;
-  }
-
-  const photos =
-    photosForProperty(propertyId);
-
-  if (!photos.length) {
-    photoGrid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1;">
-        No uploaded photos yet. The website will continue using its current fallback photo until you upload one here.
-      </div>
-    `;
-    return;
-  }
-
-  photoGrid.innerHTML =
-    photos
-      .map(
-        (photo, index) => `
-          <article
-            class="photo-card"
-            data-photo-id="${photo.id}"
-          >
-            <img
-              class="photo-card-image"
-              src="${photo.public_url}"
-              alt="Property photo"
-            >
-
-            <div class="photo-card-body">
-              ${
-                photo.is_primary
-                  ? `<span class="photo-card-primary">MAIN PHOTO</span>`
-                  : ""
-              }
-
-              <div class="meta">
-                Photo ${index + 1} of ${photos.length}
-              </div>
-
-              <div class="photo-card-actions">
-                ${
-                  !photo.is_primary
-                    ? `<button type="button" class="primary" data-photo-action="primary">Make main</button>`
-                    : ""
-                }
-
-                <button
-                  type="button"
-                  data-photo-action="up"
-                  ${index === 0 ? "disabled" : ""}
-                >
-                  ↑ Earlier
-                </button>
-
-                <button
-                  type="button"
-                  data-photo-action="down"
-                  ${index === photos.length - 1 ? "disabled" : ""}
-                >
-                  ↓ Later
-                </button>
-
-                <button
-                  type="button"
-                  class="danger"
-                  data-photo-action="delete"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </article>
-        `
-      )
-      .join("");
-}
-
-
-async function patchPhoto(id, changes) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/property_photos?id=eq.${id}`,
-      {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer: "return=minimal"
-          }),
+        headers: supabaseHeaders(),
         body: JSON.stringify({
-          ...changes,
-          updated_at:
-            new Date().toISOString()
+          p_property_id: propertyId
         })
       }
     );
 
-  if (!res.ok) {
+  if (!response.ok) {
     throw new Error(
-      await res.text()
+      "Availability could not be loaded."
     );
   }
+
+  return response.json();
 }
 
-
-async function insertPhoto(data) {
-  const res =
+async function getRatePeriods(propertyId) {
+  const response =
     await fetch(
-      `${cfg.url}/rest/v1/property_photos`,
+      `${data.supabase.url}/rest/v1/rate_periods` +
+      `?select=*` +
+      `&property_id=eq.${propertyId}` +
+      `&order=start_date.asc`,
       {
-        method: "POST",
-        headers:
-          headers({
-            Prefer: "return=minimal"
-          }),
-        body:
-          JSON.stringify(data)
+        headers: supabaseHeaders()
       }
     );
 
-  if (!res.ok) {
+  if (!response.ok) {
     throw new Error(
-      await res.text()
+      "Rates could not be loaded."
     );
   }
+
+  return response.json();
 }
 
 
-async function removePhotoRow(id) {
-  const res =
+async function getPropertyPhotos(propertyId) {
+  const response =
     await fetch(
-      `${cfg.url}/rest/v1/property_photos?id=eq.${id}`,
+      `${data.supabase.url}/rest/v1/property_photos` +
+      `?select=id,property_id,public_url,caption,sort_order,is_primary,created_at` +
+      `&property_id=eq.${propertyId}` +
+      `&order=is_primary.desc,sort_order.asc,created_at.asc`,
       {
-        method: "DELETE",
-        headers:
-          headers({
-            Prefer: "return=minimal"
-          })
+        headers: supabaseHeaders()
       }
     );
 
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
+  if (!response.ok) {
+    console.warn(
+      "Property photos could not be loaded."
     );
+    return [];
   }
+
+  return response.json();
 }
 
-
-function safePhotoFilename(name) {
-  const ext =
-    (name.split(".").pop() || "jpg")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "") ||
-    "jpg";
-
-  const base =
-    name
-      .replace(/\.[^.]+$/, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") ||
-    "photo";
-
-  return `${base}.${ext}`;
-}
-
-
-async function uploadPhotoFile(
-  propertyId,
-  file,
-  sortOrder,
-  isPrimary
+function choosePrimaryPhoto(
+  property,
+  photos
 ) {
-  const filename =
-    `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safePhotoFilename(file.name)}`;
+  const primary =
+    photos.find(
+      photo => photo.is_primary
+    ) ||
+    photos[0];
 
-  const storagePath =
-    `${propertyId}/${filename}`;
-
-  const upload =
-    await fetch(
-      `${cfg.url}/storage/v1/object/property-photos/${storagePath}`,
-      {
-        method: "POST",
-        headers: {
-          apikey: cfg.publishableKey,
-          Authorization: `Bearer ${token}`,
-          "Content-Type":
-            file.type ||
-            "application/octet-stream",
-          "x-upsert": "false"
-        },
-        body: file
-      }
-    );
-
-  if (!upload.ok) {
-    throw new Error(
-      `Photo upload failed: ${await upload.text()}`
-    );
-  }
-
-  const publicUrl =
-    `${cfg.url}/storage/v1/object/public/property-photos/${storagePath}`;
-
-  await insertPhoto({
-    property_id: propertyId,
-    storage_path: storagePath,
-    public_url: publicUrl,
-    sort_order: sortOrder,
-    is_primary: isPrimary
-  });
-}
-
-
-async function deleteStoredPhoto(photo) {
-  try {
-    await fetch(
-      `${cfg.url}/storage/v1/object/property-photos/${photo.storage_path}`,
-      {
-        method: "DELETE",
-        headers: {
-          apikey: cfg.publishableKey,
-          Authorization: `Bearer ${token}`
-        }
-      }
-    );
-  } catch (_) {}
-
-  await removePhotoRow(photo.id);
-}
-
-
-async function setPrimaryPhoto(photo) {
-  const propertyPhotos =
-    photosForProperty(
-      photo.property_id
-    );
-
-  for (const item of propertyPhotos) {
-    if (
-      item.is_primary &&
-      item.id !== photo.id
-    ) {
-      await patchPhoto(
-        item.id,
-        { is_primary: false }
-      );
-    }
-  }
-
-  await patchPhoto(
-    photo.id,
-    { is_primary: true }
+  return (
+    primary?.public_url ||
+    property.image ||
+    ""
   );
 }
 
+async function loadManagedPhotosForProperty(
+  property
+) {
+  try {
+    const propertyRecord =
+      await getPropertyRecord(
+        property.databaseName
+      );
 
-async function movePhoto(photo, direction) {
-  const photos =
-    photosForProperty(
-      photo.property_id
+    return await getPropertyPhotos(
+      propertyRecord.id
+    );
+  } catch (error) {
+    console.warn(
+      "Managed photos unavailable:",
+      error
+    );
+    return [];
+  }
+}
+
+async function refreshHomeCardPhotos() {
+  const cards =
+    document.querySelectorAll(
+      ".property-card"
     );
 
-  const index =
-    photos.findIndex(
-      item => item.id === photo.id
-    );
-
-  const swapIndex =
-    direction === "up"
-      ? index - 1
-      : index + 1;
-
-  if (
-    index < 0 ||
-    swapIndex < 0 ||
-    swapIndex >= photos.length
-  ) {
+  if (!cards.length) {
     return;
   }
 
-  const other =
-    photos[swapIndex];
+  await Promise.all(
+    data.properties.map(
+      async (property, index) => {
+        const card =
+          cards[index];
 
-  await patchPhoto(
-    photo.id,
-    { sort_order: swapIndex }
-  );
-
-  await patchPhoto(
-    other.id,
-    { sort_order: index }
-  );
-}
-
-
-
-async function loadLeases() {
-  currentLeases =
-    await fetchTable(
-      "leases",
-      "?select=*&order=created_at.desc"
-    );
-
-  return currentLeases;
-}
-
-
-function leaseForReservation(
-  reservationId
-) {
-  return currentLeases.find(
-    lease =>
-      lease.reservation_id ===
-      reservationId
-  ) || null;
-}
-
-
-async function createLeaseForReservation(
-  reservation
-) {
-  const existing =
-    leaseForReservation(
-      reservation.id
-    );
-
-  if (existing) {
-    throw new Error(
-      "A lease already exists for this reservation."
-    );
-  }
-
-  const controller =
-    new AbortController();
-
-  const timeout =
-    setTimeout(
-      () => controller.abort(),
-      15000
-    );
-
-  let response;
-
-  try {
-    response =
-      await fetch(
-        "/api/create-lease",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-            Authorization:
-              `Bearer ${token}`
-          },
-          body:
-            JSON.stringify({
-              reservation_id:
-                reservation.id
-            }),
-          signal:
-            controller.signal
+        if (!card) {
+          return;
         }
-      );
-  } catch (error) {
-    if (
-      error.name ===
-      "AbortError"
-    ) {
-      throw new Error(
-        "The lease request timed out. The server did not respond."
-      );
-    }
 
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
+        const image =
+          card.querySelector(
+            ".property-image img"
+          );
 
-  let body = {};
+        if (!image) {
+          return;
+        }
 
-  try {
-    body =
-      await response.json();
-  } catch (_) {}
+        const photos =
+          await loadManagedPhotosForProperty(
+            property
+          );
 
-  if (!response.ok) {
-    throw new Error(
-      body.error ||
-      body.message ||
-      `Lease server error (${response.status}).`
-    );
-  }
+        const photoUrl =
+          choosePrimaryPhoto(
+            property,
+            photos
+          );
 
-  return body;
-}
-
-
-async function prepareOwnerLeaseSignature(
-  reservation,
-  lease
-) {
-  if (!reservation || !lease) {
-    throw new Error(
-      "Reservation or lease could not be found."
-    );
-  }
-
-  const response =
-    await fetch(
-      "/api/owner-lease-ready",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-          Authorization:
-            `Bearer ${token}`
-        },
-        body:
-          JSON.stringify({
-            reservation_id:
-              reservation.id,
-            lease_id:
-              lease.id
-          })
+        if (photoUrl) {
+          image.src = photoUrl;
+        }
       }
-    );
-
-  let body = {};
-
-  try {
-    body =
-      await response.json();
-  } catch (_) {}
-
-  if (!response.ok) {
-    throw new Error(
-      body.error ||
-      body.message ||
-      `Owner signing error (${response.status}).`
-    );
-  }
-
-  return body;
-}
-
-
-async function loadPayments() {
-  currentPayments =
-    await fetchTable(
-      "payments",
-      "?select=*&order=received_at.asc"
-    );
-
-
-  return currentPayments;
-}
-
-
-
-
-async function loadPaymentSchedule() {
-  currentPaymentSchedule =
-    await fetchTable(
-      "payment_schedule",
-      "?select=*&order=due_date.asc"
-    );
-
-
-  return currentPaymentSchedule;
-}
-
-
-
-
-async function createPaymentScheduleItem(
-  data
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payment_schedule`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify(data)
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function updatePaymentScheduleItem(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payment_schedule?id=eq.${id}`,
-      {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify({
-            ...changes,
-            updated_at:
-              new Date().toISOString()
-          })
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function deletePaymentScheduleItem(
-  id
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payment_schedule?id=eq.${id}`,
-      {
-        method: "DELETE",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          })
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-function wholeDollarRate(value) {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const amount = Number(value);
-
-  if (!Number.isFinite(amount) || amount < 0) {
-    throw new Error("Enter a valid whole-dollar rental rate.");
-  }
-
-  return Math.round(amount);
-}
-
-
-
-async function createRatePeriod(
-  data
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/rate_periods`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify(data)
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function updateRatePeriod(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/rate_periods?id=eq.${id}`,
-      {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify({
-            ...changes,
-            updated_at:
-              new Date().toISOString()
-          })
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function deleteRatePeriod(
-  id
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/rate_periods?id=eq.${id}`,
-      {
-        method: "DELETE",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          })
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function updateReservation(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/reservations?id=eq.${id}`,
-      {
-        method: "PATCH",
-
-
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-
-
-        body:
-          JSON.stringify(changes)
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function createReservation(
-  data
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/reservations`,
-      {
-        method: "POST",
-
-
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-
-
-        body:
-          JSON.stringify(data)
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-async function updateCleaning(
-  id,
-  changes
-) {
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/cleaning_assignments?id=eq.${id}`,
-      {
-        method: "PATCH",
-
-
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-
-
-        body:
-          JSON.stringify({
-            ...changes,
-            updated_at:
-              new Date().toISOString()
-          })
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-}
-
-
-
-
-
-
-
-async function sendCleaningAssignmentEmailForReservation(
-  reservationId
-) {
-  const reservation =
-    currentReservations.find(
-      item =>
-        String(item.id) ===
-        String(reservationId)
-    );
-
-  if (!reservation) {
-    throw new Error(
-      "Reservation could not be found for the cleaning email."
-    );
-  }
-
-  let cleaning = null;
-
-  for (
-    let attempt = 0;
-    attempt < 10;
-    attempt++
-  ) {
-    const cleanings =
-      await fetchTable(
-        "cleaning_assignments",
-        `?reservation_id=eq.${encodeURIComponent(
-          reservationId
-        )}&select=*&limit=1`
-      );
-
-    cleaning =
-      cleanings[0] || null;
-
-    if (
-      cleaning &&
-      cleaning.cleaner_email &&
-      cleaning.confirmation_token
-    ) {
-      break;
-    }
-
-    await new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          500
-        )
-    );
-  }
-
-  if (!cleaning) {
-    throw new Error(
-      "No cleaning assignment was found for this reservation."
-    );
-  }
-
-  if (!cleaning.cleaner_email) {
-    throw new Error(
-      "The cleaning assignment does not have a cleaner email."
-    );
-  }
-
-  if (!cleaning.confirmation_token) {
-    throw new Error(
-      "The cleaning assignment does not have a confirmation token."
-    );
-  }
-
-  const property =
-    currentProperties.find(
-      item =>
-        String(item.id) ===
-        String(reservation.property_id)
-    );
-
-  const response =
-    await fetch(
-      "/api/cleaning-assigned",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body:
-          JSON.stringify({
-            to:
-              cleaning.cleaner_email,
-
-            cleanerName:
-              cleaning.cleaner_name ||
-              "Melissa",
-
-            propertyName:
-              property?.name ||
-              reservation.property_name ||
-              "Down the Shore rental",
-
-            guestName:
-              reservation.guest_name ||
-              "Guest",
-
-            checkoutDate:
-              cleaning.checkout_date ||
-              reservation.departure_date,
-
-            confirmationToken:
-              cleaning.confirmation_token
-          })
-      }
-    );
-
-  let body = {};
-
-  try {
-    body =
-      await response.json();
-  } catch (_) {}
-
-  if (!response.ok) {
-    throw new Error(
-      body.error ||
-      "The cleaner confirmation email could not be sent."
-    );
-  }
-
-  return body;
-}
-
-
-async function addPayment(
-  id,
-  amount,
-  method
-) {
-  const now =
-    new Date().toISOString();
-
-
-  const reservation =
-    currentReservations.find(
-      item => item.id === id
-    );
-
-
-  if (!reservation) {
-    throw new Error(
-      "Reservation not found."
-    );
-  }
-
-
-  const numericAmount =
-    Number(amount);
-
-
-  const alreadyPaid =
-    paymentsForReservation(id)
-      .reduce(
-        (
-          total,
-          payment
-        ) =>
-          total +
-          Number(
-            payment.amount ||
-            0
-          ),
-        0
-      );
-
-
-  const totalDue =
-    Number(
-      reservation.amount_due ||
-      0
-    );
-
-
-  const balanceBefore =
-    Math.max(
-      0,
-      totalDue -
-      alreadyPaid
-    );
-
-
-  if (
-    numericAmount >
-    balanceBefore &&
-    balanceBefore > 0
-  ) {
-    throw new Error(
-      `That payment is larger than the remaining balance of ${formatMoney(balanceBefore)}.`
-    );
-  }
-
-
-  const res =
-    await fetch(
-      `${cfg.url}/rest/v1/payments`,
-      {
-        method: "POST",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
-        body:
-          JSON.stringify({
-            reservation_id:
-              id,
-            amount:
-              numericAmount,
-            payment_method:
-              method,
-            received_at:
-              now
-          })
-      }
-    );
-
-
-  if (!res.ok) {
-    throw new Error(
-      await res.text()
-    );
-  }
-
-
-  const paidAfter =
-    alreadyPaid +
-    numericAmount;
-
-
-  const balanceAfter =
-    Math.max(
-      0,
-      totalDue -
-      paidAfter
-    );
-
-
-  await updateReservation(
-    id,
-    {
-      payment_status:
-        balanceAfter <= 0
-          ? "paid"
-          : "partial",
-      payment_method:
-        method,
-      amount_received:
-        paidAfter,
-      payment_received_at:
-        now,
-      hold_expires_at:
-        paidAfter > 0
-          ? null
-          : reservation.hold_expires_at,
-      status:
-        paidAfter > 0
-          ? "booked"
-          : reservation.status
-    }
-  );
-
-  const lease =
-    leaseForReservation(id);
-
-  if (
-    paidAfter > 0 &&
-    lease &&
-    (
-      lease.status ===
-        "awaiting_payment" ||
-      lease.status ===
-        "awaiting_owner_signature"
     )
-  ) {
-    try {
-      await prepareOwnerLeaseSignature(
-        reservation,
-        lease
-      );
-    } catch (error) {
-      console.warn(
-        "Owner signature notification could not be prepared:",
-        error
-      );
-    }
-  }
-}
-
-
-
-
-function formatDate(value) {
-  if (!value) {
-    return "";
-  }
-
-
-  return new Date(
-    `${value}T12:00:00`
-  ).toLocaleDateString(
-    "en-US",
-    {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    }
   );
 }
 
-
-
-
-function formatMoney(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
+function propertyGalleryMarkup(
+  property,
+  photos
+) {
+  if (!photos.length) {
     return "";
   }
 
-
-  return Number(
-    value
-  ).toLocaleString(
-    "en-US",
-    {
-      style:
-        "currency",
-
-
-      currency:
-        "USD"
-    }
-  );
+  return `
+    <section
+      class="managed-photo-gallery"
+      data-managed-photo-gallery
+      aria-label="${property.name} photos"
+      style="margin-top:28px;"
+    >
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+          gap:12px;
+        "
+      >
+        ${photos.map(
+          (photo, index) => `
+            <figure
+              style="
+                margin:0;
+                overflow:hidden;
+                background:#f5f1e8;
+                border-radius:4px;
+              "
+            >
+              <img
+                src="${photo.public_url}"
+                alt="${photo.caption || `${property.name} photo ${index + 1}`}"
+                loading="${index < 3 ? "eager" : "lazy"}"
+                style="
+                  display:block;
+                  width:100%;
+                  aspect-ratio:4 / 3;
+                  object-fit:cover;
+                "
+              >
+              ${
+                photo.caption
+                  ? `
+                    <figcaption
+                      style="
+                        padding:9px 10px;
+                        font-size:13px;
+                        color:#716f68;
+                      "
+                    >
+                      ${photo.caption}
+                    </figcaption>
+                  `
+                  : ""
+              }
+            </figure>
+          `
+        ).join("")}
+      </div>
+    </section>
+  `;
 }
 
+function isoDate(date) {
+  const year =
+    date.getFullYear();
 
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
 
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 function parseDate(value) {
   return new Date(
@@ -1882,8 +390,32 @@ function parseDate(value) {
   );
 }
 
+function addDays(date, number) {
+  const copy =
+    new Date(date);
 
+  copy.setDate(
+    copy.getDate() + number
+  );
 
+  return copy;
+}
+
+function nightsBetween(
+  arrival,
+  departure
+) {
+  const millisecondsPerDay =
+    24 * 60 * 60 * 1000;
+
+  return Math.round(
+    (
+      parseDate(departure) -
+      parseDate(arrival)
+    ) /
+    millisecondsPerDay
+  );
+}
 
 function isSaturday(value) {
   return (
@@ -1891,173 +423,46 @@ function isSaturday(value) {
   );
 }
 
-
-
-
-function nightsBetween(
-  startDate,
-  endDate
-) {
-  const millisecondsPerDay =
-    24 * 60 * 60 * 1000;
-
-
-  return Math.round(
-    (
-      parseDate(endDate) -
-      parseDate(startDate)
-    ) /
-    millisecondsPerDay
+function formatMoney(value) {
+  return Number(
+    value || 0
+  ).toLocaleString(
+    "en-US",
+    {
+      style: "currency",
+      currency: "USD"
+    }
   );
 }
 
-
-
-
-function validateRateDates(
-  stayRule,
-  startDate,
-  endDate
-) {
-  if (
-    !startDate ||
-    !endDate ||
-    parseDate(endDate) <=
-      parseDate(startDate)
-  ) {
-    throw new Error(
-      "End date must be after start date."
+function formatShortDate(value) {
+  return parseDate(value)
+    .toLocaleDateString(
+      "en-US",
+      {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      }
     );
-  }
-
-
-  if (
-    stayRule ===
-    "weekly"
-  ) {
-    if (
-      !isSaturday(startDate) ||
-      !isSaturday(endDate)
-    ) {
-      throw new Error(
-        "Weekly-only periods must run Saturday to Saturday."
-      );
-    }
-
-
-    if (
-      nightsBetween(
-        startDate,
-        endDate
-      ) !== 7
-    ) {
-      throw new Error(
-        "Weekly-only periods must be exactly 7 nights."
-      );
-    }
-  }
 }
 
-
-
-
-function isoDate(date) {
-  const year =
-    date.getFullYear();
-
-
-  const month =
-    String(
-      date.getMonth() + 1
-    ).padStart(2, "0");
-
-
-  const day =
-    String(
-      date.getDate()
-    ).padStart(2, "0");
-
-
-  return `${year}-${month}-${day}`;
-}
-
-
-
-
-function reservationCalendarStatus(
+function dateInsideReservation(
+  dateString,
   reservation
 ) {
-  if (
-    reservation.status ===
-    "pending_payment"
-  ) {
-    if (
-      reservation.hold_expires_at &&
-      new Date(
-        reservation.hold_expires_at
-      ) <= new Date()
-    ) {
-      return null;
-    }
+  const date =
+    parseDate(dateString);
 
-
-    return "pending_payment";
-  }
-
-
-  if (
-    reservation.status ===
-    "pending" ||
-    reservation.status ===
-    "requested"
-  ) {
-    return "pending";
-  }
-
-
-  if (
-    reservation.status ===
-    "booked"
-  ) {
-    return "booked";
-  }
-
-
-  if (
-    reservation.status ===
-    "waitlisted"
-  ) {
-    return "waitlisted";
-  }
-
-
-  return null;
-}
-
-
-
-
-function reservationTouchesDate(
-  reservation,
-  dateString
-) {
   const arrival =
     parseDate(
       reservation.arrival_date
     );
 
-
   const departure =
     parseDate(
       reservation.departure_date
     );
-
-
-  const date =
-    parseDate(
-      dateString
-    );
-
 
   return (
     date >= arrival &&
@@ -2065,206 +470,1281 @@ function reservationTouchesDate(
   );
 }
 
-
-
-
-function calendarItemsForDay(
-  propertyId,
-  dateString
+function statusForDate(
+  dateString,
+  availability
 ) {
-  return currentReservations
-    .filter(
-      reservation =>
-        reservation.property_id ===
-          propertyId &&
-
-
-        reservationCalendarStatus(
-          reservation
-        ) &&
-
-
-        reservationTouchesDate(
-          reservation,
-          dateString
-        )
-    )
-    .map(
-            reservation => ({
-        reservation,
-
-
-        status:
-          reservationCalendarStatus(
-            reservation
-          )
-      })
+  const matching =
+    availability.find(item =>
+      dateInsideReservation(
+        dateString,
+        item
+      )
     );
+
+  if (!matching) {
+    return "available";
+  }
+
+  return (
+    matching.availability_status ||
+    "available"
+  );
 }
 
-
-
-
-function cleanerIsConfirmed(
-  reservation
+function rangeContainsStatus(
+  arrival,
+  departure,
+  availability,
+  wantedStatus
 ) {
-  return currentCleanings.some(
-    cleaning =>
-      cleaning.reservation_id ===
-        reservation.id &&
+  let current =
+    parseDate(arrival);
 
+  const end =
+    parseDate(departure);
 
-      (
-        cleaning.status ===
-          "confirmed" ||
-        cleaning.status ===
-          "completed"
+  while (current < end) {
+    const status =
+      statusForDate(
+        isoDate(current),
+        availability
+      );
+
+    if (status === wantedStatus) {
+      return true;
+    }
+
+    current =
+      addDays(current, 1);
+  }
+
+  return false;
+}
+
+function dateInsideRatePeriod(
+  dateString,
+  period
+) {
+  const date =
+    parseDate(dateString);
+
+  const start =
+    parseDate(period.start_date);
+
+  const end =
+    parseDate(period.end_date);
+
+  return (
+    date >= start &&
+    date < end
+  );
+}
+
+function ratePeriodsForDate(
+  dateString,
+  ratePeriods
+) {
+  return ratePeriods.filter(
+    period =>
+      dateInsideRatePeriod(
+        dateString,
+        period
       )
   );
 }
 
-
-
-
-function calendarItemLabel(
-  reservation,
-  status
+function nonBlockedRateForDate(
+  dateString,
+  ratePeriods
 ) {
-  const name =
-    reservation.guest_name ||
-    "Guest";
-
-
-  if (
-    status ===
-    "pending_payment"
-  ) {
-    return `${name} · hold`;
-  }
-
-
-  if (
-    status ===
-    "waitlisted"
-  ) {
-    return `${name} · waitlist`;
-  }
-
-
-  if (
-    status ===
-    "pending"
-  ) {
-    return `${name} · request`;
-  }
-
-
-  if (
-    status ===
-      "booked" &&
-    cleanerIsConfirmed(
-      reservation
-    )
-  ) {
-    return `${name} 🧹`;
-  }
-
-
-  return name;
-}
-
-
-
-
-
-
-function paymentDueItemsForDay(
-  propertyId,
-  dateString
-) {
-  const reservationMap =
-    Object.fromEntries(
-      currentReservations.map(
-        reservation => [
-          reservation.id,
-          reservation
-        ]
-      )
+  const periods =
+    ratePeriodsForDate(
+      dateString,
+      ratePeriods
     );
 
+  if (
+    periods.some(
+      period => period.blocked
+    )
+  ) {
+    return null;
+  }
 
-  return currentPaymentSchedule
-    .filter(
-      item => {
-        const reservation =
-          reservationMap[
-            item.reservation_id
-          ];
+  return (
+    periods.find(
+      period => !period.blocked
+    ) ||
+    null
+  );
+}
 
+function rateStatusForDate(
+  dateString,
+  ratePeriods
+) {
+  const periods =
+    ratePeriodsForDate(
+      dateString,
+      ratePeriods
+    );
 
-        if (
-          !reservation ||
-          reservation.property_id !==
-            propertyId ||
-          !activeReservation(
-            reservation
-          ) ||
-          item.due_date !==
-            dateString
-        ) {
+  if (!periods.length) {
+    return "unpriced";
+  }
+
+  if (
+    periods.some(
+      period => period.blocked
+    )
+  ) {
+    return "blocked";
+  }
+
+  return "priced";
+}
+
+function ratePeriodForStay(
+  arrival,
+  departure,
+  ratePeriods
+) {
+  const matching =
+    ratePeriods.filter(
+      period => {
+        if (period.blocked) {
           return false;
         }
 
-
-        const allocation =
-          scheduleAllocations(
-            reservation
-          ).find(
-            scheduled =>
-              scheduled.id ===
-              item.id
-          );
-
-
         return (
-          allocation &&
-          allocation.remaining > 0
+          parseDate(arrival) >=
+            parseDate(period.start_date) &&
+          parseDate(departure) <=
+            parseDate(period.end_date)
         );
       }
+    );
+
+  if (!matching.length) {
+    return null;
+  }
+
+  matching.sort(
+    (a, b) =>
+      nightsBetween(
+        a.start_date,
+        a.end_date
+      ) -
+      nightsBetween(
+        b.start_date,
+        b.end_date
+      )
+  );
+
+  return matching[0];
+}
+
+function stayTouchesBlockedRate(
+  arrival,
+  departure,
+  ratePeriods
+) {
+  let current =
+    parseDate(arrival);
+
+  const end =
+    parseDate(departure);
+
+  while (current < end) {
+    const dateString =
+      isoDate(current);
+
+    const periods =
+      ratePeriodsForDate(
+        dateString,
+        ratePeriods
+      );
+
+    if (
+      periods.some(
+        period => period.blocked
+      )
+    ) {
+      return true;
+    }
+
+    current =
+      addDays(current, 1);
+  }
+
+  return false;
+}
+
+function stayTouchesUnpricedDate(
+  arrival,
+  departure,
+  ratePeriods
+) {
+  let current =
+    parseDate(arrival);
+
+  const end =
+    parseDate(departure);
+
+  while (current < end) {
+    const dateString =
+      isoDate(current);
+
+    const period =
+      nonBlockedRateForDate(
+        dateString,
+        ratePeriods
+      );
+
+    if (!period) {
+      return true;
+    }
+
+    current =
+      addDays(current, 1);
+  }
+
+  return false;
+}
+
+function validateStayAgainstRate(
+  arrival,
+  departure,
+  ratePeriods
+) {
+  if (!arrival || !departure) {
+    throw new Error(
+      "Choose your arrival and departure dates."
+    );
+  }
+
+  if (
+    parseDate(departure) <=
+    parseDate(arrival)
+  ) {
+    throw new Error(
+      "Departure must be after arrival."
+    );
+  }
+
+  if (
+    stayTouchesBlockedRate(
+      arrival,
+      departure,
+      ratePeriods
     )
-    .map(
-      item => ({
-        schedule:
-          item,
-        reservation:
-          reservationMap[
-            item.reservation_id
-          ]
-      })
+  ) {
+    throw new Error(
+      "Part of that stay is not available."
+    );
+  }
+
+  if (
+    stayTouchesUnpricedDate(
+      arrival,
+      departure,
+      ratePeriods
+    )
+  ) {
+    throw new Error(
+      "Those dates are not currently open for online booking."
+    );
+  }
+
+  const period =
+    ratePeriodForStay(
+      arrival,
+      departure,
+      ratePeriods
+    );
+
+  if (!period) {
+    throw new Error(
+      "Those dates do not fit one currently published rate period."
+    );
+  }
+
+  const nights =
+    nightsBetween(
+      arrival,
+      departure
+    );
+
+  if (
+    period.stay_rule ===
+    "weekly"
+  ) {
+    if (
+      !isSaturday(arrival) ||
+      !isSaturday(departure) ||
+      nights !== 7 ||
+      arrival !== period.start_date ||
+      departure !== period.end_date
+    ) {
+      throw new Error(
+        "This period is available Saturday to Saturday only."
+      );
+    }
+
+    if (
+      period.weekly_price ===
+        null ||
+      period.weekly_price ===
+        undefined
+    ) {
+      throw new Error(
+        "This week does not have a published price yet."
+      );
+    }
+  }
+
+  if (
+    period.stay_rule ===
+    "flexible"
+  ) {
+    if (
+      nights <
+      Number(
+        period.minimum_nights ||
+        1
+      )
+    ) {
+      throw new Error(
+        `This period requires at least ${period.minimum_nights || 1} nights.`
+      );
+    }
+
+    if (
+      period.nightly_price ===
+        null ||
+      period.nightly_price ===
+        undefined
+    ) {
+      throw new Error(
+        "This flexible period does not have a nightly price yet."
+      );
+    }
+  }
+
+  return period;
+}
+
+function calculateQuote(
+  propertyRecord,
+  period,
+  arrival,
+  departure,
+  dogs
+) {
+  const dogCount =
+    Number(dogs || 0);
+
+  const maxDogs =
+    Number(
+      propertyRecord.max_dogs ||
+      0
+    );
+
+  if (
+    dogCount >
+    maxDogs
+  ) {
+    throw new Error(
+      `This property allows a maximum of ${maxDogs} dog${maxDogs === 1 ? "" : "s"}.`
+    );
+  }
+
+  const nights =
+    nightsBetween(
+      arrival,
+      departure
+    );
+
+  let rental = 0;
+
+  if (
+    period.stay_rule ===
+    "weekly"
+  ) {
+    rental =
+      Number(
+        period.weekly_price
+      );
+  } else {
+    rental =
+      Number(
+        period.nightly_price
+      ) *
+      nights;
+  }
+
+  const cleaning =
+    Number(
+      propertyRecord.cleaning_fee ||
+      0
+    );
+
+  const petFee =
+    Number(
+      propertyRecord.pet_fee ||
+      0
+    ) *
+    dogCount;
+
+  const total =
+    rental +
+    cleaning +
+    petFee;
+
+  return {
+    rental,
+    cleaning,
+    petFee,
+    dogs: dogCount,
+    nights,
+    total
+  };
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+async function sendBookingEmail({
+  to,
+  guestPhone,
+  propertyName,
+  guestName,
+  arrival,
+  departure,
+  total,
+  isWaitlist,
+  reservationId
+}) {
+  const guestSubject =
+    isWaitlist
+      ? `Waitlist request received — ${propertyName}`
+      : `Booking request received — ${propertyName}`;
+
+  const statusCopy =
+    isWaitlist
+      ? "These dates currently have a pending hold. Your request has been added to the waitlist."
+      : "Your dates have been received and are pending owner approval.";
+
+  const guestHtml = `
+    <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#24231f;max-width:640px;margin:0 auto;">
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;">
+        Down the Shore
+      </h1>
+
+      <p>
+        Hi ${escapeHtml(guestName)},
+      </p>
+
+      <p>
+        ${statusCopy}
+      </p>
+
+      <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
+        <p style="margin:0 0 8px;">
+          <strong>
+            ${escapeHtml(propertyName)}
+          </strong>
+        </p>
+
+        <p style="margin:0 0 8px;">
+          ${escapeHtml(formatShortDate(arrival))}
+          –
+          ${escapeHtml(formatShortDate(departure))}
+        </p>
+
+        <p style="margin:0;">
+          <strong>
+            Stay total:
+            ${escapeHtml(formatMoney(total))}
+          </strong>
+        </p>
+      </div>
+
+      <p>
+        No payment has been collected yet.
+        Janis will review the request and,
+        if accepted, will send the lease
+        and payment instructions.
+      </p>
+
+      <p>
+        Thank you,<br>
+        Janis<br>
+        Down the Shore
+      </p>
+
+      <p style="font-size:12px;color:#716f68;margin-top:28px;">
+        Owner is a New Jersey licensed
+        real estate broker.
+      </p>
+    </div>
+  `;
+
+  const guestResponse =
+    await fetch(
+      "/api/send-email",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            to,
+            subject:
+              guestSubject,
+            html:
+              guestHtml
+          })
+      }
+    );
+
+  let guestDetails = null;
+
+  try {
+    guestDetails =
+      await guestResponse.json();
+  } catch (_) {}
+
+  if (!guestResponse.ok) {
+    console.error(
+      "Guest booking email failed:",
+      guestDetails ||
+      guestResponse.statusText
+    );
+  }
+
+
+  /*
+    OWNER NOTIFICATION
+  */
+
+  const ownerEmail =
+    "janisbenstock@gmail.com";
+
+  const ownerSubject =
+  isWaitlist
+    ? `WAITLIST REQUEST — ${propertyName}`
+    : `NEW BOOKING REQUEST — ${propertyName}`;
+
+const reviewUrl =
+  `${window.location.origin}/owner.html?section=pending&reservation=${encodeURIComponent(
+    reservationId
+  )}`;
+
+const ownerHtml = `
+  <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#24231f;max-width:640px;margin:0 auto;">
+
+    <h1 style="font-family:Georgia,'Times New Roman',serif;font-weight:400;">
+      New ${
+        isWaitlist
+          ? "waitlist"
+          : "booking"
+      } request
+    </h1>
+
+    <div style="background:#f5f1e8;padding:18px;margin:22px 0;">
+
+      <p style="margin:0 0 10px;">
+        <strong>
+          ${escapeHtml(propertyName)}
+        </strong>
+      </p>
+
+      <p style="margin:0 0 8px;">
+        ${escapeHtml(formatShortDate(arrival))}
+        –
+        ${escapeHtml(formatShortDate(departure))}
+      </p>
+
+      <p style="margin:0 0 8px;">
+        Guest:
+        <strong>
+          ${escapeHtml(guestName)}
+        </strong>
+      </p>
+
+      <p style="margin:0 0 8px;">
+        Email:
+        ${escapeHtml(to)}
+      </p>
+
+      ${
+        guestPhone
+          ? `
+            <p style="margin:0 0 8px;">
+              Phone:
+              ${escapeHtml(guestPhone)}
+            </p>
+          `
+          : ""
+      }
+
+      <p style="margin:0;">
+        Stay total:
+        <strong>
+          ${escapeHtml(formatMoney(total))}
+        </strong>
+      </p>
+
+    </div>
+
+    <p>
+      ${
+        isWaitlist
+          ? "This request was added to the waitlist."
+          : "This reservation is waiting for your approval in the Owner Portal."
+      }
+    </p>
+
+    <p style="margin:26px 0;">
+      <a
+        href="${escapeHtml(reviewUrl)}"
+        style="
+          display:inline-block;
+          background:#15385f;
+          color:#ffffff;
+          text-decoration:none;
+          padding:13px 20px;
+          border-radius:4px;
+          font-weight:bold;
+        "
+      >
+        Review reservation
+      </a>
+    </p>
+
+    <p>
+      Down the Shore
+    </p>
+
+  </div>
+`;
+  try {
+    const ownerResponse =
+      await fetch(
+        "/api/send-email",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              to:
+                ownerEmail,
+
+              subject:
+                ownerSubject,
+
+              html:
+                ownerHtml
+            })
+        }
+      );
+
+    let ownerDetails = null;
+
+    try {
+      ownerDetails =
+        await ownerResponse.json();
+    } catch (_) {}
+
+    if (!ownerResponse.ok) {
+      console.error(
+        "Owner booking notification failed:",
+        ownerDetails ||
+        ownerResponse.statusText
+      );
+    }
+
+  } catch (ownerEmailError) {
+    console.error(
+      "Owner booking notification error:",
+      ownerEmailError
+    );
+  }
+
+
+  return {
+    sent:
+      guestResponse.ok,
+
+    details:
+      guestDetails
+  };
+}
+
+async function submitReservation(
+  property,
+  propertyRecord,
+  formData,
+  availability,
+  ratePeriods
+) {
+  const arrival =
+    formData.get("arrival");
+
+  const departure =
+    formData.get("departure");
+
+  if (
+    rangeContainsStatus(
+      arrival,
+      departure,
+      availability,
+      "booked"
+    )
+  ) {
+    throw new Error(
+      "Part of that stay is already booked. Please choose different dates."
+    );
+  }
+
+  const period =
+    validateStayAgainstRate(
+      arrival,
+      departure,
+      ratePeriods
+    );
+
+  const dogs =
+    Number(
+      formData.get("dogs") ||
+      0
+    );
+
+  const quote =
+    calculateQuote(
+      propertyRecord,
+      period,
+      arrival,
+      departure,
+      dogs
+    );
+
+  const isWaitlist =
+    rangeContainsStatus(
+      arrival,
+      departure,
+      availability,
+      "pending"
+    );
+
+  const payload = {
+    property_id:
+      propertyRecord.id,
+
+    guest_name:
+      formData
+        .get("name")
+        .trim(),
+
+    guest_email:
+      formData
+        .get("email")
+        .trim(),
+
+    guest_phone:
+      formData
+        .get("phone")
+        .trim() || null,
+
+    arrival_date:
+      arrival,
+
+    departure_date:
+      departure,
+
+    adults:
+      Number(
+        formData.get("guests")
+      ),
+
+    children:
+      0,
+
+    dogs,
+
+    dog_names:
+      formData
+        .get("dog_names")
+        .trim() || null,
+
+    amount_due:
+      quote.total,
+
+    payment_status:
+      "waiting",
+
+    booking_source:
+      "direct_website",
+
+    status:
+      isWaitlist
+        ? "waitlisted"
+        : "pending"
+  };
+
+  const reservationId =
+  crypto.randomUUID();
+
+payload.id =
+  reservationId;
+
+const response =
+  await fetch(
+    `${data.supabase.url}/rest/v1/reservations`,
+    {
+      method: "POST",
+
+      headers:
+        supabaseHeaders(
+          "return=minimal"
+        ),
+
+      body:
+        JSON.stringify(payload)
+    }
+  );
+
+if (!response.ok) {
+  const details =
+    await response.text();
+
+  throw new Error(
+    `The request could not be saved. ${details}`
+  );
+}
+
+const emailResult =
+  await sendBookingEmail({
+    to:
+      payload.guest_email,
+
+    guestPhone:
+      payload.guest_phone,
+
+    propertyName:
+      property.name,
+
+    guestName:
+      payload.guest_name,
+
+    arrival,
+    departure,
+
+    total:
+      quote.total,
+
+    isWaitlist,
+
+    reservationId:
+      reservationId
+  });
+
+  return {
+    isWaitlist,
+    quote,
+    period,
+    emailSent: emailResult.sent
+  };
+}
+
+function injectCalendarStyles() {
+  if (document.getElementById("dts-flexible-rate-styles")) {
+    return;
+  }
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "dts-flexible-rate-styles";
+
+  style.textContent = `
+    .calendar-day .flexible-price {
+      display:block;
+      margin-top:3px;
+      font-size:9px;
+      line-height:1.1;
+      font-weight:700;
+      color:#0d2b4d;
+      white-space:nowrap;
+    }
+
+    .flexible-rate-details {
+      margin:14px 0 0;
+      padding:12px 14px;
+      border:1px solid #e0ddd7;
+      background:#fffdf8;
+    }
+
+    .flexible-rate-details-title {
+      margin:0 0 8px;
+      font-weight:700;
+      color:#172334;
+    }
+
+    .flexible-rate-detail {
+      padding:7px 0;
+      border-top:1px solid #ece7df;
+      font-size:13px;
+      line-height:1.4;
+      color:#4f5966;
+    }
+
+    .flexible-rate-detail:first-of-type {
+      border-top:0;
+      padding-top:0;
+    }
+
+    .flexible-rate-detail strong {
+      color:#0d2b4d;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function weeklyPriceLabel(period) {
+  if (
+    !period ||
+    period.stay_rule !== "weekly" ||
+    period.weekly_price == null
+  ) {
+    return "";
+  }
+
+  return formatMoney(
+    period.weekly_price
+  );
+}
+
+function compactMoney(value) {
+  return Number(
+    value || 0
+  ).toLocaleString(
+    "en-US",
+    {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    }
+  );
+}
+
+function flexibleRateDetails(ratePeriods) {
+  const flexible =
+    ratePeriods
+      .filter(
+        period =>
+          !period.blocked &&
+          period.stay_rule === "flexible" &&
+          period.nightly_price != null
+      )
+      .slice()
+      .sort(
+        (a, b) =>
+          parseDate(a.start_date) -
+          parseDate(b.start_date)
+      );
+
+  if (!flexible.length) {
+    return "";
+  }
+
+  return `
+    <section class="flexible-rate-details">
+      <div class="flexible-rate-details-title">
+        Short-stay pricing
+      </div>
+
+      ${
+        flexible
+          .map(
+            period => `
+              <div class="flexible-rate-detail">
+                <strong>
+                  ${formatMoney(period.nightly_price)}/night
+                  · ${Number(period.minimum_nights || 1)}-night minimum
+                </strong>
+                <br>
+                ${formatShortDate(period.start_date)}
+                –
+                ${formatShortDate(period.end_date)}
+              </div>
+            `
+          )
+          .join("")
+      }
+    </section>
+  `;
+}
+
+function publishedRateSummary(ratePeriods) {
+  const open =
+    ratePeriods.filter(
+      period => !period.blocked
+    );
+
+  const weekly =
+    open.filter(
+      period =>
+        period.stay_rule === "weekly" &&
+        period.weekly_price != null
+    );
+
+  const flexible =
+    open.filter(
+      period =>
+        period.stay_rule === "flexible" &&
+        period.nightly_price != null
+    );
+
+  const parts = [];
+
+  if (weekly.length) {
+    const prices =
+      weekly.map(
+        period =>
+          Number(period.weekly_price)
+      );
+
+    const low =
+      Math.min(...prices);
+
+    const high =
+      Math.max(...prices);
+
+    parts.push(`
+      <div class="rate-summary-line">
+        <strong>
+          Weekly stays:
+          ${
+            low === high
+              ? formatMoney(low)
+              : `${formatMoney(low)}–${formatMoney(high)}`
+          }
+        </strong>
+        Saturday check-in at 2:00 PM · Saturday checkout at 10:00 AM.
+      </div>
+    `);
+  }
+
+  if (flexible.length) {
+    const prices =
+      flexible.map(
+        period =>
+          Number(period.nightly_price)
+      );
+
+    const low =
+      Math.min(...prices);
+
+    const high =
+      Math.max(...prices);
+
+    const minimum =
+      Math.min(
+        ...flexible.map(
+          period =>
+            Number(
+              period.minimum_nights || 1
+            )
+        )
+      );
+
+    parts.push(`
+      <div class="rate-summary-line">
+        <strong>
+          Selected short-stay openings:
+          ${
+            low === high
+              ? `${formatMoney(low)}/night`
+              : `${formatMoney(low)}–${formatMoney(high)}/night`
+          }
+        </strong>
+        Minimum stay varies by date; currently as low as ${minimum} night${minimum === 1 ? "" : "s"}.
+      </div>
+    `);
+  }
+
+  return (
+    parts.join("") ||
+    `
+      <div class="rate-summary-line">
+        <strong>No published rates right now.</strong>
+        Check back soon for newly opened dates.
+      </div>
+    `
+  );
+}
+
+function renderWeeklyAvailabilityList(
+  ratePeriods,
+  availability,
+  onChoose
+) {
+  const container =
+    document.querySelector(
+      "[data-weekly-rate-list]"
+    );
+
+  const section =
+    document.querySelector(
+      "[data-weekly-list-section]"
+    );
+
+  if (!container || !section) {
+    return;
+  }
+
+  const items =
+    ratePeriods
+      .filter(
+        period =>
+          !period.blocked &&
+          period.stay_rule === "weekly" &&
+          period.weekly_price != null
+      )
+      .map(
+        period => ({
+          period,
+
+          isBooked:
+            rangeContainsStatus(
+              period.start_date,
+              period.end_date,
+              availability,
+              "booked"
+            ),
+
+          isPending:
+            rangeContainsStatus(
+              period.start_date,
+              period.end_date,
+              availability,
+              "pending"
+            )
+        })
+      )
+      .filter(
+        item => !item.isBooked
+      );
+
+  if (!items.length) {
+    section.hidden = true;
+    return;
+  }
+
+  section.hidden = false;
+
+  container.innerHTML =
+    items
+      .map(
+        item => `
+          <article
+            class="weekly-rate-item ${item.isPending ? "pending" : ""}"
+          >
+            <div>
+              <div class="weekly-rate-dates">
+                ${formatShortDate(item.period.start_date)}
+                –
+                ${formatShortDate(item.period.end_date)}
+              </div>
+
+              <div class="weekly-rate-meta">
+                Saturday to Saturday ·
+                ${
+                  item.isPending
+                    ? "pending hold — waitlist available"
+                    : "available"
+                }
+              </div>
+            </div>
+
+            <div class="weekly-rate-price">
+              ${formatMoney(item.period.weekly_price)}
+            </div>
+
+            <button
+              class="weekly-rate-action"
+              type="button"
+              data-weekly-select="${item.period.id}"
+            >
+              Select week
+            </button>
+          </article>
+        `
+      )
+      .join("");
+
+  container
+    .querySelectorAll(
+      "[data-weekly-select]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            const period =
+              ratePeriods.find(
+                item =>
+                  String(item.id) ===
+                  String(
+                    button.dataset.weeklySelect
+                  )
+              );
+
+            if (period) {
+              onChoose(period);
+            }
+          }
+        );
+      }
     );
 }
 
-
-
-
-function renderPropertyCalendar(
-  property
+function renderMonth(
+  monthDate,
+  availability,
+  ratePeriods,
+  selectedArrival,
+  selectedDeparture
 ) {
   const year =
-    calendarDate.getFullYear();
-
+    monthDate.getFullYear();
 
   const month =
-    calendarDate.getMonth();
-
+    monthDate.getMonth();
 
   const firstDay =
-    new Date(
-      year,
-      month,
-      1
-    );
-
+    new Date(year, month, 1);
 
   const daysInMonth =
     new Date(
@@ -2273,2284 +1753,8 @@ function renderPropertyCalendar(
       0
     ).getDate();
 
-
-  let cells = "";
-
-
-  for (
-    let blank = 0;
-    blank <
-      firstDay.getDay();
-    blank++
-  ) {
-    cells += `
-      <div
-        class="owner-calendar-day blank"
-      ></div>
-    `;
-  }
-
-
-  for (
-    let day = 1;
-    day <= daysInMonth;
-    day++
-  ) {
-    const date =
-      new Date(
-        year,
-        month,
-        day
-      );
-
-
-    const dateString =
-      isoDate(date);
-
-
-    const items =
-      calendarItemsForDay(
-        property.id,
-        dateString
-      );
-
-
-    const paymentItems =
-      paymentDueItemsForDay(
-        property.id,
-        dateString
-      );
-
-
-    const itemHtml =
-      items
-        .map(
-          item => `
-            <span
-              class="owner-calendar-item ${item.status}"
-              title="${item.reservation.guest_name || "Guest"} · ${formatDate(item.reservation.arrival_date)} – ${formatDate(item.reservation.departure_date)}"
-            >
-              ${calendarItemLabel(
-                item.reservation,
-                item.status
-              )}
-            </span>
-          `
-        )
-        .join("") +
-
-
-      paymentItems
-        .map(
-          item => `
-            <span
-              class="owner-calendar-item payment_due"
-              title="${item.reservation.guest_name || "Guest"} · ${item.schedule.label || "Payment"}"
-            >
-              💵 ${item.reservation.guest_name || "Guest"}
-            </span>
-          `
-        )
-        .join("");
-
-
-    cells += `
-      <div
-        class="owner-calendar-day"
-      >
-
-
-        <div
-          class="owner-calendar-date"
-        >
-          ${day}
-        </div>
-
-
-        ${itemHtml}
-
-
-      </div>
-    `;
-  }
-
-
-  return `
-    <section
-      class="calendar-property"
-    >
-
-
-      <h3>
-        ${property.name}
-      </h3>
-
-
-      <div
-        class="owner-calendar-grid"
-      >
-
-
-        <div class="owner-calendar-weekday">Sun</div>
-        <div class="owner-calendar-weekday">Mon</div>
-        <div class="owner-calendar-weekday">Tue</div>
-        <div class="owner-calendar-weekday">Wed</div>
-        <div class="owner-calendar-weekday">Thu</div>
-        <div class="owner-calendar-weekday">Fri</div>
-        <div class="owner-calendar-weekday">Sat</div>
-
-
-        ${cells}
-
-
-      </div>
-
-
-    </section>
-  `;
-}
-
-
-
-
-function renderOwnerCalendar() {
-  const monthTitle =
-    calendarDate
-      .toLocaleDateString(
-        "en-US",
-        {
-          month:
-            "long",
-
-
-          year:
-            "numeric"
-        }
-      );
-
-
-  ownerCalendar.innerHTML = `
-    <h2
-      style="
-        text-align:center;
-        margin:0 0 22px;
-        font-family:Georgia,serif;
-        font-weight:400;
-      "
-    >
-      ${monthTitle}
-    </h2>
-
-
-    ${
-      currentProperties
-        .map(
-          renderPropertyCalendar
-        )
-        .join("")
-    }
-  `;
-}
-
-
-
-
-function cleaningCard(cleaning) {
-  const reservation =
-    cleaning.reservation;
-
-
-  const guestName =
-    reservation?.guest_name ||
-    "Guest";
-
-
-  const status =
-    cleaning.status ||
-    "waiting";
-
-
-  const canEdit =
-    status !== "cancelled" &&
-    status !== "completed";
-
-
-  return `
-    <article
-      class="cleaning-card ${status}"
-      data-cleaning-id="${cleaning.id}"
-    >
-
-
-      <h3>
-        ${cleaning.property_name}
-      </h3>
-
-
-      <div class="meta">
-        Checkout:
-        <strong>
-          ${formatDate(cleaning.checkout_date)}
-        </strong>
-
-
-        <br>
-
-
-        Guest:
-        ${guestName}
-      </div>
-
-
-      <span class="cleaning-status">
-        ${status.replaceAll("_", " ")}
-      </span>
-
-
-      ${
-        status === "waiting"
-          ? `
-            <div class="cleaning-warning">
-              Cleaner confirmation is still needed.
-            </div>
-          `
-          : ""
-      }
-
-
-      ${
-        status === "confirmed"
-          ? `
-            <div class="notice">
-              Cleaner confirmed
-              ${
-                cleaning.confirmed_at
-                  ? ` · ${new Date(cleaning.confirmed_at).toLocaleString()}`
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-
-      ${
-        status === "completed"
-          ? `
-            <div class="notice">
-              Cleaning completed
-              ${
-                cleaning.completed_at
-                  ? ` · ${new Date(cleaning.completed_at).toLocaleString()}`
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-
-      ${
-        cleaning.cleaner_name ||
-        cleaning.cleaner_email
-          ? `
-            <div
-              class="meta"
-              style="margin-top:10px;"
-            >
-              Cleaner:
-              ${cleaning.cleaner_name || ""}
-
-
-              ${
-                cleaning.cleaner_email
-                  ? `<br>${cleaning.cleaner_email}`
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-
-      ${
-        canEdit
-          ? `
-            <div
-              class="row"
-              style="
-                margin-top:12px;
-                align-items:end;
-              "
-            >
-
-
-              <label>
-                Cleaner name
-                <input
-                  type="text"
-                  value="${cleaning.cleaner_name || ""}"
-                  data-cleaner-name
-                >
-              </label>
-
-
-              <label>
-                Cleaner email
-                <input
-                  type="email"
-                  value="${cleaning.cleaner_email || ""}"
-                  data-cleaner-email
-                >
-              </label>
-
-
-              <button
-                type="button"
-                data-cleaning-action="save-cleaner"
-              >
-                Save cleaner
-              </button>
-
-
-              ${
-                status === "waiting"
-                  ? `
-                    <button
-                      type="button"
-                      data-cleaning-action="confirm"
-                    >
-                      Mark confirmed
-                    </button>
-                  `
-                  : ""
-              }
-
-
-              ${
-                status === "confirmed"
-                  ? `
-                    <button
-                      type="button"
-                      data-cleaning-action="complete"
-                    >
-                      Mark completed
-                    </button>
-                  `
-                  : ""
-              }
-
-
-            </div>
-          `
-          : ""
-      }
-
-
-    </article>
-  `;
-}
-
-
-
-
-function renderCleaningDashboard() {
-  const active =
-    currentCleanings.filter(
-      cleaning =>
-        cleaning.status !==
-        "cancelled"
-    );
-
-
-  if (!active.length) {
-    cleaningList.innerHTML = `
-      <div class="meta">
-        No active cleaning assignments.
-      </div>
-    `;
-
-
-    return;
-  }
-
-
-  cleaningList.innerHTML =
-    active
-      .map(cleaningCard)
-      .join("");
-}
-
-
-
-
-
-
-function ratePeriodCard(period) {
-  return `
-    <article
-      class="rate-card"
-      data-rate-id="${period.id}"
-    >
-      <div class="rate-card-grid">
-
-
-        <label>
-          Property
-          <select data-rate-property>
-            ${
-              currentProperties
-                .map(
-                  property => `
-                    <option
-                      value="${property.id}"
-                      ${
-                        property.id ===
-                        period.property_id
-                          ? "selected"
-                          : ""
-                      }
-                    >
-                      ${property.name}
-                    </option>
-                  `
-                )
-                .join("")
-            }
-          </select>
-        </label>
-
-
-        <label>
-          Stay rule
-          <select data-rate-stay-rule>
-            <option
-              value="weekly"
-              ${
-                period.stay_rule ===
-                "weekly"
-                  ? "selected"
-                  : ""
-              }
-            >
-              Weekly only
-            </option>
-            <option
-              value="flexible"
-              ${
-                period.stay_rule ===
-                "flexible"
-                  ? "selected"
-                  : ""
-              }
-            >
-              Flexible / shorter stays
-            </option>
-          </select>
-        </label>
-
-
-        <label>
-          Start date
-          <input
-            type="date"
-            value="${period.start_date}"
-            data-rate-start
-          >
-        </label>
-
-
-        <label>
-          End date
-          <input
-            type="date"
-            value="${period.end_date}"
-            data-rate-end
-          >
-        </label>
-
-
-        <label>
-          Weekly price
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value="${period.weekly_price ?? ""}"
-            data-rate-weekly
-          >
-        </label>
-
-
-        <label>
-          Nightly price
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value="${period.nightly_price ?? ""}"
-            data-rate-nightly
-          >
-        </label>
-
-
-        <label>
-          Minimum nights
-          <input
-            type="number"
-            min="1"
-            value="${period.minimum_nights || 1}"
-            data-rate-minimum
-          >
-        </label>
-
-
-        <label class="rate-blocked-row">
-          <input
-            type="checkbox"
-            data-rate-blocked
-            ${period.blocked ? "checked" : ""}
-          >
-          Block these dates
-        </label>
-
-
-        <label class="full">
-          Notes
-          <textarea
-            rows="2"
-            data-rate-notes
-          >${period.notes || ""}</textarea>
-        </label>
-
-
-      </div>
-
-
-      <div
-        class="row"
-        style="margin-top:12px;"
-      >
-        <button
-          type="button"
-          data-rate-action="save"
-        >
-          Save changes
-        </button>
-
-
-        <button
-          type="button"
-          class="danger"
-          data-rate-action="delete"
-        >
-          Delete
-        </button>
-      </div>
-    </article>
-  `;
-}
-
-
-
-
-
-
-function propertySettingsCard(
-  property
-) {
-  const leaseDefaults =
-    property.lease_defaults &&
-    typeof property.lease_defaults === "object" &&
-    !Array.isArray(property.lease_defaults)
-      ? property.lease_defaults
-      : {};
-
-  const checked = value =>
-    value ? "checked" : "";
-
-  return `
-    <article
-      class="property-settings-card"
-      data-property-settings-id="${property.id}"
-    >
-      <div class="property-settings-grid">
-
-        <div>
-          <strong>${property.name}</strong>
-        </div>
-
-        <label>
-          Cleaning fee
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value="${property.cleaning_fee ?? ""}"
-            data-property-cleaning-fee
-          >
-        </label>
-
-        <label>
-          Pet fee per dog
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value="${property.pet_fee ?? ""}"
-            data-property-pet-fee
-          >
-        </label>
-
-        <label>
-          Maximum dogs
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value="${property.max_dogs ?? 0}"
-            data-property-max-dogs
-          >
-        </label>
-
-        <label>
-          Check-in time
-          <input
-            type="text"
-            value="${leaseDefaults.check_in_time ?? "2:00 PM"}"
-            data-property-check-in
-          >
-        </label>
-
-        <label>
-          Checkout time
-          <input
-            type="text"
-            value="${leaseDefaults.check_out_time ?? "10:00 AM"}"
-            data-property-check-out
-          >
-        </label>
-
-        <label>
-          Beach tags
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value="${leaseDefaults.beach_tags ?? 0}"
-            data-property-beach-tags
-          >
-        </label>
-
-        <label>
-          Beach chairs
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value="${leaseDefaults.beach_chairs ?? 0}"
-            data-property-beach-chairs
-          >
-        </label>
-
-        <label>
-          Lost beach tag charge
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value="${leaseDefaults.beach_tag_replacement_fee ?? 50}"
-            data-property-beach-tag-fee
-          >
-        </label>
-
-        <label class="full">
-          Bed configuration
-          <input
-            type="text"
-            value="${leaseDefaults.bed_configuration ?? ""}"
-            placeholder="Example: 1 queen, 2 twins"
-            data-property-bed-configuration
-          >
-        </label>
-
-        <label class="full">
-          Linens
-          <textarea
-            rows="3"
-            data-property-linens
-          >${leaseDefaults.linens_text ?? ""}</textarea>
-        </label>
-
-        <label class="rate-blocked-row">
-          <input
-            type="checkbox"
-            data-property-washer-dryer
-            ${checked(leaseDefaults.washer_dryer)}
-          >
-          Washer / dryer
-        </label>
-
-        <label class="rate-blocked-row">
-          <input
-            type="checkbox"
-            data-property-internet
-            ${checked(leaseDefaults.internet)}
-          >
-          Internet
-        </label>
-
-        <label class="rate-blocked-row">
-          <input
-            type="checkbox"
-            data-property-smart-tv
-            ${checked(leaseDefaults.smart_tv)}
-          >
-          Smart TV
-        </label>
-
-        <label class="rate-blocked-row">
-          <input
-            type="checkbox"
-            data-property-coffee-pot
-            ${checked(leaseDefaults.coffee_pot)}
-          >
-          Coffee pot
-        </label>
-
-        <label class="rate-blocked-row">
-          <input
-            type="checkbox"
-            data-property-stocked-kitchen
-            ${checked(leaseDefaults.fully_stocked_kitchen)}
-          >
-          Fully stocked kitchen
-        </label>
-
-      </div>
-
-      <div
-        class="row"
-        style="margin-top:12px;"
-      >
-        <button
-          type="button"
-          data-property-settings-action="save"
-        >
-          Save property settings
-        </button>
-      </div>
-    </article>
-  `;
-}
-
-
-
-function renderPropertySettings() {
-  if (!currentProperties.length) {
-    propertySettingsList.innerHTML = `
-      <div class="meta">
-        No properties found.
-      </div>
-    `;
-    return;
-  }
-
-
-  propertySettingsList.innerHTML =
-    currentProperties
-      .map(propertySettingsCard)
-      .join("");
-}
-
-
-
-
-function renderRatePeriods() {
-  if (!currentRatePeriods.length) {
-    ratePeriodsList.innerHTML = `
-      <div class="meta">
-        No rate periods yet. Add your first one above.
-      </div>
-    `;
-    return;
-  }
-
-
-  ratePeriodsList.innerHTML =
-    currentRatePeriods
-      .map(ratePeriodCard)
-      .join("");
-}
-
-
-
-
-
-
-function paymentsForReservation(
-  reservationId
-) {
-  return currentPayments.filter(
-    payment =>
-      payment.reservation_id ===
-      reservationId
-  );
-}
-
-
-
-
-function scheduleForReservation(
-  reservationId
-) {
-  return currentPaymentSchedule
-    .filter(
-      item =>
-        item.reservation_id ===
-        reservationId
-    )
-    .sort(
-      (a, b) =>
-        parseDate(a.due_date) -
-        parseDate(b.due_date)
-    );
-}
-
-
-
-
-function paymentTotals(
-  reservation
-) {
-  const totalDue =
-    Number(
-      reservation.amount_due ||
-      0
-    );
-
-
-  const paid =
-    paymentsForReservation(
-      reservation.id
-    )
-      .reduce(
-        (
-          total,
-          payment
-        ) =>
-          total +
-          Number(
-            payment.amount ||
-            0
-          ),
-        0
-      );
-
-
-  const roundedTotal =
-    Math.round(
-      totalDue * 100
-    ) / 100;
-
-  const roundedPaid =
-    Math.round(
-      paid * 100
-    ) / 100;
-
-  const roundedBalance =
-    Math.max(
-      0,
-      Math.round(
-        (
-          roundedTotal -
-          roundedPaid
-        ) *
-        100
-      ) /
-      100
-    );
-
-  return {
-    totalDue:
-      roundedTotal,
-    paid:
-      roundedPaid,
-    balance:
-      roundedBalance
-  };
-}
-
-
-
-
-function scheduleAllocations(
-  reservation
-) {
-  let remainingPaid =
-    paymentTotals(
-      reservation
-    ).paid;
-
-
-  const today =
-    new Date();
-
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-
-  return scheduleForReservation(
-    reservation.id
-  ).map(
-    item => {
-      const due =
-        Number(
-          item.amount_due ||
-          0
-        );
-
-
-      const applied =
-        Math.min(
-          remainingPaid,
-          due
-        );
-
-
-      remainingPaid =
-        Math.max(
-          0,
-          remainingPaid -
-          applied
-        );
-
-
-      const remaining =
-        Math.max(
-          0,
-          due -
-          applied
-        );
-
-
-      let status =
-        "upcoming";
-
-
-      if (remaining <= 0) {
-        status =
-          "paid";
-      } else if (applied > 0) {
-        status =
-          "partial";
-      } else if (
-        parseDate(
-          item.due_date
-        ) <= today
-      ) {
-        status =
-          "due";
-      }
-
-
-      return {
-        ...item,
-        applied,
-        remaining,
-        status
-      };
-    }
-  );
-}
-
-
-
-
-
-
-function scheduledTotal(
-  reservationId
-) {
-  return scheduleForReservation(
-    reservationId
-  ).reduce(
-    (
-      total,
-      item
-    ) =>
-      total +
-      Number(
-        item.amount_due ||
-        0
-      ),
-    0
-  );
-}
-
-
-
-
-function unscheduledAmount(
-  reservation
-) {
-  return Math.max(
-    0,
-    Number(
-      reservation.amount_due ||
-      0
-    ) -
-    scheduledTotal(
-      reservation.id
-    )
-  );
-}
-
-
-
-
-function visibleScheduledTotal(
-  card
-) {
-  return Array.from(
-    card.querySelectorAll(
-      "[data-payment-due-amount]"
-    )
-  ).reduce(
-    (
-      total,
-      input
-    ) =>
-      total +
-      Number(
-        input.value ||
-        0
-      ),
-    0
-  );
-}
-
-
-
-
-function refreshScheduleArithmetic(
-  card
-) {
-  if (!card) {
-    return;
-  }
-
-
-  const reservationId =
-    card.dataset.id;
-
-
-  const reservation =
-    currentReservations.find(
-      item =>
-        item.id ===
-        reservationId
-    );
-
-
-  if (!reservation) {
-    return;
-  }
-
-
-  const totalDue =
-    Number(
-      reservation.amount_due ||
-      0
-    );
-
-
-  const scheduled =
-    visibleScheduledTotal(
-      card
-    );
-
-
-  const remaining =
-    totalDue -
-    scheduled;
-
-
-  const scheduledEl =
-    card.querySelector(
-      "[data-scheduled-total]"
-    );
-
-
-  const unscheduledEl =
-    card.querySelector(
-      "[data-unscheduled-total]"
-    );
-
-
-  const warningEl =
-    card.querySelector(
-      "[data-schedule-warning]"
-    );
-
-
-  if (scheduledEl) {
-    scheduledEl.textContent =
-      formatMoney(
-        scheduled
-      );
-  }
-
-
-  if (unscheduledEl) {
-    unscheduledEl.textContent =
-      formatMoney(
-        Math.max(
-          0,
-          remaining
-        )
-      );
-  }
-
-
-  if (warningEl) {
-    if (remaining < 0) {
-      warningEl.textContent =
-        `Scheduled payments exceed the reservation total by ${formatMoney(Math.abs(remaining))}.`;
-    } else if (remaining === 0) {
-      warningEl.textContent =
-        "Payment schedule matches the reservation total.";
-    } else {
-      warningEl.textContent =
-        `${formatMoney(remaining)} still needs to be scheduled.`;
-    }
-  }
-
-
-  const useRemaining =
-    card.querySelector(
-      "[data-use-remaining]"
-    );
-
-
-  if (useRemaining) {
-    useRemaining.disabled =
-      remaining <= 0;
-  }
-}
-
-
-
-
-function paymentScheduleMarkup(
-  reservation
-) {
-  const schedule =
-    scheduleAllocations(
-      reservation
-    );
-
-
-  const history =
-    paymentsForReservation(
-      reservation.id
-    )
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(
-            b.received_at
-          ) -
-          new Date(
-            a.received_at
-          )
-      );
-
-
-  const scheduled =
-    scheduledTotal(
-      reservation.id
-    );
-
-
-  const totals =
-    paymentTotals(
-      reservation
-    );
-
-
-  const unscheduled =
-    totals.balance <= 0
-      ? 0
-      : Math.max(
-          0,
-          totals.balance -
-          scheduled
-        );
-
-
-  if (
-    totals.balance <= 0
-  ) {
-    return `
-      <div
-        class="payment-history"
-        style="margin-top:14px;"
-      >
-        <h3>
-          Payment history
-        </h3>
-
-        <div class="payment-history-list">
-          ${
-            history.length
-              ? history
-                  .map(
-                    payment => `
-                      <div class="payment-history-row">
-                        <strong>
-                          ${formatMoney(payment.amount)}
-                        </strong>
-
-                        <span>
-                          ${(payment.payment_method || "").replaceAll("_", " ")}
-                        </span>
-
-                        <span class="meta">
-                          ${
-                            payment.received_at
-                              ? new Date(
-                                  payment.received_at
-                                ).toLocaleString()
-                              : ""
-                          }
-                        </span>
-                      </div>
-                    `
-                  )
-                  .join("")
-              : `
-                <div class="meta">
-                  No payments logged yet.
-                </div>
-              `
-          }
-        </div>
-      </div>
-    `;
-  }
-
-
-  return `
-    <div class="payment-schedule">
-      <h3>
-        Payment schedule
-      </h3>
-
-
-      <div class="payment-schedule-summary">
-        <div class="payment-summary-item">
-          <div class="payment-summary-label">
-            Scheduled total
-          </div>
-          <div
-            class="payment-summary-value"
-            data-scheduled-total
-          >
-            ${formatMoney(scheduled)}
-          </div>
-        </div>
-
-
-        <div class="payment-summary-item">
-          <div class="payment-summary-label">
-            Still unscheduled
-          </div>
-          <div
-            class="payment-summary-value"
-            data-unscheduled-total
-          >
-            ${formatMoney(unscheduled)}
-          </div>
-        </div>
-      </div>
-
-
-      <div
-        class="payment-schedule-warning"
-        data-schedule-warning
-      >
-        ${
-          unscheduled > 0
-            ? `${formatMoney(unscheduled)} still needs to be scheduled.`
-            : "Payment schedule matches the reservation total."
-        }
-      </div>
-
-
-      <div class="payment-schedule-list">
-        ${
-          schedule.length
-            ? schedule
-                .map(
-                  item => `
-                    <div
-                      class="payment-schedule-row"
-                      data-payment-schedule-id="${item.id}"
-                    >
-                      <input
-                        type="text"
-                        value="${item.label || "Payment"}"
-                        data-payment-label
-                      >
-
-
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value="${Number(item.amount_due || 0)}"
-                        data-payment-due-amount
-                      >
-
-
-                      <input
-                        type="date"
-                        value="${item.due_date}"
-                        data-payment-due-date
-                      >
-
-
-                      <div>
-                        <span
-                          class="payment-installment-status ${item.status}"
-                        >
-                          ${
-                            item.status === "paid"
-                              ? "Paid"
-                              : item.status === "partial"
-                                ? `${formatMoney(item.remaining)} left`
-                                : item.status === "due"
-                                  ? "Due"
-                                  : "Upcoming"
-                          }
-                        </span>
-
-
-                        <div
-                          class="row"
-                          style="margin-top:6px;"
-                        >
-                          <button
-                            type="button"
-                            data-payment-schedule-action="save"
-                          >
-                            Save
-                          </button>
-
-
-                          <button
-                            type="button"
-                            class="danger"
-                            data-payment-schedule-action="delete"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  `
-                )
-                .join("")
-            : `
-              <div class="meta">
-                No payment installments scheduled yet.
-              </div>
-            `
-        }
-      </div>
-
-
-      <div class="payment-add-schedule">
-        <div class="row">
-          <label>
-            Label
-            <input
-              type="text"
-              placeholder="Deposit, final balance…"
-              data-new-payment-label
-            >
-          </label>
-
-
-          <label>
-            Amount
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="Amount"
-              data-new-payment-amount
-            >
-          </label>
-
-
-          <label>
-            Due date
-            <input
-              type="date"
-              data-new-payment-date
-            >
-          </label>
-
-
-          <button
-            type="button"
-            class="use-remaining-btn"
-            data-use-remaining
-            ${unscheduled <= 0 ? "disabled" : ""}
-          >
-            Use remaining balance
-          </button>
-
-
-          <button
-            type="button"
-            data-action="add-payment-schedule"
-          >
-            Add due date
-          </button>
-        </div>
-      </div>
-    </div>
-
-
-    <div
-      class="payment-history"
-      style="margin-top:14px;"
-    >
-      <h3>
-        Payment history
-      </h3>
-
-
-      <div class="payment-history-list">
-        ${
-          history.length
-            ? history
-                .map(
-                  payment => `
-                    <div class="payment-history-row">
-                      <strong>
-                        ${formatMoney(payment.amount)}
-                      </strong>
-
-
-                      <span>
-                        ${(payment.payment_method || "").replaceAll("_", " ")}
-                      </span>
-
-
-                      <span class="meta">
-                        ${
-                          payment.received_at
-                            ? new Date(
-                                payment.received_at
-                              ).toLocaleString()
-                            : ""
-                        }
-                      </span>
-                    </div>
-                  `
-                )
-                .join("")
-            : `
-              <div class="meta">
-                No payments logged yet.
-              </div>
-            `
-        }
-      </div>
-    </div>
-  `;
-}
-
-
-
-
-function reservationCard(r) {
-  const lease =
-    leaseForReservation(
-      r.id
-    );
-
-  const status =
-    r.status ||
-    "pending";
-
-
-  const totals =
-    paymentTotals(
-      r
-    );
-
-
-  let paymentStatus =
-    r.payment_status ||
-    "waiting";
-
-
-  if (
-    totals.totalDue > 0
-  ) {
-    if (
-      totals.balance <= 0
-    ) {
-      paymentStatus =
-        "paid";
-    } else if (
-      totals.paid > 0
-    ) {
-      paymentStatus =
-        "partial";
-    } else {
-      paymentStatus =
-        "waiting";
-    }
-  }
-
-
-  const showAccept =
-    status ===
-      "pending" ||
-    status ===
-      "requested";
-
-
-  const showDecline =
-    status ===
-      "pending" ||
-    status ===
-      "requested";
-
-
-  const showCancel =
-    status ===
-      "pending_payment" ||
-    status ===
-      "booked";
-
-
-  const canTakePayment =
-    status !==
-      "declined" &&
-    status !==
-      "cancelled" &&
-    status !==
-      "waitlisted" &&
-    totals.balance > 0;
-
-
-  const ownerSignatureReady =
-    Boolean(
-      lease &&
-      totals.paid > 0 &&
-      (
-        lease.status ===
-          "awaiting_payment" ||
-        lease.status ===
-          "awaiting_owner_signature"
-      )
-    );
-
-
-  const displayLeaseStatus =
-    ownerSignatureReady
-      ? "owner_signature_required"
-      : lease?.status || "";
-
-
-  return `
-    <article
-      class="card res"
-      data-id="${r.id}"
-    >
-      <div>
-        <h2>
-          ${r.guest_name || "Guest"}
-        </h2>
-
-
-        <div class="meta">
-          <strong>
-            ${r.property_name}
-          </strong>
-
-
-          <br>
-
-
-          ${formatDate(r.arrival_date)}
-          –
-          ${formatDate(r.departure_date)}
-
-
-          <br>
-
-
-          ${r.guest_email || ""}
-
-
-          ${
-            r.guest_phone
-              ? ` · ${r.guest_phone}`
-              : ""
-          }
-
-
-          <br>
-
-
-          ${r.adults || 0}
-          guest(s)
-
-
-          ${
-            r.dogs
-              ? ` · ${r.dogs} dog(s)`
-              : ""
-          }
-
-
-          ${
-            r.booking_source
-              ? `<br>Source: ${r.booking_source.replaceAll("_", " ")}`
-              : ""
-          }
-
-
-          ${
-            r.brokerage_name
-              ? `<br>Brokerage: ${r.brokerage_name}`
-              : ""
-          }
-
-
-          ${
-            r.agent_name
-              ? `<br>Agent: ${r.agent_name}`
-              : ""
-          }
-
-
-          ${
-            r.agent_phone
-              ? ` · ${r.agent_phone}`
-              : ""
-          }
-
-
-          ${
-            r.agent_email
-              ? `<br>${r.agent_email}`
-              : ""
-          }
-
-
-          ${
-            r.owner_notes
-              ? `<br>Notes: ${r.owner_notes}`
-              : ""
-          }
-        </div>
-
-
-        <span class="badge">
-          ${status.replaceAll("_", " ")}
-        </span>
-
-
-        <span class="badge">
-          payment:
-          ${paymentStatus.replaceAll("_", " ")}
-        </span>
-
-        ${
-          lease
-            ? `
-              <span class="badge">
-                lease:
-                ${displayLeaseStatus.replaceAll("_", " ")}
-              </span>
-            `
-            : ""
-        }
-
-
-        ${
-          r.hold_expires_at &&
-          status ===
-            "pending_payment"
-            ? `
-              <div class="meta hold">
-                Hold expires:
-                ${new Date(r.hold_expires_at).toLocaleString()}
-              </div>
-            `
-            : ""
-        }
-
-        ${
-          !lease
-            ? `
-              <details
-                style="margin-top:14px;"
-                open
-              >
-                <summary
-                  style="cursor:pointer;font-weight:700;color:#0d2b4d;"
-                >
-                  Lease settings
-                </summary>
-
-                <div
-                  class="form-grid"
-                  style="margin-top:12px;"
-                >
-                  <label>
-                    Rental type
-                    <select data-lease-rental-type>
-                      <option
-                        value="standard"
-                        ${
-                          (r.rental_type || "standard") === "standard"
-                            ? "selected"
-                            : ""
-                        }
-                      >
-                        Regular summer
-                      </option>
-
-                      <option
-                        value="senior_week"
-                        ${
-                          r.rental_type === "senior_week"
-                            ? "selected"
-                            : ""
-                        }
-                      >
-                        Senior Week
-                      </option>
-
-                      <option
-                        value="winter"
-                        ${
-                          r.rental_type === "winter"
-                            ? "selected"
-                            : ""
-                        }
-                      >
-                        Winter rental
-                      </option>
-                    </select>
-                  </label>
-
-                  <label>
-                    Security deposit
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value="${r.security_deposit ?? 0}"
-                      data-lease-security-deposit
-                    >
-                  </label>
-
-                  <label class="full">
-                    Linens override
-                    <textarea
-                      rows="2"
-                      placeholder="Leave blank to use property default"
-                      data-lease-linens
-                    >${r.lease_overrides?.linens_text ?? ""}</textarea>
-                  </label>
-
-                  <label class="full">
-                    Bed configuration override
-                    <input
-                      type="text"
-                      placeholder="Leave blank to use property default"
-                      value="${r.lease_overrides?.bed_configuration ?? ""}"
-                      data-lease-beds
-                    >
-                  </label>
-
-                  <label>
-                    Beach tags override
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="Property default"
-                      value="${r.lease_overrides?.beach_tags ?? ""}"
-                      data-lease-beach-tags
-                    >
-                  </label>
-
-                  <label>
-                    Beach chairs override
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="Property default"
-                      value="${r.lease_overrides?.beach_chairs ?? ""}"
-                      data-lease-beach-chairs
-                    >
-                  </label>
-
-                  ${[
-                    ["washer_dryer", "Washer / dryer"],
-                    ["internet", "Internet"],
-                    ["smart_tv", "Smart TV"],
-                    ["coffee_pot", "Coffee pot"],
-                    ["fully_stocked_kitchen", "Fully stocked kitchen"]
-                  ].map(([key,label]) => `
-                    <label>
-                      ${label}
-                      <select data-lease-boolean="${key}">
-                        <option value="">Property default</option>
-                        <option
-                          value="true"
-                          ${r.lease_overrides?.[key] === true ? "selected" : ""}
-                        >
-                          Yes
-                        </option>
-                        <option
-                          value="false"
-                          ${r.lease_overrides?.[key] === false ? "selected" : ""}
-                        >
-                          No
-                        </option>
-                      </select>
-                    </label>
-                  `).join("")}
-                </div>
-
-                <div
-                  class="row"
-                  style="margin-top:10px;"
-                >
-                  <button
-                    type="button"
-                    data-action="save_lease_settings"
-                  >
-                    Save lease settings
-                  </button>
-                </div>
-              </details>
-            `
-            : ""
-        }
-
-
-        <div class="payment-summary">
-          <div class="payment-summary-grid">
-            <div class="payment-summary-item">
-              <div class="payment-summary-label">
-                Total due
-              </div>
-              <div class="payment-summary-value">
-                ${formatMoney(totals.totalDue)}
-              </div>
-            </div>
-
-
-            <div class="payment-summary-item">
-              <div class="payment-summary-label">
-                Paid so far
-              </div>
-              <div class="payment-summary-value">
-                ${formatMoney(totals.paid)}
-              </div>
-            </div>
-
-
-            <div class="payment-summary-item">
-              <div class="payment-summary-label">
-                Balance
-              </div>
-              <div class="payment-summary-value">
-                ${formatMoney(totals.balance)}
-              </div>
-            </div>
-          </div>
-
-
-          ${
-            canTakePayment
-              ? `
-                <div class="payment-log-row">
-                  <label>
-                    Payment amount
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max="${totals.balance}"
-                      placeholder="Amount"
-                      data-amount
-                    >
-                  </label>
-
-
-                  <label>
-                    Method
-                    <select data-method>
-                      <option value="zelle">Zelle</option>
-                      <option value="venmo">Venmo</option>
-                      <option value="credit_card">Credit card</option>
-                      <option value="check">Check</option>
-                    </select>
-                  </label>
-
-
-                  <button
-                    type="button"
-                    data-action="paid"
-                  >
-                    Log payment
-                  </button>
-                </div>
-              `
-              : totals.totalDue > 0
-                ? `
-                  <div class="notice">
-                    Paid in full
-                  </div>
-                `
-                : ""
-          }
-
-
-          ${paymentScheduleMarkup(r)}
-        </div>
-      </div>
-
-
-      <div class="actions">
-        ${
-          showAccept
-            ? `
-              <button
-                class="primary"
-                data-action="accept"
-              >
-                Accept · 24h hold
-              </button>
-            `
-            : ""
-        }
-
-
-        ${
-          showDecline
-            ? `
-              <button
-                data-action="decline"
-              >
-                Decline
-              </button>
-            `
-            : ""
-        }
-
-
-        ${
-          !lease &&
-          (
-            status === "pending_payment" ||
-            status === "booked"
-          )
-            ? `
-              <button
-                class="primary"
-                data-action="create_lease"
-              >
-                Create lease
-              </button>
-            `
-            : ""
-        }
-
-        ${
-          ownerSignatureReady
-            ? `
-              <button
-                class="primary"
-                data-action="owner_sign"
-              >
-                Review & sign lease
-              </button>
-            `
-            : ""
-        }
-
-
-        ${
-          showCancel
-            ? `
-              <button
-                class="danger"
-                data-action="cancel"
-              >
-                Cancel reservation
-              </button>
-            `
-            : ""
-        }
-      </div>
-    </article>
-  `;
-}
-
-
-
-
-function activeReservation(
-  reservation
-) {
-  return ![
-    "cancelled",
-    "declined"
-  ].includes(
-    reservation.status
-  );
-}
-
-
-
-
-function pendingReservation(
-  reservation
-) {
-  return [
-    "pending",
-    "requested"
-  ].includes(
-    reservation.status
-  );
-}
-
-
-
-
-function reservationNights(
-  reservation
-) {
-  if (
-    !reservation.arrival_date ||
-    !reservation.departure_date
-  ) {
-    return 0;
-  }
-
-
-  return Math.max(
-    0,
-    Math.round(
-      (
-        parseDate(
-          reservation.departure_date
-        ) -
-        parseDate(
-          reservation.arrival_date
-        )
-      ) /
-      (
-        24 *
-        60 *
-        60 *
-        1000
-      )
-    )
-  );
-}
-
-
-
-
-function renderDashboardStats() {
-  const booked =
-    currentReservations.filter(
-      reservation =>
-        activeReservation(
-          reservation
-        ) &&
-        reservation.status ===
-          "booked"
-    );
-
-
-  const nightsBooked =
-    booked.reduce(
-      (
-        total,
-        reservation
-      ) =>
-        total +
-        reservationNights(
-          reservation
-        ),
-      0
-    );
-
-
-  const pendingCount =
-    currentReservations.filter(
-      pendingReservation
-    ).length;
-
-
-  const cleaningCount =
-    currentCleanings.filter(
-      cleaning =>
-        cleaning.status ===
-          "waiting" ||
-        cleaning.status ===
-          "confirmed"
-    ).length;
-
-
-  const rentalIncome =
-    currentReservations
-      .filter(
-        reservation =>
-          reservation.payment_status ===
-            "paid" &&
-          activeReservation(
-            reservation
-          )
-      )
-      .reduce(
-        (
-          total,
-          reservation
-        ) =>
-          total +
-          Number(
-            reservation.amount_received ||
-            reservation.amount_due ||
-            0
-          ),
-        0
-      );
-
-
-  dashboardStats.innerHTML = `
-    <article class="stat-card">
-      <div class="stat-icon">▣</div>
-      <div>
-        <div class="stat-number">
-          ${nightsBooked}
-        </div>
-        <div class="stat-label">
-          Nights booked
-        </div>
-        <div class="stat-sub">
-          Active booked stays
-        </div>
-      </div>
-    </article>
-
-
-    <article class="stat-card">
-      <div class="stat-icon">✓</div>
-      <div>
-        <div class="stat-number">
-          ${pendingCount}
-        </div>
-        <div class="stat-label">
-          Pending requests
-        </div>
-        <div class="stat-sub">
-          Needs review
-        </div>
-      </div>
-    </article>
-
-
-    <article class="stat-card">
-      <div class="stat-icon">♨</div>
-      <div>
-        <div class="stat-number">
-          ${cleaningCount}
-        </div>
-        <div class="stat-label">
-          Cleanings
-        </div>
-        <div class="stat-sub">
-          Waiting or confirmed
-        </div>
-      </div>
-    </article>
-
-
-    <article class="stat-card">
-      <div class="stat-icon">$</div>
-      <div>
-        <div class="stat-number">
-          ${formatMoney(
-            rentalIncome
-          )}
-        </div>
-        <div class="stat-label">
-          Rental income
-        </div>
-        <div class="stat-sub">
-          Payments logged
-        </div>
-      </div>
-    </article>
-  `;
-
-
-  if (pendingCount) {
-    sidebarPendingCount.hidden =
-      false;
-
-
-    sidebarPendingCount.textContent =
-      pendingCount;
-  } else {
-    sidebarPendingCount.hidden =
-      true;
-
-
-    sidebarPendingCount.textContent =
-      "";
-  }
-}
-
-
-
-
-function renderDashboardCalendar() {
-  const year =
-    calendarDate.getFullYear();
-
-
-  const month =
-    calendarDate.getMonth();
-
-
-  const monthTitle =
-    calendarDate.toLocaleDateString(
+  const monthName =
+    firstDay.toLocaleDateString(
       "en-US",
       {
         month: "long",
@@ -4558,3432 +1762,1097 @@ function renderDashboardCalendar() {
       }
     );
 
+  let days = "";
 
-  const firstDay =
+  for (
+    let blank = 0;
+    blank < firstDay.getDay();
+    blank++
+  ) {
+    days +=
+      `<button class="calendar-day blank" tabindex="-1"></button>`;
+  }
+
+  for (
+    let day = 1;
+    day <= daysInMonth;
+    day++
+  ) {
+    const date =
+      new Date(year, month, day);
+
+    const dateString =
+      isoDate(date);
+
+    const reservationStatus =
+      statusForDate(
+        dateString,
+        availability
+      );
+
+    const rateStatus =
+      rateStatusForDate(
+        dateString,
+        ratePeriods
+      );
+
+    const period =
+      nonBlockedRateForDate(
+        dateString,
+        ratePeriods
+      );
+
+    let status =
+      reservationStatus;
+
+    if (
+      reservationStatus !== "booked"
+    ) {
+      if (rateStatus === "blocked") {
+        status = "blocked";
+      } else if (
+        rateStatus === "unpriced"
+      ) {
+        status = "unpriced";
+      }
+    }
+
+    const classes =
+      [
+        "calendar-day",
+        status
+      ];
+
+    if (
+      period &&
+      period.stay_rule === "weekly" &&
+      dateString === period.start_date
+    ) {
+      classes.push("weekly-start");
+    }
+
+    if (
+      dateString === selectedArrival ||
+      dateString === selectedDeparture
+    ) {
+      classes.push("selected");
+    }
+
+    if (
+      selectedArrival &&
+      selectedDeparture &&
+      parseDate(dateString) >
+        parseDate(selectedArrival) &&
+      parseDate(dateString) <
+        parseDate(selectedDeparture)
+    ) {
+      classes.push("in-range");
+    }
+
+    const disabled =
+      (
+        status === "booked" ||
+        status === "blocked" ||
+        status === "unpriced"
+      )
+        ? "disabled"
+        : "";
+
+    let title = "Available";
+
+    if (status === "pending") {
+      title =
+        "Pending — you may join the waitlist";
+    } else if (
+      status === "booked"
+    ) {
+      title = "Booked";
+    } else if (
+      status === "blocked"
+    ) {
+      title = "Not available";
+    } else if (
+      status === "unpriced"
+    ) {
+      title =
+        "Not currently open for online booking";
+    } else if (
+      period &&
+      period.stay_rule === "weekly"
+    ) {
+      title =
+        dateString === period.start_date
+          ? `Saturday-to-Saturday week · ${formatMoney(period.weekly_price)}`
+          : "Part of a Saturday-to-Saturday rental week";
+    } else if (
+      period &&
+      period.stay_rule === "flexible"
+    ) {
+      title =
+        `${formatMoney(period.nightly_price)} per night · ${period.minimum_nights || 1} night minimum`;
+    }
+
+    days += `
+      <button
+        type="button"
+        class="${classes.join(" ")}"
+        data-calendar-date="${dateString}"
+        data-calendar-status="${status}"
+        title="${title}"
+        ${disabled}
+      >
+        <span>${day}</span>
+
+        ${
+          period &&
+          period.stay_rule === "weekly" &&
+          dateString === period.start_date
+            ? `
+              <span class="weekly-price">
+                ${weeklyPriceLabel(period)}
+              </span>
+            `
+            : ""
+        }
+
+        ${
+          period &&
+          period.stay_rule === "flexible" &&
+          period.nightly_price != null
+            ? `
+              <span class="flexible-price">
+                ${compactMoney(period.nightly_price)}/nt
+              </span>
+            `
+            : ""
+        }
+      </button>
+    `;
+  }
+
+  return `
+    <div class="calendar-month">
+
+      <h4>${monthName}</h4>
+
+      <div class="calendar-weekdays">
+        <div>Sun</div>
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
+      </div>
+
+      <div class="calendar-grid">
+        ${days}
+      </div>
+
+    </div>
+  `;
+}
+
+async function renderProperty() {
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const id =
+    params.get("id");
+
+  const property =
+    data.properties.find(
+      item => item.id === id
+    ) ||
+    data.properties[0];
+
+  const owner =
+    data.owners[property.owner];
+
+  document.title =
+    `${property.name} | ${data.brand.name}`;
+
+  document
+    .querySelectorAll("[data-brand]")
+    .forEach(
+      el => {
+        el.textContent =
+          data.brand.name;
+      }
+    );
+
+  const hero =
+    document.querySelector(
+      "[data-page-hero]"
+    );
+
+  hero.style.backgroundImage =
+    property.image
+      ? `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${property.image}')`
+      : `linear-gradient(135deg, #aaa295, #6f6b63)`;
+
+  hero.style.backgroundPosition =
+    property.imagePosition ||
+    "center";
+
+  document.querySelector(
+    "[data-property-name]"
+  ).textContent =
+    property.name;
+
+  document.querySelector(
+    "[data-property-tagline]"
+  ).textContent =
+    property.tagline;
+
+  document.querySelector(
+    "[data-property-status]"
+  ).textContent =
+    property.status;
+
+  document.querySelector(
+    "[data-property-summary]"
+  ).textContent =
+    property.summary;
+
+  document.querySelector(
+    "[data-property-description]"
+  ).textContent =
+    property.description;
+
+  document.querySelector(
+    "[data-rates-note]"
+  ).textContent =
+    property.ratesNote;
+
+  document.querySelector(
+    "[data-facts]"
+  ).innerHTML = `
+    <span class="fact">
+      ${property.bedrooms}
+      bedroom${property.bedrooms === 1 ? "" : "s"}
+    </span>
+
+    <span class="fact">
+      ${property.bathrooms}
+      bathroom${property.bathrooms === 1 ? "" : "s"}
+    </span>
+
+    <span class="fact">
+      Sleeps ${property.sleeps}
+    </span>
+
+    <span class="fact">
+      ${property.location}
+    </span>
+  `;
+
+  document.querySelector(
+    "[data-amenities]"
+  ).innerHTML =
+    property.amenities
+      .map(
+        item =>
+          `<li>${item}</li>`
+      )
+      .join("");
+
+  document.querySelector(
+    "[data-owner-name]"
+  ).textContent =
+    owner.name;
+
+  const form =
+    document.querySelector(
+      "[data-booking-form]"
+    );
+
+  const result =
+    document.querySelector(
+      "[data-booking-result]"
+    );
+
+  const submitButton =
+    document.querySelector(
+      "[data-submit-button]"
+    );
+
+  const dogCountField =
+    document.querySelector(
+      "[data-dog-count-field]"
+    );
+
+  const dogNamesField =
+    document.querySelector(
+      "[data-dog-names-field]"
+    );
+
+  const dogSelect =
+    form.elements.dogs;
+
+  form.elements.guests.max =
+    String(property.sleeps);
+
+  form.elements.arrival.readOnly =
+    true;
+
+  form.elements.departure.readOnly =
+    true;
+
+  injectCalendarStyles();
+
+  const propertyRecord =
+    await getPropertyRecord(
+      property.databaseName
+    );
+
+  const propertyId =
+    propertyRecord.id;
+
+  const managedPhotos =
+    await getPropertyPhotos(
+      propertyId
+    );
+
+  const managedHero =
+    choosePrimaryPhoto(
+      property,
+      managedPhotos
+    );
+
+  if (managedHero) {
+    hero.style.backgroundImage =
+      `linear-gradient(rgba(20,20,18,.18), rgba(20,20,18,.52)), url('${managedHero}')`;
+  }
+
+  const description =
+    document.querySelector(
+      "[data-property-description]"
+    );
+
+  const existingGallery =
+    document.querySelector(
+      "[data-managed-photo-gallery]"
+    );
+
+  if (existingGallery) {
+    existingGallery.remove();
+  }
+
+  if (
+    description &&
+    managedPhotos.length
+  ) {
+    description.insertAdjacentHTML(
+      "afterend",
+      propertyGalleryMarkup(
+        property,
+        managedPhotos
+      )
+    );
+  }
+
+  let availability =
+    await getAvailability(
+      propertyId
+    );
+
+  let ratePeriods =
+    await getRatePeriods(
+      propertyId
+    );
+
+  const publishedRateSummaryEl =
+    document.querySelector(
+      "[data-published-rate-summary]"
+    );
+
+  if (publishedRateSummaryEl) {
+    publishedRateSummaryEl.innerHTML =
+      publishedRateSummary(
+        ratePeriods
+      );
+  }
+
+  if (!property.dogFriendly) {
+    dogCountField.style.display =
+      "none";
+
+    dogNamesField.style.display =
+      "none";
+
+    dogSelect.value = "0";
+  } else {
+    const maxDogs =
+      Number(
+        propertyRecord.max_dogs ||
+        0
+      );
+
+    Array.from(
+      dogSelect.options
+    ).forEach(
+      option => {
+        if (
+          Number(option.value) >
+          maxDogs
+        ) {
+          option.disabled = true;
+        }
+      }
+    );
+
+    dogSelect.addEventListener(
+      "change",
+      () => {
+        dogNamesField.style.display =
+          dogSelect.value === "0"
+            ? "none"
+            : "block";
+
+        drawCalendar();
+      }
+    );
+  }
+
+  let calendarStart =
+    new Date();
+
+  calendarStart =
     new Date(
-      year,
-      month,
+      calendarStart.getFullYear(),
+      calendarStart.getMonth(),
       1
     );
 
+  let selectedArrival = "";
+  let selectedDeparture = "";
 
-  const daysInMonth =
-    new Date(
-      year,
-      month + 1,
-      0
-    ).getDate();
+  const calendarMount =
+    document.querySelector(
+      "[data-calendar-mount]"
+    );
 
+  const calendarWrap =
+    document.createElement("div");
 
-  const properties =
-    currentProperties.map(
-      property => {
-        let cells = "";
+  calendarWrap.className =
+    "availability-wrap";
 
+  calendarMount.appendChild(
+    calendarWrap
+  );
 
-        for (
-          let blank = 0;
-          blank <
-            firstDay.getDay();
-          blank++
-        ) {
-          cells += `
-            <div
-              class="dashboard-mini-day blank"
-            ></div>
-          `;
-        }
+  const quoteMount =
+    document.querySelector(
+      "[data-quote-mount]"
+    );
 
+  const quoteBox =
+    document.createElement("div");
 
-        for (
-          let day = 1;
-          day <= daysInMonth;
-          day++
-        ) {
-          const dateString =
-            isoDate(
-              new Date(
-                year,
-                month,
-                day
-              )
-            );
+  quoteBox.className =
+    "quote-box";
 
+  quoteBox.hidden = true;
 
-          const items =
-            calendarItemsForDay(
-              property.id,
-              dateString
-            );
+  quoteMount.replaceWith(
+    quoteBox
+  );
 
+  function currentQuote() {
+    if (
+      !selectedArrival ||
+      !selectedDeparture
+    ) {
+      return null;
+    }
 
-          const paymentItems =
-            paymentDueItemsForDay(
-              property.id,
-              dateString
-            );
+    const period =
+      validateStayAgainstRate(
+        selectedArrival,
+        selectedDeparture,
+        ratePeriods
+      );
 
+    return {
+      period,
 
-          cells += `
-            <div
-              class="dashboard-mini-day"
-            >
-              <div
-                class="dashboard-mini-date"
-              >
-                ${day}
-              </div>
+      quote:
+        calculateQuote(
+          propertyRecord,
+          period,
+          selectedArrival,
+          selectedDeparture,
+          dogSelect.value
+        )
+    };
+  }
 
+  function renderQuote() {
+    quoteBox.hidden = true;
+    quoteBox.innerHTML = "";
 
-              ${
-                [
-                  ...items.map(
-                    item => ({
-                      label:
-                        item.reservation.guest_name ||
-                        "Guest",
-                      status:
-                        item.status
-                    })
-                  ),
-                  ...paymentItems.map(
-                    item => ({
-                      label:
-                        `💵 ${item.reservation.guest_name || "Guest"}`,
-                      status:
-                        "pending_payment"
-                    })
-                  )
-                ]
-                  .slice(0, 2)
-                  .map(
-                    item => `
-                      <span
-                        class="dashboard-mini-item ${item.status}"
-                      >
-                        ${item.label}
-                      </span>
-                    `
-                  )
-                  .join("")
-              }
-            </div>
-          `;
-        }
+    if (
+      !selectedArrival ||
+      !selectedDeparture
+    ) {
+      return;
+    }
 
+    try {
+      const {
+        period,
+        quote
+      } =
+        currentQuote();
 
-        return `
-          <div
-            class="dashboard-calendar-property"
-          >
-            <h3>
-              ${property.name}
-            </h3>
+      quoteBox.hidden = false;
 
+      quoteBox.innerHTML = `
+        <h3>
+          Your stay total
+        </h3>
 
-            <div
-              class="dashboard-mini-grid"
-            >
-              ${cells}
-            </div>
-          </div>
-        `;
-      }
-    )
-    .join("");
+        <div class="quote-row">
+          <span>
+            ${
+              period.stay_rule === "weekly"
+                ? `Weekly rental · ${formatShortDate(selectedArrival)} – ${formatShortDate(selectedDeparture)}`
+                : `${quote.nights} night${quote.nights === 1 ? "" : "s"} · ${formatMoney(period.nightly_price)}/night`
+            }
+          </span>
 
-
-  dashboardCalendar.innerHTML = `
-    <div
-      class="dashboard-calendar-preview-title"
-    >
-      ${monthTitle}
-    </div>
-
-
-    <div
-      class="dashboard-calendar-properties"
-    >
-      ${properties}
-    </div>
-  `;
-}
-
-
-
-
-function pendingMiniCard(
-  reservation
-) {
-  return `
-    <article
-      class="pending-mini"
-    >
-      <div
-        class="pending-mini-top"
-      >
-        <div>
-          <h3>
-            ${reservation.property_name}
-          </h3>
-          <div class="meta">
-            ${reservation.guest_name || "Guest"}
-          </div>
+          <strong>
+            ${formatMoney(quote.rental)}
+          </strong>
         </div>
 
+        <div class="quote-row">
+          <span>
+            Cleaning fee
+          </span>
 
-        <div class="amount">
-          ${
-            reservation.amount_due
-              ? formatMoney(
-                  reservation.amount_due
-                )
-              : ""
-          }
+          <strong>
+            ${formatMoney(quote.cleaning)}
+          </strong>
         </div>
-      </div>
-
-
-      <div class="meta">
-        ${formatDate(reservation.arrival_date)}
-        –
-        ${formatDate(reservation.departure_date)}
-
-
-        <br>
-
-
-        ${reservation.adults || 0}
-        guest(s)
-
 
         ${
-          reservation.dogs
-            ? ` · ${reservation.dogs} dog(s)`
+          quote.dogs > 0
+            ? `
+              <div class="quote-row">
+                <span>
+                  Pet fee · ${quote.dogs} dog${quote.dogs === 1 ? "" : "s"}
+                </span>
+
+                <strong>
+                  ${formatMoney(quote.petFee)}
+                </strong>
+              </div>
+            `
             : ""
         }
+
+        <div class="quote-row quote-total">
+          <span>
+            Total
+          </span>
+
+          <strong>
+            ${formatMoney(quote.total)}
+          </strong>
+        </div>
+      `;
+
+    } catch (error) {
+      quoteBox.hidden = false;
+      quoteBox.textContent =
+        error.message;
+    }
+  }
+
+  function selectWeeklyPeriod(
+    period
+  ) {
+    selectedArrival =
+      period.start_date;
+
+    selectedDeparture =
+      period.end_date;
+
+    form.elements.arrival.value =
+      selectedArrival;
+
+    form.elements.departure.value =
+      selectedDeparture;
+
+    calendarStart =
+      new Date(
+        parseDate(
+          selectedArrival
+        ).getFullYear(),
+
+        parseDate(
+          selectedArrival
+        ).getMonth(),
+
+        1
+      );
+
+    drawCalendar();
+
+    document
+      .getElementById("booking")
+      .scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+  }
+
+  function drawCalendar() {
+    calendarWrap.innerHTML = `
+
+      <div class="availability-heading">
+
+        <h3>
+          Check availability
+        </h3>
+
+        <div class="calendar-nav">
+
+          <button
+            type="button"
+            data-calendar-prev
+            aria-label="Previous month"
+          >
+            ‹
+          </button>
+
+          <button
+            type="button"
+            data-calendar-next
+            aria-label="Next month"
+          >
+            ›
+          </button>
+
+        </div>
+
       </div>
 
-
-      <div
-        class="pending-mini-actions"
-      >
-        <button
-          type="button"
-          class="review"
-          data-dashboard-review="${reservation.id}"
-        >
-          Review
-        </button>
-      </div>
-    </article>
-  `;
-}
-
-
-
-
-function renderDashboardPending() {
-  const pending =
-    currentReservations
-      .filter(
-        pendingReservation
-      )
-      .slice(0, 3);
-
-
-  dashboardPendingList.innerHTML =
-    pending.length
-      ? pending
-          .map(
-            pendingMiniCard
-          )
-          .join("")
-      : `
-        <div class="empty-state">
-          No pending requests right now.
-        </div>
-      `;
-
-
-  const allPending =
-    currentReservations.filter(
-      pendingReservation
-    );
-
-
-  pendingReservationList.innerHTML =
-    allPending.length
-      ? allPending
-          .map(
-            reservationCard
-          )
-          .join("")
-      : `
-        <div class="empty-state">
-          No pending reservation requests.
-        </div>
-      `;
-}
-
-
-
-
-function upcomingEvents() {
-  const today =
-    new Date();
-
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-
-  const events = [];
-
-
-  currentReservations
-    .filter(
-      reservation =>
-        activeReservation(
-          reservation
-        ) &&
-        [
-          "booked",
-          "pending_payment"
-        ].includes(
-          reservation.status
-        )
-    )
-    .forEach(
-      reservation => {
-        if (
-          reservation.arrival_date
-        ) {
-          const date =
-            parseDate(
-              reservation.arrival_date
-            );
-
-
-          if (date >= today) {
-            events.push({
-              type:
-                "checkin",
-              date:
-                reservation.arrival_date,
-              property:
-                reservation.property_name,
-              guest:
-                reservation.guest_name ||
-                "Guest",
-              time:
-                "2:00 PM"
-            });
-          }
-        }
-
-
-        if (
-          reservation.departure_date
-        ) {
-          const date =
-            parseDate(
-              reservation.departure_date
-            );
-
-
-          if (date >= today) {
-            events.push({
-              type:
-                "checkout",
-              date:
-                reservation.departure_date,
-              property:
-                reservation.property_name,
-              guest:
-                reservation.guest_name ||
-                "Guest",
-              time:
-                "10:00 AM"
-            });
-          }
-        }
-
-
-        scheduleAllocations(
-          reservation
-        )
-          .filter(
-            item =>
-              item.remaining > 0 &&
-              parseDate(
-                item.due_date
-              ) >= today
-          )
-          .forEach(
-            item => {
-              events.push({
-                type:
-                  "payment",
-                date:
-                  item.due_date,
-                property:
-                  reservation.property_name,
-                guest:
-                  reservation.guest_name ||
-                  "Guest",
-                time:
-                  item.label ||
-                  "Payment due",
-                amount:
-                  item.remaining
-              });
-            }
-          );
-      }
-    );
-
-
-  return events
-    .sort(
-      (a, b) => {
-        const dateDiff =
-          parseDate(a.date) -
-          parseDate(b.date);
-
-
-        if (dateDiff !== 0) {
-          return dateDiff;
-        }
-
-
-        const order = {
-          checkout: 1,
-          payment: 2,
-          checkin: 3
-        };
-
-
-        return (
-          order[a.type] -
-          order[b.type]
-        );
-      }
-    )
-    .slice(0, 4);
-}
-
-
-
-
-function renderDashboardUpcoming() {
-  const events =
-    upcomingEvents();
-
-
-  dashboardUpcoming.innerHTML =
-    events.length
-      ? events
-          .map(
-            event => {
-              const date =
-                parseDate(
-                  event.date
-                );
-
-
-              const month =
-                date.toLocaleDateString(
-                  "en-US",
-                  {
-                    month:
-                      "short"
-                  }
-                );
-
-
-              const day =
-                date.getDate();
-
-
-              return `
-                <article
-                  class="upcoming-event"
-                >
-                  <span
-                    class="event-type ${event.type}"
-                  >
-                    ${
-                      event.type ===
-                        "checkin"
-                        ? "CHECK-IN"
-                        : event.type ===
-                            "checkout"
-                          ? "CHECK-OUT"
-                          : "PAYMENT DUE"
-                    }
-                  </span>
-
-
-                  <div
-                    class="event-date"
-                  >
-                    ${month} ${day}
-                  </div>
-
-
-                  <div
-                    class="event-property"
-                  >
-                    ${event.property}
-                  </div>
-
-
-                  <div
-                    class="event-meta"
-                  >
-                    ${event.guest}
-                    <br>
-                    ${
-                      event.type ===
-                        "payment"
-                        ? `${event.time} · ${formatMoney(event.amount)}`
-                        : event.time
-                    }
-                  </div>
-                </article>
-              `;
-            }
-          )
-          .join("")
-      : `
-        <div class="empty-state">
-          No upcoming events.
-        </div>
-      `;
-}
-
-
-
-
-function renderDashboard() {
-  renderDashboardStats();
-  renderDashboardCalendar();
-  renderDashboardPending();
-  renderDashboardUpcoming();
-}
-
-
-
-
-function showOwnerView(
-  view
-) {
-  const titles = {
-    dashboard: [
-      "Welcome back, Janis!",
-      "Here’s what’s happening at your shore homes."
-    ],
-    calendar: [
-      "Calendar",
-      "See reservations across both properties."
-    ],
-    pending: [
-      "Pending requests",
-      "Review new booking requests and start payment holds."
-    ],
-    reservations: [
-      "Reservations",
-      "View every reservation in one place."
-    ],
-    "add-reservation": [
-      "Add reservation",
-      "Enter an existing or manual booking."
-    ],
-    pricing: [
-      "Pricing & fees",
-      "Control rates, stay rules, cleaning fees, and pet fees."
-    ],
-    photos: [
-      "Photos",
-      "Upload, reorder, and choose the main photo for each property."
-    ],
-    cleaning: [
-      "Cleaning dashboard",
-      "Manage upcoming turnovers and cleaner confirmations."
-    ]
-  };
-
-
-  document
-    .querySelectorAll(
-      "[data-owner-panel]"
-    )
-    .forEach(
-      panel => {
-        panel.classList.toggle(
-          "active",
-          panel.dataset.ownerPanel ===
-            view
-        );
-      }
-    );
-
-
-  document
-    .querySelectorAll(
-      ".owner-nav-link[data-owner-view]"
-    )
-    .forEach(
-      button => {
-        button.classList.toggle(
-          "active",
-          button.dataset.ownerView ===
-            view
-        );
-      }
-    );
-
-
-  const [
-    title,
-    subtitle
-  ] =
-    titles[view] ||
-    titles.dashboard;
-
-
-  ownerPageTitle.textContent =
-    title;
-
-
-  ownerPageSubtitle.textContent =
-    subtitle;
-
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-}
-
-
-
-
-async function refresh() {
-  try {
-    portalMessage.className = "";
-    portalMessage.textContent = "";
-
-
-    await loadReservations();
-    await loadCleanings();
-    await loadRatePeriods();
-    await loadPropertyPhotos();
-    await loadLeases();
-    await loadPayments();
-    await loadPaymentSchedule();
-
-
-    reservationList.innerHTML =
-      currentReservations.length
-        ? currentReservations
-            .map(
-              reservationCard
-            )
-            .join("")
-        : `
-          <div class="card">
-            No reservation requests yet.
-          </div>
-        `;
-
-
-    renderOwnerCalendar();
-    renderCleaningDashboard();
-    renderPropertySettings();
-    renderRatePeriods();
-    renderPhotoManager();
-    renderDashboard();
-
-
-  } catch (err) {
-    message(
-      portalMessage,
-      err.message,
-      true
-    );
-  }
-}
-
-
-
-
-function toggleBrokerageFields() {
-  if (
-    bookingSource.value ===
-    "brokerage"
-  ) {
-    brokerageFields
-      .classList
-      .add("show");
-  } else {
-    brokerageFields
-      .classList
-      .remove("show");
-  }
-}
-
-
-
-
-function showPortal() {
-  loginView.hidden =
-    true;
-
-  portalView.hidden =
-    false;
-
-  loadProperties()
-    .then(
-      async () => {
-        await refresh();
-
-        const params =
-          new URLSearchParams(
-            window.location.search
-          );
-
-        const requestedSection =
-          params.get("section");
-
-        const reservationId =
-          params.get("reservation");
-
-        if (
-          requestedSection ===
-          "pending"
-        ) {
-          showOwnerView(
-            "pending"
-          );
-
-          if (reservationId) {
-            window.setTimeout(
-              () => {
-                const card =
-                  pendingReservationList
-                    .querySelector(
-                      `[data-id="${reservationId}"]`
-                    );
-
-                if (card) {
-                  card.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center"
-                  });
-                }
-              },
-              100
-            );
-          }
-
-          return;
-        }
-
-        showOwnerView(
-          "dashboard"
-        );
-      }
-    );
-}
-
-
-
-
-function signOut() {
-  token = "";
-
-
-  sessionStorage.removeItem(
-    "dts_token"
-  );
-
-
-  portalView.hidden =
-    true;
-
-
-  loginView.hidden =
-    false;
-}
-
-
-
-
-loginForm.addEventListener(
-  "submit",
-  async event => {
-
-
-    event.preventDefault();
-
-
-    const form =
-      new FormData(
-        loginForm
-      );
-
-
-    try {
-      await login(
-        form.get("email"),
-        form.get("password")
-      );
-
-
-      showPortal();
-
-
-    } catch (err) {
-      message(
-        loginMessage,
-        err.message,
-        true
-      );
-    }
-  }
-);
-
-
-
-
-logoutButton.addEventListener(
-  "click",
-  signOut
-);
-
-
-
-
-bookingSource.addEventListener(
-  "change",
-  toggleBrokerageFields
-);
-
-
-
-
-calendarPrev.addEventListener(
-  "click",
-  () => {
-    calendarDate =
-      new Date(
-        calendarDate.getFullYear(),
-        calendarDate.getMonth() - 1,
-        1
-      );
-
-
-    renderOwnerCalendar();
-  }
-);
-
-
-
-
-calendarNext.addEventListener(
-  "click",
-  () => {
-    calendarDate =
-      new Date(
-        calendarDate.getFullYear(),
-        calendarDate.getMonth() + 1,
-        1
-      );
-
-
-    renderOwnerCalendar();
-  }
-);
-
-
-
-
-calendarToday.addEventListener(
-  "click",
-  () => {
-    const today =
-      new Date();
-
-
-    calendarDate =
-      new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        1
-      );
-
-
-    renderOwnerCalendar();
-  }
-);
-
-
-
-
-manualReservationForm.addEventListener(
-  "submit",
-  async event => {
-
-
-    event.preventDefault();
-
-
-    manualReservationMessage.className =
-      "";
-
-
-    manualReservationMessage.textContent =
-      "";
-
-
-    const form =
-      new FormData(
-        manualReservationForm
-      );
-
-
-
-
-    const source =
-      form.get(
-        "booking_source"
-      );
-
-
-
-
-    const amountDue =
-      form.get(
-        "amount_due"
-      );
-
-
-
-
-    const paymentStatus =
-      form.get(
-        "payment_status"
-      );
-
-
-
-
-    const reservation = {
-
-
-      property_id:
-        form.get(
-          "property_id"
-        ),
-
-
-      booking_source:
-        source,
-
-
-      guest_name:
-        form.get(
-          "guest_name"
-        ),
-
-
-      guest_email:
-        form.get(
-          "guest_email"
-        ) || null,
-
-
-      guest_phone:
-        form.get(
-          "guest_phone"
-        ) || null,
-
-
-      adults:
-        Number(
-          form.get(
-            "adults"
-          ) || 1
-        ),
-
-
-      arrival_date:
-        form.get(
-          "arrival_date"
-        ),
-
-
-      departure_date:
-        form.get(
-          "departure_date"
-        ),
-
-
-      amount_due:
-        amountDue
-          ? Number(
-              amountDue
-            )
-          : null,
-
-
-      payment_status:
-        paymentStatus,
-
-
-      status:
-        "booked",
-
-
-      brokerage_name:
-        source ===
-          "brokerage"
-          ? form.get(
-              "brokerage_name"
-            ) || null
-          : null,
-
-
-      agent_name:
-        source ===
-          "brokerage"
-          ? form.get(
-              "agent_name"
-            ) || null
-          : null,
-
-
-      agent_phone:
-        source ===
-          "brokerage"
-          ? form.get(
-              "agent_phone"
-            ) || null
-          : null,
-
-
-      agent_email:
-        source ===
-          "brokerage"
-          ? form.get(
-              "agent_email"
-            ) || null
-          : null,
-
-
-      owner_notes:
-        form.get(
-          "owner_notes"
-        ) || null
-    };
-
-
-
-
-    try {
-
-
-      await createReservation(
-        reservation
-      );
-
-
-
-
-      message(
-        manualReservationMessage,
-        "Reservation saved."
-      );
-
-
-
-
-      manualReservationForm
-        .reset();
-
-
-
-
-      toggleBrokerageFields();
-
-
-
-
-      await refresh();
-
-
-
-
-    } catch (err) {
-
-
-      message(
-        manualReservationMessage,
-        err.message,
-        true
-      );
-
-
-    }
-  }
-);
-
-
-
-
-reservationList.addEventListener(
-  "click",
-  async event => {
-
-
-    const button =
-      event.target.closest(
-        "button[data-action]"
-      );
-
-
-
-
-    if (!button) {
-      return;
-    }
-
-
-
-
-    const card =
-      button.closest(
-        "[data-id]"
-      );
-
-
-
-
-    const id =
-      card.dataset.id;
-
-
-
-
-    const action =
-      button.dataset.action;
-
-
-
-
-    try {
-
-
-      button.disabled =
-        true;
-
-
-
-
-      if (
-        action ===
-        "accept"
-      ) {
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "pending_payment",
-
-
-            hold_expires_at:
-              new Date(
-                Date.now() +
-                24 *
-                60 *
-                60 *
-                1000
-              ).toISOString()
-          }
-        );
-
-
-        try {
-          await sendCleaningAssignmentEmailForReservation(
-            id
-          );
-
-          message(
-            portalMessage,
-            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
-          );
-        } catch (cleaningError) {
-          console.error(
-            "Cleaner assignment email error:",
-            cleaningError
-          );
-
-          message(
-            portalMessage,
-            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
-            true
-          );
-        }
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "decline"
-      ) {
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "declined",
-
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-
-
-        message(
-          portalMessage,
-          "Reservation request declined."
-        );
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "cancel"
-      ) {
-
-
-        const confirmed =
-          window.confirm(
-            "Cancel this reservation and reopen the dates?"
-          );
-
-
-
-
-        if (!confirmed) {
-          button.disabled =
-            false;
-
-
-          return;
-        }
-
-
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "cancelled",
-
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-
-
-        message(
-          portalMessage,
-          "Reservation cancelled. The dates are available again."
-        );
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "save_lease_settings"
-      ) {
-        const reservation =
-          currentReservations.find(
-            item =>
-              item.id === id
-          );
-
-        if (!reservation) {
-          throw new Error(
-            "Reservation could not be found."
-          );
-        }
-
-        const rentalType =
-          card.querySelector(
-            "[data-lease-rental-type]"
-          ).value;
-
-        const securityDeposit =
-          Number(
-            card.querySelector(
-              "[data-lease-security-deposit]"
-            ).value || 0
-          );
-
-        const overrides = {};
-
-        const linens =
-          card.querySelector(
-            "[data-lease-linens]"
-          ).value.trim();
-
-        const beds =
-          card.querySelector(
-            "[data-lease-beds]"
-          ).value.trim();
-
-        const beachTags =
-          card.querySelector(
-            "[data-lease-beach-tags]"
-          ).value;
-
-        const beachChairs =
-          card.querySelector(
-            "[data-lease-beach-chairs]"
-          ).value;
-
-        if (linens) {
-          overrides.linens_text =
-            linens;
-        }
-
-        if (beds) {
-          overrides.bed_configuration =
-            beds;
-        }
-
-        if (beachTags !== "") {
-          overrides.beach_tags =
-            Number(beachTags);
-        }
-
-        if (beachChairs !== "") {
-          overrides.beach_chairs =
-            Number(beachChairs);
-        }
-
-        card
-          .querySelectorAll(
-            "[data-lease-boolean]"
-          )
-          .forEach(select => {
-            if (select.value === "") {
-              return;
-            }
-
-            overrides[
-              select.dataset.leaseBoolean
-            ] =
-              select.value === "true";
-          });
-
-        await updateReservation(
-          id,
-          {
-            rental_type:
-              rentalType,
-
-            security_deposit:
-              securityDeposit,
-
-            lease_overrides:
-              overrides
-          }
-        );
-
-        message(
-          portalMessage,
-          "Lease settings saved."
-        );
-      }
-
-
-      if (
-        action ===
-        "create_lease"
-      ) {
-        const reservation =
-          currentReservations.find(
-            item =>
-              item.id === id
-          );
-
-        if (!reservation) {
-          throw new Error(
-            "Reservation could not be found."
-          );
-        }
-
-        const originalText =
-          button.textContent;
-
-        button.textContent =
-          "Creating lease…";
-
-        message(
-          portalMessage,
-          "Creating lease and sending the guest signing email…"
-        );
-
-        try {
-          const leaseResult =
-            await createLeaseForReservation(
-              reservation
-            );
-
-          message(
-            portalMessage,
-            "Lease created and signing email sent to the guest."
-          );
-
-          window.alert(
-            leaseResult.email_sent
-              ? "Lease created. The signing email was sent to the guest."
-              : "Lease created, but the email was not confirmed as sent."
-          );
-        } catch (leaseError) {
-          window.alert(
-            `Lease error: ${leaseError.message}`
-          );
-
-          throw leaseError;
-        } finally {
-          button.textContent =
-            originalText;
-        }
-      }
-
-
-      if (
-        action ===
-        "owner_sign"
-      ) {
-        const reservation =
-          currentReservations.find(
-            item =>
-              item.id === id
-          );
-
-        const lease =
-          leaseForReservation(id);
-
-        if (
-          !reservation ||
-          !lease
-        ) {
-          throw new Error(
-            "Reservation or lease could not be found."
-          );
-        }
-
-        const originalText =
-          button.textContent;
-
-        button.textContent =
-          "Opening lease…";
-
-        try {
-          const result =
-            await prepareOwnerLeaseSignature(
-              reservation,
-              lease
-            );
-
-          if (!result.signing_url) {
-            throw new Error(
-              "Owner signing link was not returned."
-            );
-          }
-
-          window.location.href =
-            result.signing_url;
-        } finally {
-          button.textContent =
-            originalText;
-        }
-      }
-
-
-      if (
-        action ===
-        "paid"
-      ) {
-
-
-        const amount =
-          card
-            .querySelector(
-              "[data-amount]"
-            )
-            .value;
-
-
-
-
-        const method =
-          card
-            .querySelector(
-              "[data-method]"
-            )
-            .value;
-
-
-
-
-        if (
-          !amount ||
-          Number(amount) <= 0
-        ) {
-
-
-          throw new Error(
-            "Enter the payment amount first."
-          );
-
-
-        }
-
-
-
-
-    await addPayment(
-  id,
-  amount,
-  method
-);
-
-const reservation =
-  currentReservations.find(
-    item =>
-      item.id === id
-  );
-
-if (!reservation) {
-  throw new Error(
-    "Reservation could not be found."
-  );
-}
-
-const existingLease =
-  leaseForReservation(id);
-
-let leaseCreated =
-  false;
-
-if (!existingLease) {
-  await createLeaseForReservation(
-    reservation
-  );
-
-  leaseCreated =
-    true;
-}
-
-message(
-  portalMessage,
-  leaseCreated
-    ? `Payment recorded as ${method.replaceAll("_", " ")}. Lease created and signing email sent to the guest.`
-    : `Payment recorded as ${method.replaceAll("_", " ")}.`
-);
-
-
-
-
-      await refresh();
-
-
-
-
-      }  
-      } catch (err) {
-
-
-      message(
-        portalMessage,
-        err.message,
-        true
-      );
-
-
-
-
-    } finally {
-
-
-      button.disabled =
-        false;
-
-
-    }
-  }
-);
-
-
-
-
-pendingReservationList.addEventListener(
-  "click",
-  async event => {
-
-
-    const button =
-      event.target.closest(
-        "button[data-action]"
-      );
-
-
-
-
-    if (!button) {
-      return;
-    }
-
-
-
-
-    const card =
-      button.closest(
-        "[data-id]"
-      );
-
-
-
-
-    const id =
-      card.dataset.id;
-
-
-
-
-    const action =
-      button.dataset.action;
-
-
-
-
-    try {
-
-
-      button.disabled =
-        true;
-
-
-
-
-      if (
-        action ===
-        "accept"
-      ) {
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "pending_payment",
-
-
-            hold_expires_at:
-              new Date(
-                Date.now() +
-                24 *
-                60 *
-                60 *
-                1000
-              ).toISOString()
-          }
-        );
-
-
-        try {
-          await sendCleaningAssignmentEmailForReservation(
-            id
-          );
-
-          message(
-            portalMessage,
-            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
-          );
-        } catch (cleaningError) {
-          console.error(
-            "Cleaner assignment email error:",
-            cleaningError
-          );
-
-          message(
-            portalMessage,
-            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
-            true
-          );
-        }
-try {
-  const reservation =
-    currentReservations.find(
-      item =>
-        String(item.id) ===
-        String(id)
-    );
-
-  if (
-    reservation &&
-    reservation.agent_email
-  ) {
-    const property =
-      currentProperties.find(
-        item =>
-          String(item.id) ===
-          String(reservation.property_id)
-      );
-
-    const agentResponse =
-      await fetch(
-        "/api/send-email",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-          body:
-            JSON.stringify({
-              to:
-                reservation.agent_email,
-              subject:
-                `Reservation accepted — ${reservation.guest_name || "Guest"}`,
-              html:
-                `<p>Hi ${reservation.agent_name || "there"},</p>
-                 <p>The reservation for <strong>${reservation.guest_name || "Guest"}</strong> has been accepted.</p>
-                 <p><strong>${property?.name || reservation.property_name || "Down the Shore"}</strong><br>
-                 ${reservation.arrival_date} through ${reservation.departure_date}</p>
-                 <p>The 24-hour payment hold has started.</p>
-                 <p>Thank you,<br>Down the Shore</p>`
-            })
-        }
-      );
-
-    if (!agentResponse.ok) {
-      throw new Error(
-        "Agent email could not be sent."
-      );
-    }
-  }
-} catch (agentError) {
-  console.error(
-    "Agent email error:",
-    agentError
-  );
-}
-        await refresh();
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "decline"
-      ) {
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "declined",
-
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-
-
-        message(
-          portalMessage,
-          "Reservation request declined."
-        );
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "cancel"
-      ) {
-
-
-        const confirmed =
-          window.confirm(
-            "Cancel this reservation and reopen the dates?"
-          );
-
-
-
-
-        if (!confirmed) {
-          button.disabled =
-            false;
-
-
-          return;
-        }
-
-
-
-
-        await updateReservation(
-          id,
-          {
-            status:
-              "cancelled",
-
-
-            hold_expires_at:
-              null
-          }
-        );
-
-
-
-
-        message(
-          portalMessage,
-          "Reservation cancelled. The dates are available again."
-        );
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "create_lease"
-      ) {
-        const reservation =
-          currentReservations.find(
-            item =>
-              item.id === id
-          );
-
-        if (!reservation) {
-          throw new Error(
-            "Reservation could not be found."
-          );
-        }
-
-        const originalText =
-          button.textContent;
-
-        button.textContent =
-          "Creating lease…";
-
-        message(
-          portalMessage,
-          "Creating lease and sending the guest signing email…"
-        );
-
-        try {
-          const leaseResult =
-            await createLeaseForReservation(
-              reservation
-            );
-
-          message(
-            portalMessage,
-            "Lease created and signing email sent to the guest."
-          );
-
-          window.alert(
-            leaseResult.email_sent
-              ? "Lease created. The signing email was sent to the guest."
-              : "Lease created, but the email was not confirmed as sent."
-          );
-        } catch (leaseError) {
-          window.alert(
-            `Lease error: ${leaseError.message}`
-          );
-
-          throw leaseError;
-        } finally {
-          button.textContent =
-            originalText;
-        }
-      }
-
-
-      if (
-        action ===
-        "owner_sign"
-      ) {
-        const reservation =
-          currentReservations.find(
-            item =>
-              item.id === id
-          );
-
-        const lease =
-          leaseForReservation(id);
-
-        if (
-          !reservation ||
-          !lease
-        ) {
-          throw new Error(
-            "Reservation or lease could not be found."
-          );
-        }
-
-        const originalText =
-          button.textContent;
-
-        button.textContent =
-          "Opening lease…";
-
-        try {
-          const result =
-            await prepareOwnerLeaseSignature(
-              reservation,
-              lease
-            );
-
-          if (!result.signing_url) {
-            throw new Error(
-              "Owner signing link was not returned."
-            );
-          }
-
-          window.location.href =
-            result.signing_url;
-        } finally {
-          button.textContent =
-            originalText;
-        }
-      }
-
-
-      if (
-  action ===
-  "paid"
-) {
-  const amount =
-    card
-      .querySelector(
-        "[data-amount]"
-      )
-      .value;
-
-  const method =
-    card
-      .querySelector(
-        "[data-method]"
-      )
-      .value;
-
-  try {
-    if (
-      !amount ||
-      Number(amount) <= 0
-    ) {
-      throw new Error(
-        "Enter the payment amount first."
-      );
-    }
-
-    await addPayment(
-      id,
-      amount,
-      method
-    );
-
-    const reservation =
-      currentReservations.find(
-        item =>
-          item.id === id
-      );
-
-    if (!reservation) {
-      throw new Error(
-        "Reservation could not be found."
-      );
-    }
-
-    const existingLease =
-      leaseForReservation(id);
-
-    let leaseCreated =
-      false;
-
-    if (!existingLease) {
-      await createLeaseForReservation(
-        reservation
-      );
-
-      leaseCreated =
-        true;
-    }
-
-    message(
-      portalMessage,
-      leaseCreated
-        ? `Payment recorded as ${method.replaceAll("_", " ")}. Lease created and signing email sent to the guest.`
-        : `Payment recorded as ${method.replaceAll("_", " ")}.`
-    );
-
-    await refresh();
-
-  } catch (err) {
-    message(
-      portalMessage,
-      err.message,
-      true
-    );
-
-  } finally {
-    button.disabled =
-      false;
-  }
-}
-      
-    } catch (err) {
-      message(
-        portalMessage,
-        err.message,
-        true
-      );
-    } finally {
-      button.disabled = false;
-    }
-  }
-);
-
-cleaningList.addEventListener(
-  "click",
-  async event => {
-
-
-    const button =
-      event.target.closest(
-        "button[data-cleaning-action]"
-      );
-
-
-
-
-    if (!button) {
-      return;
-    }
-
-
-
-
-    const card =
-      button.closest(
-        "[data-cleaning-id]"
-      );
-
-
-
-
-    const id =
-      card.dataset.cleaningId;
-
-
-
-
-    const action =
-      button.dataset.cleaningAction;
-
-
-
-
-    try {
-
-
-      button.disabled =
-        true;
-
-
-
-
-      if (
-        action ===
-        "save-cleaner"
-      ) {
-
-
-        const cleanerName =
-          card
-            .querySelector(
-              "[data-cleaner-name]"
-            )
-            .value
-            .trim();
-
-
-
-
-        const cleanerEmail =
-          card
-            .querySelector(
-              "[data-cleaner-email]"
-            )
-            .value
-            .trim();
-
-
-
-
-        await updateCleaning(
-          id,
-          {
-            cleaner_name:
-              cleanerName ||
-              null,
-
-
-            cleaner_email:
-              cleanerEmail ||
-              null
-          }
-        );
-
-
-
-
-        message(
-          cleaningMessage,
-          "Cleaner information saved."
-        );
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "confirm"
-      ) {
-
-
-        await updateCleaning(
-          id,
-          {
-            status:
-              "confirmed",
-
-
-            confirmed_at:
-              new Date()
-                .toISOString()
-          }
-        );
-
-
-
-
-        message(
-          cleaningMessage,
-          "Cleaning confirmed."
-        );
-
-
-      }
-
-
-
-
-      if (
-        action ===
-        "complete"
-      ) {
-
-
-        await updateCleaning(
-          id,
-          {
-            status:
-              "completed",
-
-
-            completed_at:
-              new Date()
-                .toISOString()
-          }
-        );
-
-
-
-
-        message(
-          cleaningMessage,
-          "Cleaning marked completed."
-        );
-
-
-      }
-
-
-
-
-      await refresh();
-
-
-
-
-    } catch (err) {
-
-
-      message(
-        cleaningMessage,
-        err.message,
-        true
-      );
-
-
-
-
-    } finally {
-
-
-      button.disabled =
-        false;
-
-
-    }
-  }
-);
-
-
-
-
-
-
-
-
-propertySettingsList.addEventListener(
-  "click",
-  async event => {
-    const button =
-      event.target.closest(
-        "button[data-property-settings-action]"
-      );
-
-    if (!button) {
-      return;
-    }
-
-    const card =
-      button.closest(
-        "[data-property-settings-id]"
-      );
-
-    const id =
-      card.dataset.propertySettingsId;
-
-    const cleaningFee =
-      card.querySelector(
-        "[data-property-cleaning-fee]"
-      ).value;
-
-    const petFee =
-      card.querySelector(
-        "[data-property-pet-fee]"
-      ).value;
-
-    const maxDogs =
-      card.querySelector(
-        "[data-property-max-dogs]"
-      ).value;
-
-    const beachTags =
-      card.querySelector(
-        "[data-property-beach-tags]"
-      ).value;
-
-    const beachChairs =
-      card.querySelector(
-        "[data-property-beach-chairs]"
-      ).value;
-
-    const beachTagFee =
-      card.querySelector(
-        "[data-property-beach-tag-fee]"
-      ).value;
-
-    try {
-      button.disabled = true;
-
-      if (
-        cleaningFee === "" ||
-        Number(cleaningFee) < 0
-      ) {
-        throw new Error(
-          "Enter a valid cleaning fee."
-        );
-      }
-
-      if (
-        petFee === "" ||
-        Number(petFee) < 0
-      ) {
-        throw new Error(
-          "Enter a valid pet fee."
-        );
-      }
-
-      if (
-        maxDogs === "" ||
-        Number(maxDogs) < 0
-      ) {
-        throw new Error(
-          "Enter a valid maximum number of dogs."
-        );
-      }
-
-      if (
-        beachTags === "" ||
-        Number(beachTags) < 0
-      ) {
-        throw new Error(
-          "Enter a valid number of beach tags."
-        );
-      }
-
-      if (
-        beachChairs === "" ||
-        Number(beachChairs) < 0
-      ) {
-        throw new Error(
-          "Enter a valid number of beach chairs."
-        );
-      }
-
-      if (
-        beachTagFee === "" ||
-        Number(beachTagFee) < 0
-      ) {
-        throw new Error(
-          "Enter a valid lost beach tag charge."
-        );
-      }
-
-      const leaseDefaults = {
-        check_in_time:
-          card.querySelector(
-            "[data-property-check-in]"
-          ).value.trim() || "2:00 PM",
-
-        check_out_time:
-          card.querySelector(
-            "[data-property-check-out]"
-          ).value.trim() || "10:00 AM",
-
-        linens_text:
-          card.querySelector(
-            "[data-property-linens]"
-          ).value.trim(),
-
-        bed_configuration:
-          card.querySelector(
-            "[data-property-bed-configuration]"
-          ).value.trim(),
-
-        beach_tags:
-          Number(beachTags),
-
-        beach_chairs:
-          Number(beachChairs),
-
-        beach_tag_replacement_fee:
-          Number(beachTagFee),
-
-        washer_dryer:
-          card.querySelector(
-            "[data-property-washer-dryer]"
-          ).checked,
-
-        internet:
-          card.querySelector(
-            "[data-property-internet]"
-          ).checked,
-
-        smart_tv:
-          card.querySelector(
-            "[data-property-smart-tv]"
-          ).checked,
-
-        coffee_pot:
-          card.querySelector(
-            "[data-property-coffee-pot]"
-          ).checked,
-
-        fully_stocked_kitchen:
-          card.querySelector(
-            "[data-property-stocked-kitchen]"
-          ).checked
-      };
-
-      await updateProperty(
-        id,
-        {
-          cleaning_fee:
-            Number(cleaningFee),
-
-          pet_fee:
-            Number(petFee),
-
-          max_dogs:
-            Number(maxDogs),
-
-          lease_defaults:
-            leaseDefaults
-        }
-      );
-
-      message(
-        propertySettingsMessage,
-        "Property settings saved."
-      );
-
-      await loadProperties();
-      renderPropertySettings();
-
-    } catch (err) {
-      message(
-        propertySettingsMessage,
-        err.message,
-        true
-      );
-    } finally {
-      button.disabled = false;
-    }
-  }
-);
-
-
-
-document.addEventListener(
-  "wheel",
-  event => {
-    if (
-      document.activeElement === event.target &&
-      event.target.matches(
-        '[data-rate-weekly], [data-rate-nightly], [name="weekly_price"], [name="nightly_price"]'
-      )
-    ) {
-      event.target.blur();
-    }
-  },
-  { passive: true }
-);
-
-
-
-rateStayRule.addEventListener(
-  "change",
-  () => {
-    const minimum =
-      ratePeriodForm.elements.minimum_nights;
-
-
-    if (
-      rateStayRule.value ===
-      "weekly"
-    ) {
-      minimum.value = "7";
-    } else if (
-      Number(minimum.value) === 7
-    ) {
-      minimum.value = "2";
-    }
-  }
-);
-
-
-
-
-ratePeriodForm.addEventListener(
-  "submit",
-  async event => {
-    event.preventDefault();
-
-
-    ratePeriodMessage.className = "";
-    ratePeriodMessage.textContent = "";
-
-
-    const form =
-      new FormData(
-        ratePeriodForm
-      );
-
-
-    const startDate =
-      form.get("start_date");
-
-
-    const endDate =
-      form.get("end_date");
-
-
-    const stayRule =
-      form.get("stay_rule");
-
-
-    try {
-      validateRateDates(
-        stayRule,
-        startDate,
-        endDate
-      );
-    } catch (err) {
-      message(
-        ratePeriodMessage,
-        err.message,
-        true
-      );
-      return;
-    }
-
-
-    const weekly =
-      form.get("weekly_price");
-
-
-    const nightly =
-      form.get("nightly_price");
-
-
-    const blocked =
-      form.get("blocked") === "on";
-
-
-    if (
-      !blocked &&
-      !weekly &&
-      !nightly
-    ) {
-      message(
-        ratePeriodMessage,
-        "Enter a weekly or nightly price, or block the dates.",
-        true
-      );
-      return;
-    }
-
-
-    try {
-      await createRatePeriod({
-        property_id:
-          form.get("property_id"),
-        start_date:
-          startDate,
-        end_date:
-          endDate,
-        weekly_price:
-          wholeDollarRate(weekly),
-        nightly_price:
-          wholeDollarRate(nightly),
-        stay_rule:
-          stayRule,
-        minimum_nights:
-          Number(
-            form.get("minimum_nights") ||
+      <div class="calendar-months">
+
+        ${renderMonth(
+          calendarStart,
+          availability,
+          ratePeriods,
+          selectedArrival,
+          selectedDeparture
+        )}
+
+        ${renderMonth(
+          new Date(
+            calendarStart.getFullYear(),
+            calendarStart.getMonth() + 1,
             1
           ),
-        blocked,
-        notes:
-          form.get("notes") ||
-          null
-      });
+          availability,
+          ratePeriods,
+          selectedArrival,
+          selectedDeparture
+        )}
 
+      </div>
 
-      message(
-        ratePeriodMessage,
-        "Rate period saved."
+      <div class="availability-legend">
+
+        <span class="legend-item">
+          <span class="legend-dot legend-available"></span>
+          Available
+        </span>
+
+        <span class="legend-item">
+          <span class="legend-dot legend-pending"></span>
+          Pending — waitlist available
+        </span>
+
+        <span class="legend-item">
+          <span class="legend-dot legend-booked"></span>
+          Booked
+        </span>
+
+        <span class="legend-item">
+          <span class="legend-dot legend-closed"></span>
+          Not currently open
+        </span>
+
+      </div>
+
+      ${flexibleRateDetails(ratePeriods)}
+
+      <div
+        class="calendar-message"
+        data-calendar-message
+      ></div>
+    `;
+
+    const messageBox =
+      calendarWrap.querySelector(
+        "[data-calendar-message]"
       );
 
-
-      ratePeriodForm.reset();
-      ratePeriodForm.elements.minimum_nights.value =
-        "7";
-
-
-      await loadRatePeriods();
-      renderRatePeriods();
-
-
-    } catch (err) {
-      message(
-        ratePeriodMessage,
-        err.message,
-        true
-      );
-    }
-  }
-);
-
-
-
-
-ratePeriodsList.addEventListener(
-  "click",
-  async event => {
-    const button =
-      event.target.closest(
-        "button[data-rate-action]"
-      );
-
-
-    if (!button) {
-      return;
-    }
-
-
-    const card =
-      button.closest(
-        "[data-rate-id]"
-      );
-
-
-    const id =
-      card.dataset.rateId;
-
-
-    const action =
-      button.dataset.rateAction;
-
-
-    try {
-      button.disabled = true;
-
-
-      if (action === "delete") {
-        const confirmed =
-          window.confirm(
-            "Delete this rate period?"
-          );
-
-
-        if (!confirmed) {
-          button.disabled = false;
-          return;
-        }
-
-
-        await deleteRatePeriod(id);
-
-
-        message(
-          ratePeriodMessage,
-          "Rate period deleted."
-        );
-      }
-
-
-      if (action === "save") {
-        const startDate =
-          card.querySelector(
-            "[data-rate-start]"
-          ).value;
-
-
-        const endDate =
-          card.querySelector(
-            "[data-rate-end]"
-          ).value;
-
-
-        const stayRule =
-          card.querySelector(
-            "[data-rate-stay-rule]"
-          ).value;
-
-
-        validateRateDates(
-          stayRule,
-          startDate,
-          endDate
-        );
-
-
-        const weekly =
-          card.querySelector(
-            "[data-rate-weekly]"
-          ).value;
-
-
-        const nightly =
-          card.querySelector(
-            "[data-rate-nightly]"
-          ).value;
-
-
-        const blocked =
-          card.querySelector(
-            "[data-rate-blocked]"
-          ).checked;
-
-
-        if (
-          !blocked &&
-          !weekly &&
-          !nightly
-        ) {
-          throw new Error(
-            "Enter a weekly or nightly price, or block the dates."
-          );
-        }
-
-
-        await updateRatePeriod(
-          id,
-          {
-            property_id:
-              card.querySelector(
-                "[data-rate-property]"
-              ).value,
-            start_date:
-              startDate,
-            end_date:
-              endDate,
-            weekly_price:
-              wholeDollarRate(weekly),
-            nightly_price:
-              wholeDollarRate(nightly),
-            stay_rule:
-              stayRule,
-            minimum_nights:
-              Number(
-                card.querySelector(
-                  "[data-rate-minimum]"
-                ).value ||
-                1
-              ),
-            blocked,
-            notes:
-              card.querySelector(
-                "[data-rate-notes]"
-              ).value ||
-              null
-          }
-        );
-
-
-        message(
-          ratePeriodMessage,
-          "Rate period updated."
-        );
-      }
-
-
-      await loadRatePeriods();
-      renderRatePeriods();
-
-
-    } catch (err) {
-      message(
-        ratePeriodMessage,
-        err.message,
-        true
-      );
-    } finally {
-      button.disabled = false;
-    }
-  }
-);
-
-
-
-
-
-
-
-
-document.addEventListener(
-  "input",
-  event => {
     if (
-      event.target.matches(
-        "[data-payment-due-amount]"
-      )
+      selectedArrival &&
+      !selectedDeparture
     ) {
-      refreshScheduleArithmetic(
-        event.target.closest(
-          "[data-id]"
-        )
-      );
-    }
-  }
-);
-
-
-
-
-document.addEventListener(
-  "click",
-  event => {
-    const useRemaining =
-      event.target.closest(
-        "[data-use-remaining]"
-      );
-
-
-    if (!useRemaining) {
-      return;
-    }
-
-
-    const card =
-      useRemaining.closest(
-        "[data-id]"
-      );
-
-
-    const reservationId =
-      card.dataset.id;
-
-
-    const reservation =
-      currentReservations.find(
-        item =>
-          item.id ===
-          reservationId
-      );
-
-
-    if (!reservation) {
-      return;
-    }
-
-
-    const visibleScheduled =
-      visibleScheduledTotal(
-        card
-      );
-
-
-    const remaining =
-      Math.max(
-        0,
-        Number(
-          reservation.amount_due ||
-          0
-        ) -
-        visibleScheduled
-      );
-
-
-    const amountInput =
-      card.querySelector(
-        "[data-new-payment-amount]"
-      );
-
-
-    if (amountInput) {
-      amountInput.value =
-        remaining.toFixed(2);
-
-
-      amountInput.focus();
-    }
-  }
-);
-
-
-
-
-document.addEventListener(
-  "click",
-  async event => {
-    const scheduleAction =
-      event.target.closest(
-        "[data-payment-schedule-action]"
-      );
-
-
-    if (scheduleAction) {
-      const row =
-        scheduleAction.closest(
-          "[data-payment-schedule-id]"
+      const arrivalPeriod =
+        nonBlockedRateForDate(
+          selectedArrival,
+          ratePeriods
         );
 
+      if (
+        arrivalPeriod &&
+        arrivalPeriod.stay_rule === "flexible"
+      ) {
+        messageBox.textContent =
+          `Arrival selected: ${formatShortDate(selectedArrival)} · ${formatMoney(arrivalPeriod.nightly_price)}/night · ${arrivalPeriod.minimum_nights || 1}-night minimum. Choose your departure date.`;
+      } else {
+        messageBox.textContent =
+          `Arrival selected: ${formatShortDate(selectedArrival)}. Choose your departure date.`;
+      }
 
-      const id =
-        row.dataset.paymentScheduleId;
+    } else if (
+      selectedArrival &&
+      selectedDeparture
+    ) {
+      const pending =
+        rangeContainsStatus(
+          selectedArrival,
+          selectedDeparture,
+          availability,
+          "pending"
+        );
 
+      if (pending) {
+        messageBox.className =
+          "calendar-message pending-note";
 
-      try {
-        scheduleAction.disabled =
-          true;
+        messageBox.textContent =
+          "Some of these dates currently have a pending 24-hour hold. You may still send a request to join the waitlist.";
+      } else {
+        try {
+          const period =
+            validateStayAgainstRate(
+              selectedArrival,
+              selectedDeparture,
+              ratePeriods
+            );
 
+          messageBox.className =
+            "calendar-message";
 
-        if (
-          scheduleAction.dataset.paymentScheduleAction ===
-          "delete"
-        ) {
           if (
-            !window.confirm(
-              "Delete this scheduled payment?"
-            )
+            period.stay_rule ===
+            "weekly"
           ) {
-            scheduleAction.disabled =
-              false;
-            return;
+            messageBox.textContent =
+              "Saturday check-in at 2:00 PM · Saturday checkout at 10:00 AM.";
+          } else {
+            messageBox.textContent =
+              `Selected: ${formatShortDate(selectedArrival)} through ${formatShortDate(selectedDeparture)} · ${period.minimum_nights || 1}-night minimum.`;
           }
 
+        } catch (error) {
+          messageBox.className =
+            "calendar-message pending-note";
 
-          await deletePaymentScheduleItem(
-            id
+          messageBox.textContent =
+            error.message;
+        }
+      }
+
+    } else {
+      messageBox.textContent =
+        "Choose an available arrival date. Saturday-to-Saturday weeks are marked by their Saturday start date.";
+    }
+
+    calendarWrap
+      .querySelector(
+        "[data-calendar-prev]"
+      )
+      .onclick =
+      () => {
+        calendarStart =
+          new Date(
+            calendarStart.getFullYear(),
+            calendarStart.getMonth() - 1,
+            1
           );
-        } else {
-          const label =
-            row.querySelector(
-              "[data-payment-label]"
-            ).value.trim();
 
+        drawCalendar();
+      };
 
-          const amount =
-            Number(
-              row.querySelector(
-                "[data-payment-due-amount]"
-              ).value
-            );
+    calendarWrap
+      .querySelector(
+        "[data-calendar-next]"
+      )
+      .onclick =
+      () => {
+        calendarStart =
+          new Date(
+            calendarStart.getFullYear(),
+            calendarStart.getMonth() + 1,
+            1
+          );
 
+        drawCalendar();
+      };
 
-          const dueDate =
-            row.querySelector(
-              "[data-payment-due-date]"
-            ).value;
+    calendarWrap
+      .querySelectorAll(
+        "[data-calendar-date]"
+      )
+      .forEach(
+        button => {
 
+          button.addEventListener(
+            "click",
+            () => {
 
-          if (
-            !label ||
-            !amount ||
-            amount <= 0 ||
-            !dueDate
-          ) {
-            throw new Error(
-              "Enter a label, amount, and due date."
-            );
-          }
+              const date =
+                button.dataset
+                  .calendarDate;
 
+              const status =
+                button.dataset
+                  .calendarStatus;
 
-          const card =
-            row.closest(
-              "[data-id]"
-            );
+              if (
+                status === "booked" ||
+                status === "blocked" ||
+                status === "unpriced"
+              ) {
+                return;
+              }
 
+              const rate =
+                nonBlockedRateForDate(
+                  date,
+                  ratePeriods
+                );
 
-          const reservationId =
-            card.dataset.id;
+              if (!rate) {
+                return;
+              }
 
+              if (
+                rate.stay_rule ===
+                "weekly"
+              ) {
+                if (
+                  date !==
+                  rate.start_date
+                ) {
+                  selectedArrival = "";
+                  selectedDeparture = "";
 
-          const reservation =
-            currentReservations.find(
-              item =>
-                item.id ===
-                reservationId
-            );
+                  form.elements.arrival.value =
+                    "";
 
+                  form.elements.departure.value =
+                    "";
 
-          const otherScheduled =
-            scheduleForReservation(
-              reservationId
-            )
-              .filter(
-                item =>
-                  item.id !== id
-              )
-              .reduce(
-                (
-                  total,
-                  item
-                ) =>
-                  total +
-                  Number(
-                    item.amount_due ||
-                    0
-                  ),
-                0
-              );
+                  drawCalendar();
+                  return;
+                }
 
+                selectWeeklyPeriod(
+                  rate
+                );
 
-          const maxAllowed =
-            Math.max(
-              0,
-              Number(
-                reservation.amount_due ||
-                0
-              ) -
-              otherScheduled
-            );
+                return;
+              }
 
+              if (
+                !selectedArrival ||
+                selectedDeparture
+              ) {
+                selectedArrival =
+                  date;
 
-          if (
-            amount >
-            maxAllowed
-          ) {
-            throw new Error(
-              `That installment is too large. The maximum for this installment is ${formatMoney(maxAllowed)}.`
-            );
-          }
+                selectedDeparture =
+                  "";
 
+                form.elements.arrival.value =
+                  date;
 
-          await updatePaymentScheduleItem(
-            id,
-            {
-              label,
-              amount_due:
-                amount,
-              due_date:
-                dueDate
+                form.elements.departure.value =
+                  "";
+
+              } else {
+                if (
+                  parseDate(date) <=
+                  parseDate(
+                    selectedArrival
+                  )
+                ) {
+                  selectedArrival =
+                    date;
+
+                  selectedDeparture =
+                    "";
+
+                  form.elements.arrival.value =
+                    date;
+
+                  form.elements.departure.value =
+                    "";
+
+                } else {
+                  const hitsBooked =
+                    rangeContainsStatus(
+                      selectedArrival,
+                      date,
+                      availability,
+                      "booked"
+                    );
+
+                  if (hitsBooked) {
+                    selectedArrival =
+                      date;
+
+                    selectedDeparture =
+                      "";
+
+                    form.elements.arrival.value =
+                      date;
+
+                    form.elements.departure.value =
+                      "";
+
+                  } else {
+                    selectedDeparture =
+                      date;
+
+                    form.elements.departure.value =
+                      date;
+                  }
+                }
+              }
+
+              drawCalendar();
             }
           );
         }
-
-
-        await refresh();
-
-
-      } catch (err) {
-        message(
-          portalMessage,
-          err.message,
-          true
-        );
-      } finally {
-        scheduleAction.disabled =
-          false;
-      }
-
-
-      return;
-    }
-
-
-    const addSchedule =
-      event.target.closest(
-        'button[data-action="add-payment-schedule"]'
       );
 
+    renderWeeklyAvailabilityList(
+      ratePeriods,
+      availability,
+      selectWeeklyPeriod
+    );
 
-    if (addSchedule) {
-      const card =
-        addSchedule.closest(
-          "[data-id]"
-        );
-
-
-      const reservationId =
-        card.dataset.id;
-
-
-      const label =
-        card.querySelector(
-          "[data-new-payment-label]"
-        ).value.trim();
-
-
-      const amount =
-        Number(
-          card.querySelector(
-            "[data-new-payment-amount]"
-          ).value
-        );
-
-
-      const dueDate =
-        card.querySelector(
-          "[data-new-payment-date]"
-        ).value;
-
-
-      try {
-        addSchedule.disabled =
-          true;
-
-
-        if (
-          !label ||
-          !amount ||
-          amount <= 0 ||
-          !dueDate
-        ) {
-          throw new Error(
-            "Enter a label, amount, and due date."
-          );
-        }
-
-
-        const reservation =
-          currentReservations.find(
-            item =>
-              item.id ===
-              reservationId
-          );
-
-
-        const remaining =
-          unscheduledAmount(
-            reservation
-          );
-
-
-        if (
-          amount >
-          remaining
-        ) {
-          throw new Error(
-            `That installment is larger than the remaining unscheduled amount of ${formatMoney(remaining)}.`
-          );
-        }
-
-
-        await createPaymentScheduleItem({
-          reservation_id:
-            reservationId,
-          label,
-          amount_due:
-            amount,
-          due_date:
-            dueDate,
-          reminder_days_before:
-            3
-        });
-
-
-        await refresh();
-
-
-      } catch (err) {
-        message(
-          portalMessage,
-          err.message,
-          true
-        );
-      } finally {
-        addSchedule.disabled =
-          false;
-      }
-
-
-      return;
-    }
+    renderQuote();
   }
-);
 
+  drawCalendar();
 
-
-
-if (photoProperty) {
-  photoProperty.addEventListener(
-    "change",
-    () => {
-      photoManagerMessage.className = "";
-      photoManagerMessage.textContent = "";
-      renderPhotoManager();
-    }
-  );
-}
-
-
-if (uploadPhotosButton) {
-  uploadPhotosButton.addEventListener(
-    "click",
-    async () => {
-      const propertyId =
-        selectedPhotoPropertyId();
-
-      const files =
-        Array.from(
-          photoFiles?.files || []
-        );
-
-      if (!propertyId) {
-        message(
-          photoManagerMessage,
-          "Choose a property first.",
-          true
-        );
-        return;
-      }
-
-      if (!files.length) {
-        message(
-          photoManagerMessage,
-          "Choose at least one photo to upload.",
-          true
-        );
-        return;
-      }
-
-      try {
-        uploadPhotosButton.disabled = true;
-        uploadPhotosButton.textContent =
-          "Uploading…";
-
-        const existing =
-          photosForProperty(propertyId);
-
-        let nextOrder =
-          existing.length;
-
-        let needsPrimary =
-          !existing.some(
-            photo => photo.is_primary
-          );
-
-        for (const file of files) {
-          await uploadPhotoFile(
-            propertyId,
-            file,
-            nextOrder,
-            needsPrimary
-          );
-
-          nextOrder += 1;
-          needsPrimary = false;
-        }
-
-        if (photoFiles) {
-          photoFiles.value = "";
-        }
-
-        await loadPropertyPhotos();
-        renderPhotoManager();
-
-        message(
-          photoManagerMessage,
-          `${files.length} photo${files.length === 1 ? "" : "s"} uploaded.`
-        );
-
-      } catch (err) {
-        message(
-          photoManagerMessage,
-          err.message,
-          true
-        );
-      } finally {
-        uploadPhotosButton.disabled = false;
-        uploadPhotosButton.textContent =
-          "Upload selected photos";
-      }
-    }
-  );
-}
-
-
-if (photoGrid) {
-  photoGrid.addEventListener(
-    "click",
+  form.addEventListener(
+    "submit",
     async event => {
-      const button =
-        event.target.closest(
-          "button[data-photo-action]"
-        );
 
-      if (!button) {
-        return;
-      }
+      event.preventDefault();
 
-      const card =
-        button.closest(
-          "[data-photo-id]"
-        );
+      result.className =
+        "booking-result";
 
-      const photo =
-        currentPropertyPhotos.find(
-          item =>
-            item.id ===
-              card?.dataset.photoId
-        );
+      result.textContent = "";
 
-      if (!photo) {
-        return;
-      }
+      submitButton.disabled =
+        true;
 
-      const action =
-        button.dataset.photoAction;
+      submitButton.textContent =
+        "Saving request…";
 
       try {
-        button.disabled = true;
+        const formData =
+          new FormData(form);
 
-        if (action === "primary") {
-          await setPrimaryPhoto(photo);
+        const response =
+          await submitReservation(
+            property,
+            propertyRecord,
+            formData,
+            availability,
+            ratePeriods
+          );
+
+        result.className =
+          "booking-result success";
+
+        const total =
+          formatMoney(
+            response.quote.total
+          );
+
+        if (response.isWaitlist) {
+          result.innerHTML =
+            `<strong>You’re on the waitlist.</strong><br>Your requested stay total is ${total}. These dates currently have a pending 24-hour hold. Janis has received your request and can contact you if the dates become available.${response.emailSent ? "<br><br>A confirmation email is on its way." : "<br><br>Your request was saved, but the confirmation email could not be sent."}`;
+
+        } else {
+          result.innerHTML =
+            `<strong>Your dates have been received.</strong><br>Your stay total is ${total}. Your request is pending until Janis confirms the dates, lease, and payment details.${response.emailSent ? "<br><br>A confirmation email is on its way." : "<br><br>Your request was saved, but the confirmation email could not be sent."}`;
         }
+
+        form.reset();
+
+        dogNamesField.style.display =
+          "none";
+
+        selectedArrival = "";
+        selectedDeparture = "";
+
+        availability =
+          await getAvailability(
+            propertyId
+          );
+
+        ratePeriods =
+          await getRatePeriods(
+            propertyId
+          );
 
         if (
-          action === "up" ||
-          action === "down"
+          publishedRateSummaryEl
         ) {
-          await movePhoto(
-            photo,
-            action
-          );
+          publishedRateSummaryEl.innerHTML =
+            publishedRateSummary(
+              ratePeriods
+            );
         }
 
-        if (action === "delete") {
-          if (
-            !window.confirm(
-              "Delete this photo?"
-            )
-          ) {
-            button.disabled = false;
-            return;
-          }
+        drawCalendar();
 
-          const wasPrimary =
-            photo.is_primary;
+      } catch (error) {
+        console.error(error);
 
-          await deleteStoredPhoto(photo);
-          await loadPropertyPhotos();
+        result.className =
+          "booking-result error";
 
-          if (wasPrimary) {
-            const remaining =
-              photosForProperty(
-                photo.property_id
-              );
+        result.textContent =
+          error.message;
 
-            if (remaining.length) {
-              await setPrimaryPhoto(
-                remaining[0]
-              );
-            }
-          }
-        }
+      } finally {
+        submitButton.disabled =
+          false;
 
-        await loadPropertyPhotos();
-        renderPhotoManager();
-
-      } catch (err) {
-        message(
-          photoManagerMessage,
-          err.message,
-          true
-        );
+        submitButton.textContent =
+          "Send booking request";
       }
     }
   );
-}
-
-
-document.addEventListener(
-  "click",
-  event => {
-    const viewButton =
-      event.target.closest(
-        "[data-owner-view]"
-      );
-
-
-    if (viewButton) {
-      showOwnerView(
-        viewButton.dataset.ownerView
-      );
-      return;
-    }
-
-
-    const reviewButton =
-      event.target.closest(
-        "[data-dashboard-review]"
-      );
-
-
-    if (reviewButton) {
-      showOwnerView(
-        "pending"
-      );
-
-
-      const id =
-        reviewButton.dataset.dashboardReview;
-
-
-      window.setTimeout(
-        () => {
-          const card =
-            pendingReservationList
-              .querySelector(
-                `[data-id="${id}"]`
-              );
-
-
-          if (card) {
-            card.scrollIntoView({
-              behavior: "smooth",
-              block: "center"
-            });
-          }
-        },
-        100
-      );
-    }
-  }
-);
-
-
-
-
-
-
-toggleBrokerageFields();
-
-
-
-
-if (token) {
-  showPortal();
 }
