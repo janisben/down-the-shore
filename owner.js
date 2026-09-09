@@ -5721,27 +5721,10 @@ reservationList.addEventListener(
         );
 
 
-        try {
-          await sendCleaningAssignmentEmailForReservation(
-            id
-          );
-
-          message(
-            portalMessage,
-            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
-          );
-        } catch (cleaningError) {
-          console.error(
-            "Cleaner assignment email error:",
-            cleaningError
-          );
-
-          message(
-            portalMessage,
-            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
-            true
-          );
-        }
+             message(
+        portalMessage,
+        "Accepted. The 24-hour payment hold has started."
+      );
 
 
       }
@@ -6091,6 +6074,16 @@ reservationList.addEventListener(
   amount,
   method
 );
+        try {
+  await sendCleaningAssignmentEmailForReservation(
+    id
+  );
+} catch (cleaningError) {
+  console.error(
+    "Cleaner assignment email error:",
+    cleaningError
+  );
+}
 
 const reservation =
   currentReservations.find(
@@ -6234,29 +6227,10 @@ pendingReservationList.addEventListener(
           }
         );
 
-
-        try {
-          await sendCleaningAssignmentEmailForReservation(
-            id
-          );
-
-          message(
-            portalMessage,
-            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
-          );
-        } catch (cleaningError) {
-          console.error(
-            "Cleaner assignment email error:",
-            cleaningError
-          );
-
-          message(
-            portalMessage,
-            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
-            true
-          );
-        }
-try {
+        message(
+          portalMessage,
+          "Accepted. The 24-hour payment hold has started."
+        );
   const reservation =
     currentReservations.find(
       item =>
@@ -6543,6 +6517,16 @@ try {
       amount,
       method
     );
+    try {
+  await sendCleaningAssignmentEmailForReservation(
+    id
+  );
+} catch (cleaningError) {
+  console.error(
+    "Cleaner assignment email error:",
+    cleaningError
+  );
+}
 
     const reservation =
       currentReservations.find(
