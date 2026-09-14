@@ -5149,6 +5149,13 @@ function showOwnerView(
     );
 
 
+  // Full-size property photos are expensive to download. Only build the
+  // photo manager when the owner intentionally opens the Photos view.
+  if (view === "photos") {
+    renderPhotoManager();
+  }
+
+
   const [
     title,
     subtitle
@@ -5207,7 +5214,6 @@ async function refresh() {
     renderCleaningDashboard();
     renderPropertySettings();
     renderRatePeriods();
-    renderPhotoManager();
     renderDashboard();
 
 
