@@ -403,6 +403,11 @@ export default async function handler(
 
               to: [to],
 
+              bcc: [
+                process.env.OWNER_EMAIL ||
+                "janisbenstock@gmail.com"
+              ],
+
               subject,
 
               html

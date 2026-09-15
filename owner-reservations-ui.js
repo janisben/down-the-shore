@@ -325,6 +325,59 @@
       margin-top:8px;
     }
 
+    .dts-email-editor {
+      display:grid;
+      gap:8px;
+      margin-top:16px;
+      padding-top:16px;
+      border-top:1px solid #e5e7eb;
+    }
+
+    .dts-email-editor label {
+      color:#303a47;
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .dts-email-editor input {
+      width:100%;
+      box-sizing:border-box;
+      border:1px solid #cfd5dd;
+      border-radius:7px;
+      padding:9px 10px;
+    }
+
+    .dts-email-actions {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+    }
+
+    .dts-save-email,
+    .dts-resend-approval {
+      border:0;
+      border-radius:8px;
+      padding:10px 12px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .dts-save-email {
+      background:#eaf0f6;
+      color:#0d2b4d;
+    }
+
+    .dts-resend-approval {
+      background:#0d2b4d;
+      color:#fff;
+    }
+
+    .dts-save-email:disabled,
+    .dts-resend-approval:disabled {
+      opacity:.6;
+      cursor:wait;
+    }
+
     .dts-cancel-hold {
       width:100%;
       margin-top:14px;
@@ -1872,6 +1925,63 @@
           }
         </div>
 
+        <div
+          class="dts-email-editor"
+          data-dts-email-editor="${
+            reservation.id
+          }"
+        >
+          <label>
+            Guest email
+            <input
+              type="email"
+              value="${
+                dtsEsc(
+                  reservation.guest_email ||
+                  ""
+                )
+              }"
+              data-dts-email-input
+            >
+          </label>
+
+          <div class="dts-email-actions">
+            <button
+              type="button"
+              class="dts-save-email"
+              data-dts-save-email="${
+                reservation.id
+              }"
+            >
+              Save email
+            </button>
+
+            ${
+              reservation.status ===
+                "pending_payment" &&
+              reservation.hold_expires_at
+                ? `
+                  <button
+                    type="button"
+                    class="dts-resend-approval"
+                    data-dts-resend-approval="${
+                      reservation.id
+                    }"
+                  >
+                    Resend approval email
+                  </button>
+                `
+                : ""
+            }
+          </div>
+
+          <div class="dts-payment-help">
+            Approval emails include Stripe,
+            Zelle, Venmo, and check options.
+            A copy is sent to Janis.
+          </div>
+        </div>
+
         <div class="dts-detail-section">
           <strong>
             Payment summary
@@ -2066,6 +2176,114 @@
         </div>
       </div>
     `;
+  }
+
+
+  async function dtsSaveGuestEmail(
+    button
+  ) {
+    const reservationId =
+      button.dataset.dtsSaveEmail;
+
+    const editor =
+      button.closest(
+        "[data-dts-email-editor]"
+      );
+
+    const input =
+      editor?.querySelector(
+        "[data-dts-email-input]"
+      );
+
+    const email =
+      input?.value.trim() || "";
+
+    if (!email || !input.checkValidity()) {
+      throw new Error(
+        "Enter a valid guest email address."
+      );
+    }
+
+    button.disabled = true;
+    button.textContent = "Saving…";
+
+    await updateReservation(
+      reservationId,
+      {
+        guest_email: email
+      }
+    );
+
+    const reservation =
+      currentReservations.find(
+        item =>
+          String(item.id) ===
+          String(reservationId)
+      );
+
+    if (reservation) {
+      reservation.guest_email = email;
+    }
+
+    selectedReservationId =
+      reservationId;
+
+    await refresh();
+    renderDtsReservations();
+
+    return email;
+  }
+
+
+  async function dtsResendApprovalEmail(
+    button
+  ) {
+    const reservationId =
+      button.dataset.dtsResendApproval;
+
+    const reservation =
+      currentReservations.find(
+        item =>
+          String(item.id) ===
+          String(reservationId)
+      );
+
+    if (!reservation) {
+      throw new Error(
+        "Reservation could not be found."
+      );
+    }
+
+    const editor =
+      button.closest(
+        "[data-dts-email-editor]"
+      );
+
+    const enteredEmail =
+      editor
+        ?.querySelector(
+          "[data-dts-email-input]"
+        )
+        ?.value.trim();
+
+    if (
+      enteredEmail &&
+      enteredEmail !==
+        reservation.guest_email
+    ) {
+      throw new Error(
+        "Save the new email address before resending."
+      );
+    }
+
+    button.disabled = true;
+    button.textContent = "Sending…";
+
+    await sendReservationApprovalEmail(
+      reservation
+    );
+
+    return reservation.guest_email;
   }
 
 
@@ -2575,6 +2793,92 @@
 
     return leaseResult;
   }
+
+
+  document.addEventListener(
+    "click",
+    async event => {
+      const saveButton =
+        event.target.closest(
+          "[data-dts-save-email]"
+        );
+
+      if (!saveButton) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      try {
+        const email =
+          await dtsSaveGuestEmail(
+            saveButton
+          );
+
+        window.alert(
+          `Guest email saved as ${email}.`
+        );
+      } catch (error) {
+        window.alert(
+          `Email error: ${
+            error.message ||
+            "Could not save the email."
+          }`
+        );
+
+        saveButton.disabled = false;
+        saveButton.textContent =
+          "Save email";
+      }
+    },
+    true
+  );
+
+
+  document.addEventListener(
+    "click",
+    async event => {
+      const resendButton =
+        event.target.closest(
+          "[data-dts-resend-approval]"
+        );
+
+      if (!resendButton) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      try {
+        const email =
+          await dtsResendApprovalEmail(
+            resendButton
+          );
+
+        window.alert(
+          `Approval and payment-options email sent to ${email}. A copy was sent to Janis.`
+        );
+
+        resendButton.disabled = false;
+        resendButton.textContent =
+          "Resend approval email";
+      } catch (error) {
+        window.alert(
+          `Resend error: ${
+            error.message ||
+            "Could not resend the approval email."
+          }`
+        );
+
+        resendButton.disabled = false;
+        resendButton.textContent =
+          "Resend approval email";
+      }
+    },
+    true
+  );
 
 
   document.addEventListener(

@@ -1453,6 +1453,87 @@ async function updateReservation(
 
 
 
+async function sendReservationApprovalEmail(
+  reservation
+) {
+  if (!reservation?.guest_email) {
+    throw new Error(
+      "Enter and save a guest email before sending the approval email."
+    );
+  }
+
+  if (!reservation.hold_expires_at) {
+    throw new Error(
+      "This reservation does not have an active payment hold."
+    );
+  }
+
+  const checkoutResponse = await fetch(
+    "/api/create-checkout-session",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        reservationId: reservation.id
+      })
+    }
+  );
+
+  let checkout = {};
+
+  try {
+    checkout = await checkoutResponse.json();
+  } catch (_) {}
+
+  if (!checkoutResponse.ok || !checkout.url) {
+    throw new Error(
+      checkout.error ||
+      "Could not create the payment link."
+    );
+  }
+
+  const emailResponse = await fetch(
+    "/api/reservation-approved",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        to: reservation.guest_email,
+        guestName: reservation.guest_name,
+        propertyName:
+          reservation.property_name ||
+          "Down the Shore",
+        arrivalDate: reservation.arrival_date,
+        departureDate: reservation.departure_date,
+        holdExpiresAt: reservation.hold_expires_at,
+        paymentUrl: checkout.url
+      })
+    }
+  );
+
+  let emailResult = {};
+
+  try {
+    emailResult = await emailResponse.json();
+  } catch (_) {}
+
+  if (!emailResponse.ok) {
+    throw new Error(
+      emailResult.error ||
+      "The approval email could not be sent."
+    );
+  }
+
+  return emailResult;
+}
+
+
+
+
 async function createReservation(
   data
 ) {
@@ -5747,6 +5828,13 @@ reservationList.addEventListener(
       ) {
 
 
+        const holdExpiresAt =
+          new Date(
+            Date.now() +
+            24 * 60 * 60 * 1000
+          ).toISOString();
+
+
         await updateReservation(
           id,
           {
@@ -5755,15 +5843,26 @@ reservationList.addEventListener(
 
 
             hold_expires_at:
-              new Date(
-                Date.now() +
-                24 *
-                60 *
-                60 *
-                1000
-              ).toISOString()
+              holdExpiresAt
           }
         );
+
+
+        const reservation =
+          currentReservations.find(
+            item =>
+              String(item.id) ===
+              String(id)
+          );
+
+        if (reservation) {
+          await sendReservationApprovalEmail({
+            ...reservation,
+            status: "pending_payment",
+            hold_expires_at:
+              holdExpiresAt
+          });
+        }
 
 
         message(
@@ -6244,6 +6343,13 @@ pendingReservationList.addEventListener(
       ) {
 
 
+        const holdExpiresAt =
+          new Date(
+            Date.now() +
+            24 * 60 * 60 * 1000
+          ).toISOString();
+
+
         await updateReservation(
           id,
           {
@@ -6252,15 +6358,26 @@ pendingReservationList.addEventListener(
 
 
             hold_expires_at:
-              new Date(
-                Date.now() +
-                24 *
-                60 *
-                60 *
-                1000
-              ).toISOString()
+              holdExpiresAt
           }
         );
+
+
+        const guestReservation =
+          currentReservations.find(
+            item =>
+              String(item.id) ===
+              String(id)
+          );
+
+        if (guestReservation) {
+          await sendReservationApprovalEmail({
+            ...guestReservation,
+            status: "pending_payment",
+            hold_expires_at:
+              holdExpiresAt
+          });
+        }
 
 
         message(
