@@ -121,6 +121,71 @@ ownerPortalFixStyle.textContent = `
     grid-column:1 / -1 !important;
   }
 
+  .reservation-documents {
+    margin-top:16px !important;
+    padding-top:14px !important;
+    border-top:1px solid var(--line) !important;
+  }
+
+  .reservation-document-list {
+    display:grid !important;
+    gap:8px !important;
+    margin:10px 0 !important;
+  }
+
+  .reservation-document-row {
+    padding:10px !important;
+    border:1px solid var(--line) !important;
+    border-radius:8px !important;
+    background:#fff !important;
+  }
+
+  .reservation-document-title {
+    font-weight:700 !important;
+    color:var(--navy) !important;
+  }
+
+  .reservation-document-description {
+    margin-top:4px !important;
+    white-space:pre-wrap !important;
+  }
+
+  .reservation-document-actions {
+    display:flex !important;
+    gap:8px !important;
+    margin-top:8px !important;
+    flex-wrap:wrap !important;
+  }
+
+  .reservation-document-form {
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+    padding:12px !important;
+    border:1px dashed #cfd5dd !important;
+    border-radius:8px !important;
+    background:#fbfcfd !important;
+  }
+
+  .reservation-document-form label {
+    display:grid !important;
+    gap:4px !important;
+    font-size:12px !important;
+    font-weight:700 !important;
+    color:var(--muted) !important;
+  }
+
+  .reservation-document-form input,
+  .reservation-document-form textarea {
+    width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+    padding:9px !important;
+    border:1px solid #cfd5dd !important;
+    border-radius:7px !important;
+    background:#fff !important;
+  }
+
   .payment-log-row input,
   .payment-log-row select {
     width:100% !important;
@@ -181,6 +246,7 @@ let currentPayments = [];
 let currentPaymentSchedule = [];
 let currentPropertyPhotos = [];
 let currentLeases = [];
+let currentReservationDocuments = [];
 
 
 
@@ -1093,6 +1159,187 @@ async function movePhoto(photo, direction) {
     other.id,
     { sort_order: index }
   );
+}
+
+
+
+function escapeDocumentText(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
+function safeDocumentFilename(name) {
+  const ext = (name.split(".").pop() || "file")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "") || "file";
+  const base = name
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "document";
+
+  return `${base}.${ext}`;
+}
+
+
+async function loadReservationDocuments() {
+  try {
+    currentReservationDocuments = await fetchTable(
+      "reservation_documents",
+      "?select=*&order=uploaded_at.desc"
+    );
+  } catch (error) {
+    console.warn("Reservation documents could not be loaded:", error);
+    currentReservationDocuments = [];
+  }
+
+  return currentReservationDocuments;
+}
+
+
+function documentsForReservation(reservationId) {
+  return currentReservationDocuments.filter(
+    document => document.reservation_id === reservationId
+  );
+}
+
+
+async function uploadReservationDocument(
+  reservationId,
+  file,
+  label,
+  description
+) {
+  if (!file) {
+    throw new Error("Choose a document to upload.");
+  }
+
+  if (!label.trim()) {
+    throw new Error("Enter a label for the document.");
+  }
+
+  if (file.size > 20 * 1024 * 1024) {
+    throw new Error("Documents must be 20 MB or smaller.");
+  }
+
+  const filename =
+    `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeDocumentFilename(file.name)}`;
+  const storagePath = `${reservationId}/${filename}`;
+  const uploadedAt = new Date().toISOString();
+
+  const upload = await fetch(
+    `${cfg.url}/storage/v1/object/reservation-documents/${storagePath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: cfg.publishableKey,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": file.type || "application/octet-stream",
+        "x-upsert": "false"
+      },
+      body: file
+    }
+  );
+
+  if (!upload.ok) {
+    throw new Error(`Document upload failed: ${await upload.text()}`);
+  }
+
+  const insert = await fetch(
+    `${cfg.url}/rest/v1/reservation_documents`,
+    {
+      method: "POST",
+      headers: headers({ Prefer: "return=minimal" }),
+      body: JSON.stringify({
+        reservation_id: reservationId,
+        label: label.trim(),
+        description: description.trim() || null,
+        original_name: file.name,
+        storage_path: storagePath,
+        mime_type: file.type || "application/octet-stream",
+        file_size: file.size,
+        uploaded_at: uploadedAt
+      })
+    }
+  );
+
+  if (!insert.ok) {
+    await fetch(
+      `${cfg.url}/storage/v1/object/reservation-documents/${storagePath}`,
+      {
+        method: "DELETE",
+        headers: {
+          apikey: cfg.publishableKey,
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+    throw new Error(`Document details could not be saved: ${await insert.text()}`);
+  }
+}
+
+
+async function openReservationDocument(document) {
+  const response = await fetch(
+    `${cfg.url}/storage/v1/object/sign/reservation-documents/${document.storage_path}`,
+    {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ expiresIn: 300 })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Document could not be opened: ${await response.text()}`);
+  }
+
+  const result = await response.json();
+  const signedUrl = result.signedURL || result.signedUrl;
+
+  if (!signedUrl) {
+    throw new Error("Document link could not be created.");
+  }
+
+  window.open(
+    signedUrl.startsWith("http") ? signedUrl : `${cfg.url}${signedUrl}`,
+    "_blank",
+    "noopener"
+  );
+}
+
+
+async function deleteReservationDocument(document) {
+  const storageDelete = await fetch(
+    `${cfg.url}/storage/v1/object/reservation-documents/${document.storage_path}`,
+    {
+      method: "DELETE",
+      headers: {
+        apikey: cfg.publishableKey,
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  if (!storageDelete.ok && storageDelete.status !== 404) {
+    throw new Error(`Document file could not be deleted: ${await storageDelete.text()}`);
+  }
+
+  const rowDelete = await fetch(
+    `${cfg.url}/rest/v1/reservation_documents?id=eq.${encodeURIComponent(document.id)}`,
+    {
+      method: "DELETE",
+      headers: headers({ Prefer: "return=minimal" })
+    }
+  );
+
+  if (!rowDelete.ok) {
+    throw new Error(`Document record could not be deleted: ${await rowDelete.text()}`);
+  }
 }
 
 
@@ -4047,6 +4294,96 @@ function paymentScheduleMarkup(
 
 
 
+function reservationDocumentsMarkup(reservation) {
+  const documents = documentsForReservation(reservation.id);
+
+  return `
+    <details class="reservation-documents">
+      <summary style="cursor:pointer;font-weight:700;color:#0d2b4d;">
+        Documents (${documents.length})
+      </summary>
+
+      <div class="reservation-document-list">
+        ${
+          documents.length
+            ? documents.map(document => `
+                <div
+                  class="reservation-document-row"
+                  data-reservation-document-id="${document.id}"
+                >
+                  <div class="reservation-document-title">
+                    ${escapeDocumentText(document.label)}
+                  </div>
+                  <div class="meta">
+                    ${escapeDocumentText(document.original_name)}
+                    · Uploaded ${new Date(document.uploaded_at).toLocaleString()}
+                  </div>
+                  ${
+                    document.description
+                      ? `<div class="reservation-document-description">${escapeDocumentText(document.description)}</div>`
+                      : ""
+                  }
+                  <div class="reservation-document-actions">
+                    <button
+                      type="button"
+                      data-reservation-document-action="open"
+                    >
+                      Open / download
+                    </button>
+                    <button
+                      type="button"
+                      class="danger"
+                      data-reservation-document-action="delete"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              `).join("")
+            : `<div class="meta">No documents uploaded yet.</div>`
+        }
+      </div>
+
+      <div class="reservation-document-form">
+        <label>
+          Document label
+          <input
+            type="text"
+            maxlength="100"
+            placeholder="Lease, ID, payment receipt..."
+            data-reservation-document-label
+          >
+        </label>
+        <label>
+          Short description
+          <textarea
+            rows="2"
+            maxlength="500"
+            placeholder="Optional note about this document"
+            data-reservation-document-description
+          ></textarea>
+        </label>
+        <label>
+          Choose file
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt,.rtf"
+            data-reservation-document-file
+          >
+        </label>
+        <button
+          type="button"
+          data-reservation-document-action="upload"
+        >
+          Upload document
+        </button>
+      </div>
+    </details>
+  `;
+}
+
+
+
 function reservationCard(r) {
   const lease =
     leaseForReservation(
@@ -4522,6 +4859,9 @@ function reservationCard(r) {
 
           ${paymentScheduleMarkup(r)}
         </div>
+
+
+        ${reservationDocumentsMarkup(r)}
       </div>
 
 
@@ -5503,6 +5843,7 @@ async function refresh() {
     await loadLeases();
     await loadPayments();
     await loadPaymentSchedule();
+    await loadReservationDocuments();
 
 
     reservationList.innerHTML =
@@ -7691,6 +8032,84 @@ document.addEventListener(
   }
 );
 
+
+
+
+document.addEventListener(
+  "click",
+  async event => {
+    const button = event.target.closest(
+      "button[data-reservation-document-action]"
+    );
+
+    if (!button) {
+      return;
+    }
+
+    const action = button.dataset.reservationDocumentAction;
+    const reservationCard = button.closest("[data-id]");
+
+    if (!reservationCard) {
+      return;
+    }
+
+    button.disabled = true;
+
+    try {
+      if (action === "upload") {
+        const file = reservationCard.querySelector(
+          "[data-reservation-document-file]"
+        )?.files?.[0];
+        const label = reservationCard.querySelector(
+          "[data-reservation-document-label]"
+        )?.value || "";
+        const description = reservationCard.querySelector(
+          "[data-reservation-document-description]"
+        )?.value || "";
+
+        await uploadReservationDocument(
+          reservationCard.dataset.id,
+          file,
+          label,
+          description
+        );
+
+        message(portalMessage, "Document uploaded.");
+        await refresh();
+        return;
+      }
+
+      const row = button.closest("[data-reservation-document-id]");
+      const document = currentReservationDocuments.find(
+        item => String(item.id) === String(row?.dataset.reservationDocumentId)
+      );
+
+      if (!document) {
+        throw new Error("Document could not be found.");
+      }
+
+      if (action === "open") {
+        await openReservationDocument(document);
+        button.disabled = false;
+        return;
+      }
+
+      if (action === "delete") {
+        if (!window.confirm(`Delete “${document.label}”?`)) {
+          button.disabled = false;
+          return;
+        }
+
+        await deleteReservationDocument(document);
+        message(portalMessage, "Document deleted.");
+        await refresh();
+      }
+    } catch (error) {
+      message(portalMessage, error.message, true);
+      button.disabled = false;
+    }
+  }
+);
 
 
 
