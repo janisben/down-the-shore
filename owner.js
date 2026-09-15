@@ -237,6 +237,8 @@ let calendarDate =
     1
   );
 
+let calendarViewMode = "month";
+
 
 let currentReservations = [];
 let currentProperties = [];
@@ -341,6 +343,14 @@ const calendarNext =
 
 const calendarToday =
   document.getElementById("calendarToday");
+
+
+const calendarJump =
+  document.getElementById("calendarJump");
+
+
+const calendarYearView =
+  document.getElementById("calendarYearView");
 
 
 const cleaningList =
@@ -2733,14 +2743,15 @@ function paymentDueItemsForDay(
 
 
 function renderPropertyCalendar(
-  property
+  property,
+  viewDate = calendarDate
 ) {
   const year =
-    calendarDate.getFullYear();
+    viewDate.getFullYear();
 
 
   const month =
-    calendarDate.getMonth();
+    viewDate.getMonth();
 
 
   const firstDay =
@@ -2899,6 +2910,7 @@ function renderPropertyCalendar(
 
 
 function renderOwnerCalendar() {
+  const year = calendarDate.getFullYear();
   const monthTitle =
     calendarDate
       .toLocaleDateString(
@@ -2914,6 +2926,53 @@ function renderOwnerCalendar() {
       );
 
 
+  if (calendarJump) {
+    calendarJump.value =
+      `${year}-${String(calendarDate.getMonth() + 1).padStart(2, "0")}`;
+  }
+
+  if (calendarYearView) {
+    calendarYearView.textContent =
+      calendarViewMode === "year"
+        ? "View one month"
+        : "View full year";
+  }
+
+  if (calendarPrev && calendarNext) {
+    calendarPrev.textContent =
+      calendarViewMode === "year"
+        ? "← Previous year"
+        : "← Previous";
+    calendarNext.textContent =
+      calendarViewMode === "year"
+        ? "Next year →"
+        : "Next →";
+  }
+
+  if (calendarViewMode === "year") {
+    ownerCalendar.innerHTML =
+      Array.from(
+        { length: 12 },
+        (_, month) => {
+          const viewDate = new Date(year, month, 1);
+          const title = viewDate.toLocaleDateString(
+            "en-US",
+            { month: "long", year: "numeric" }
+          );
+
+          return `
+            <section class="calendar-year-month">
+              <h2>${title}</h2>
+              ${currentProperties
+                .map(property => renderPropertyCalendar(property, viewDate))
+                .join("")}
+            </section>
+          `;
+        }
+      ).join("");
+    return;
+  }
+
   ownerCalendar.innerHTML = `
     <h2
       style="
@@ -2927,13 +2986,9 @@ function renderOwnerCalendar() {
     </h2>
 
 
-    ${
-      currentProperties
-        .map(
-          renderPropertyCalendar
-        )
-        .join("")
-    }
+    ${currentProperties
+      .map(property => renderPropertyCalendar(property, calendarDate))
+      .join("")}
   `;
 }
 
@@ -6037,10 +6092,15 @@ bookingSource.addEventListener(
 calendarPrev.addEventListener(
   "click",
   () => {
+    const monthsBack =
+      calendarViewMode === "year"
+        ? 12
+        : 1;
+
     calendarDate =
       new Date(
         calendarDate.getFullYear(),
-        calendarDate.getMonth() - 1,
+        calendarDate.getMonth() - monthsBack,
         1
       );
 
@@ -6055,10 +6115,15 @@ calendarPrev.addEventListener(
 calendarNext.addEventListener(
   "click",
   () => {
+    const monthsForward =
+      calendarViewMode === "year"
+        ? 12
+        : 1;
+
     calendarDate =
       new Date(
         calendarDate.getFullYear(),
-        calendarDate.getMonth() + 1,
+        calendarDate.getMonth() + monthsForward,
         1
       );
 
@@ -6084,7 +6149,43 @@ calendarToday.addEventListener(
         1
       );
 
+    calendarViewMode = "month";
 
+
+    renderOwnerCalendar();
+  }
+);
+
+
+
+calendarJump.addEventListener(
+  "change",
+  () => {
+    if (!calendarJump.value) {
+      return;
+    }
+
+    const [year, month] =
+      calendarJump.value
+        .split("-")
+        .map(Number);
+
+    calendarDate =
+      new Date(year, month - 1, 1);
+    calendarViewMode = "month";
+    renderOwnerCalendar();
+  }
+);
+
+
+
+calendarYearView.addEventListener(
+  "click",
+  () => {
+    calendarViewMode =
+      calendarViewMode === "year"
+        ? "month"
+        : "year";
     renderOwnerCalendar();
   }
 );
