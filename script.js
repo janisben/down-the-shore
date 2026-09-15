@@ -150,6 +150,27 @@ async function getPropertyRecord(databaseName) {
 }
 
 async function getAvailability(propertyId) {
+  try {
+    const expirationResponse =
+      await fetch(
+        "/api/expire-holds",
+        {
+          method: "POST"
+        }
+      );
+
+    if (!expirationResponse.ok) {
+      console.warn(
+        "Expired holds could not be released automatically."
+      );
+    }
+  } catch (expirationError) {
+    console.warn(
+      "Expired hold cleanup failed:",
+      expirationError
+    );
+  }
+
   const response =
     await fetch(
       `${data.supabase.url}/rest/v1/rpc/get_property_availability`,

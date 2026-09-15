@@ -3998,11 +3998,19 @@ function reservationCard(r) {
 
         ${
           r.hold_expires_at &&
-          status ===
-            "pending_payment"
+          (
+            status ===
+              "pending_payment" ||
+            status ===
+              "expired"
+          )
             ? `
               <div class="meta hold">
-                Hold expires:
+                ${
+                  status === "expired"
+                    ? "Hold expired and dates released:"
+                    : "Hold expires:"
+                }
                 ${new Date(r.hold_expires_at).toLocaleString()}
               </div>
             `
@@ -4331,7 +4339,8 @@ function activeReservation(
 ) {
   return ![
     "cancelled",
-    "declined"
+    "declined",
+    "expired"
   ].includes(
     reservation.status
   );
@@ -5189,6 +5198,28 @@ async function refresh() {
   try {
     portalMessage.className = "";
     portalMessage.textContent = "";
+
+
+    try {
+      const expirationResponse =
+        await fetch(
+          "/api/expire-holds",
+          {
+            method: "POST"
+          }
+        );
+
+      if (!expirationResponse.ok) {
+        console.warn(
+          "Expired holds could not be released automatically."
+        );
+      }
+    } catch (expirationError) {
+      console.warn(
+        "Expired hold cleanup failed:",
+        expirationError
+      );
+    }
 
 
     await loadReservations();
