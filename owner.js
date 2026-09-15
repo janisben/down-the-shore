@@ -240,6 +240,14 @@ let calendarDate =
 let calendarViewMode = "month";
 
 
+let pricingCalendarDate =
+  new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1
+  );
+
+
 let currentReservations = [];
 let currentProperties = [];
 let currentCleanings = [];
@@ -379,6 +387,30 @@ const rateProperty =
 
 const rateStayRule =
   document.getElementById("rateStayRule");
+
+
+const pricingCalendar =
+  document.getElementById("pricingCalendar");
+
+
+const pricingCalendarProperty =
+  document.getElementById("pricingCalendarProperty");
+
+
+const pricingCalendarPrev =
+  document.getElementById("pricingCalendarPrev");
+
+
+const pricingCalendarToday =
+  document.getElementById("pricingCalendarToday");
+
+
+const pricingCalendarNext =
+  document.getElementById("pricingCalendarNext");
+
+
+const pricingCalendarJump =
+  document.getElementById("pricingCalendarJump");
 
 
 const propertySettingsList =
@@ -584,6 +616,36 @@ async function loadProperties() {
 
   rateProperty.innerHTML =
     propertyOptions;
+
+
+  if (pricingCalendarProperty) {
+    const selectedProperty =
+      pricingCalendarProperty.value;
+
+
+    pricingCalendarProperty.innerHTML =
+      properties
+        .map(
+          property => `
+            <option value="${property.id}">
+              ${property.name}
+            </option>
+          `
+        )
+        .join("");
+
+
+    if (
+      selectedProperty &&
+      properties.some(
+        property =>
+          property.id === selectedProperty
+      )
+    ) {
+      pricingCalendarProperty.value =
+        selectedProperty;
+    }
+  }
 
 
   if (photoProperty) {
@@ -3607,6 +3669,9 @@ function renderPropertySettings() {
 
 
 function renderRatePeriods() {
+  renderPricingCalendar();
+
+
   if (!currentRatePeriods.length) {
     ratePeriodsList.innerHTML = `
       <div class="meta">
@@ -3621,6 +3686,167 @@ function renderRatePeriods() {
     currentRatePeriods
       .map(ratePeriodCard)
       .join("");
+}
+
+
+
+
+function pricingPeriodForDate(
+  propertyId,
+  dateValue
+) {
+  return currentRatePeriods.find(
+    period =>
+      period.property_id === propertyId &&
+      dateValue >= period.start_date &&
+      dateValue < period.end_date
+  );
+}
+
+
+
+
+function pricingPeriodLabel(period) {
+  if (period.blocked) {
+    return "Blocked";
+  }
+
+
+  if (
+    period.stay_rule === "weekly" &&
+    period.weekly_price != null
+  ) {
+    return `${formatMoney(period.weekly_price)}/week`;
+  }
+
+
+  if (
+    period.stay_rule === "monthly" &&
+    period.monthly_price != null
+  ) {
+    return `${formatMoney(period.monthly_price)}/month`;
+  }
+
+
+  if (period.nightly_price != null) {
+    return `${formatMoney(period.nightly_price)}/night`;
+  }
+
+
+  return "Rate entered";
+}
+
+
+
+
+function renderPricingCalendar() {
+  if (!pricingCalendar) {
+    return;
+  }
+
+
+  const propertyId =
+    pricingCalendarProperty?.value ||
+    currentProperties[0]?.id ||
+    "";
+
+
+  if (!propertyId) {
+    pricingCalendar.innerHTML = `
+      <div class="empty-state">
+        Add a property before setting rates.
+      </div>
+    `;
+    return;
+  }
+
+
+  if (pricingCalendarProperty) {
+    pricingCalendarProperty.value = propertyId;
+  }
+
+
+  const year = pricingCalendarDate.getFullYear();
+  const month = pricingCalendarDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth =
+    new Date(year, month + 1, 0).getDate();
+  const monthValue =
+    `${year}-${String(month + 1).padStart(2, "0")}`;
+
+
+  if (pricingCalendarJump) {
+    pricingCalendarJump.value = monthValue;
+  }
+
+
+  const weekdays =
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+      .map(
+        day => `
+          <div class="pricing-calendar-weekday">${day}</div>
+        `
+      )
+      .join("");
+
+
+  const blanks =
+    Array.from(
+      { length: firstDay },
+      () => `<div class="pricing-calendar-day empty"></div>`
+    ).join("");
+
+
+  const days =
+    Array.from(
+      { length: daysInMonth },
+      (_, index) => {
+        const day = index + 1;
+        const dateValue =
+          `${monthValue}-${String(day).padStart(2, "0")}`;
+        const period =
+          pricingPeriodForDate(
+            propertyId,
+            dateValue
+          );
+
+
+        return `
+          <button
+            type="button"
+            class="pricing-calendar-day"
+            data-pricing-date="${dateValue}"
+            ${period ? `data-pricing-rate-id="${period.id}"` : ""}
+          >
+            <span class="pricing-calendar-day-number">${day}</span>
+            ${
+              period
+                ? `
+                    <span class="pricing-calendar-rate ${period.blocked ? "blocked" : ""}">
+                      ${pricingPeriodLabel(period)}
+                    </span>
+                  `
+                : `<span class="pricing-calendar-unpriced">No rate</span>`
+            }
+          </button>
+        `;
+      }
+    ).join("");
+
+
+  pricingCalendar.innerHTML = `
+    <h3 class="pricing-calendar-title">
+      ${pricingCalendarDate.toLocaleDateString(
+        "en-US",
+        { month: "long", year: "numeric" }
+      )}
+    </h3>
+    <div class="pricing-calendar-scroll">
+      <div class="pricing-calendar-grid">
+        ${weekdays}${blanks}${days}
+      </div>
+    </div>
+  `;
 }
 
 
@@ -7812,6 +8038,154 @@ rateStayRule.addEventListener(
     ) {
       minimum.value = "2";
     }
+  }
+);
+
+
+
+
+pricingCalendarProperty?.addEventListener(
+  "change",
+  () => {
+    rateProperty.value =
+      pricingCalendarProperty.value;
+    renderPricingCalendar();
+  }
+);
+
+
+pricingCalendarPrev?.addEventListener(
+  "click",
+  () => {
+    pricingCalendarDate =
+      new Date(
+        pricingCalendarDate.getFullYear(),
+        pricingCalendarDate.getMonth() - 1,
+        1
+      );
+    renderPricingCalendar();
+  }
+);
+
+
+pricingCalendarNext?.addEventListener(
+  "click",
+  () => {
+    pricingCalendarDate =
+      new Date(
+        pricingCalendarDate.getFullYear(),
+        pricingCalendarDate.getMonth() + 1,
+        1
+      );
+    renderPricingCalendar();
+  }
+);
+
+
+pricingCalendarToday?.addEventListener(
+  "click",
+  () => {
+    const today = new Date();
+    pricingCalendarDate =
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1
+      );
+    renderPricingCalendar();
+  }
+);
+
+
+pricingCalendarJump?.addEventListener(
+  "change",
+  () => {
+    if (!pricingCalendarJump.value) {
+      return;
+    }
+
+
+    const [year, month] =
+      pricingCalendarJump.value
+        .split("-")
+        .map(Number);
+
+
+    pricingCalendarDate =
+      new Date(year, month - 1, 1);
+    renderPricingCalendar();
+  }
+);
+
+
+pricingCalendar?.addEventListener(
+  "click",
+  event => {
+    const day =
+      event.target.closest(
+        "[data-pricing-date]"
+      );
+
+
+    if (!day) {
+      return;
+    }
+
+
+    const rateId =
+      day.dataset.pricingRateId;
+
+
+    if (rateId) {
+      const card =
+        ratePeriodsList.querySelector(
+          `[data-rate-id="${CSS.escape(rateId)}"]`
+        );
+
+
+      if (card) {
+        ratePeriodsList
+          .querySelectorAll(".rate-card-highlight")
+          .forEach(
+            item =>
+              item.classList.remove("rate-card-highlight")
+          );
+        card.classList.add("rate-card-highlight");
+        card.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+      }
+      return;
+    }
+
+
+    const startDate =
+      day.dataset.pricingDate;
+    const endDate =
+      parseDate(startDate);
+    const daysToAdd =
+      rateStayRule.value === "weekly"
+        ? 7
+        : 1;
+
+
+    endDate.setDate(
+      endDate.getDate() + daysToAdd
+    );
+
+
+    rateProperty.value =
+      pricingCalendarProperty.value;
+    ratePeriodForm.elements.start_date.value =
+      startDate;
+    ratePeriodForm.elements.end_date.value =
+      isoDate(endDate);
+    ratePeriodForm.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+    ratePeriodForm.elements.weekly_price.focus();
   }
 );
 
