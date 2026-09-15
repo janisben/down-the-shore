@@ -4874,6 +4874,8 @@ function upcomingEvents() {
     .forEach(
       reservation => {
         if (
+          reservation.status ===
+            "booked" &&
           reservation.arrival_date
         ) {
           const date =
@@ -4901,6 +4903,8 @@ function upcomingEvents() {
 
 
         if (
+          reservation.status ===
+            "booked" &&
           reservation.departure_date
         ) {
           const date =
