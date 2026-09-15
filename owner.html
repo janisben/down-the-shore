@@ -1125,21 +1125,14 @@ button.danger {
 
 
 .master-calendar-toolbar {
-  position:fixed;
-  top:12px;
-  left:326px;
-  right:34px;
-  z-index:50;
+  position:sticky;
+  top:8px;
+  z-index:20;
   padding:12px 14px;
   background:#fff;
   border:1px solid var(--line);
   border-radius:12px;
   box-shadow:0 8px 24px rgba(22, 38, 57, .12);
-}
-
-
-.owner-panel[data-owner-panel="calendar"].active #ownerCalendarSection {
-  padding-top:116px;
 }
 
 
@@ -1338,11 +1331,6 @@ button.danger {
   }
 
 
-  .master-calendar-toolbar {
-    left:264px;
-  }
-
-
   .dashboard-stats {
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
@@ -1386,19 +1374,6 @@ button.danger {
 
   .owner-main {
     padding:20px 14px 36px;
-  }
-
-
-  .master-calendar-toolbar {
-    position:sticky;
-    top:0;
-    left:auto;
-    right:auto;
-  }
-
-
-  .owner-panel[data-owner-panel="calendar"].active #ownerCalendarSection {
-    padding-top:22px;
   }
 
 
@@ -1749,7 +1724,7 @@ View calendar
 <section class="card" id="ownerCalendarSection">
 
 
-<div class="row embedded-section-heading master-calendar-toolbar" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
+<div class="row master-calendar-toolbar" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
 <div>
 <div class="eyebrow">MASTER CALENDAR</div>
 <h2 style="margin:4px 0 0;">Property calendar</h2>
