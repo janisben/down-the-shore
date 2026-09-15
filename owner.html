@@ -1181,6 +1181,141 @@ button.danger {
 }
 
 
+.pricing-calendar-shell {
+  margin:18px 0 24px;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8fafc;
+}
+
+
+.pricing-calendar-toolbar {
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+
+
+.pricing-calendar-toolbar label {
+  display:grid;
+  gap:5px;
+  min-width:220px;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+}
+
+
+.pricing-calendar-toolbar select,
+.pricing-calendar-toolbar input {
+  padding:9px;
+  border:1px solid #c7ccd3;
+  border-radius:7px;
+  background:#fff;
+  color:var(--navy);
+}
+
+
+.pricing-calendar-title {
+  margin:8px 0 14px;
+  text-align:center;
+  font-family:Georgia,serif;
+  font-size:28px;
+  font-weight:400;
+  color:var(--navy);
+}
+
+
+.pricing-calendar-grid {
+  display:grid;
+  grid-template-columns:repeat(7,minmax(90px,1fr));
+  gap:4px;
+  min-width:700px;
+}
+
+
+.pricing-calendar-scroll {
+  overflow-x:auto;
+}
+
+
+.pricing-calendar-weekday {
+  padding:6px;
+  text-align:center;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+}
+
+
+.pricing-calendar-day {
+  min-height:98px;
+  padding:8px;
+  border:1px solid #dde2e8;
+  border-radius:7px;
+  background:#fff;
+  color:var(--ink);
+  text-align:left;
+}
+
+
+.pricing-calendar-day:hover {
+  border-color:#9eb5ca;
+  box-shadow:0 2px 8px rgba(22, 38, 57, .08);
+}
+
+
+.pricing-calendar-day.empty {
+  border-color:transparent;
+  background:transparent;
+  pointer-events:none;
+}
+
+
+.pricing-calendar-day-number {
+  display:block;
+  margin-bottom:7px;
+  font-weight:800;
+  color:var(--navy);
+}
+
+
+.pricing-calendar-rate {
+  display:block;
+  padding:5px 6px;
+  border-radius:5px;
+  background:var(--blue-soft);
+  color:#285e91;
+  font-size:11px;
+  font-weight:800;
+  line-height:1.25;
+}
+
+
+.pricing-calendar-rate.blocked {
+  background:var(--rose-soft);
+  color:#87362f;
+}
+
+
+.pricing-calendar-unpriced {
+  display:block;
+  color:#9a5c53;
+  font-size:11px;
+  font-weight:700;
+}
+
+
+.rate-card.rate-card-highlight {
+  border-color:#2b6cb0;
+  box-shadow:0 0 0 3px rgba(43, 108, 176, .15);
+}
+
+
 .calendar-property {
   margin-bottom:24px;
 }
@@ -2005,6 +2140,30 @@ Change these anytime. The customer booking site will use these values when calcu
 Set weekly, monthly, or nightly prices, flexible shorter stays, minimum nights, or block dates.
 Add a new period whenever you want to change pricing for specific dates.
 </div>
+</div>
+
+
+<div class="pricing-calendar-shell">
+<div class="pricing-calendar-toolbar">
+<label>
+View property
+<select id="pricingCalendarProperty"></select>
+</label>
+
+
+<div class="row">
+<button id="pricingCalendarPrev" type="button">← Previous</button>
+<button id="pricingCalendarToday" type="button">Today</button>
+<button id="pricingCalendarNext" type="button">Next →</button>
+<input id="pricingCalendarJump" type="month" aria-label="Jump to pricing month and year">
+</div>
+</div>
+
+
+<div id="pricingCalendar"></div>
+<p class="meta" style="margin:12px 0 0;">
+Click a priced day to edit that rate period. Click an unpriced day to begin adding a new one.
+</p>
 </div>
 
 
