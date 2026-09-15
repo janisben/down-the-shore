@@ -1124,6 +1124,61 @@ button.danger {
 }
 
 
+.master-calendar-toolbar {
+  position:sticky;
+  top:0;
+  z-index:5;
+  padding:12px 0;
+  background:#fff;
+  border-bottom:1px solid var(--line);
+}
+
+
+.calendar-jump-label {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 9px;
+  border:1px solid #c7ccd3;
+  border-radius:7px;
+  background:#fff;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+}
+
+
+.calendar-jump-label input {
+  width:auto;
+  min-width:145px;
+  padding:7px 0;
+  border:0;
+  background:transparent;
+  font:inherit;
+  color:var(--navy);
+}
+
+
+.calendar-year-month {
+  padding-top:10px;
+  margin-bottom:38px;
+  border-bottom:2px solid var(--line);
+}
+
+
+.calendar-year-month > h2 {
+  margin:0 0 18px;
+  padding:10px 0;
+  font-family:Georgia,serif;
+  font-size:28px;
+  font-weight:400;
+  color:var(--navy);
+  text-align:center;
+  background:var(--cream);
+  border-radius:10px;
+}
+
+
 .calendar-property {
   margin-bottom:24px;
 }
@@ -1667,7 +1722,7 @@ View calendar
 <section class="card" id="ownerCalendarSection">
 
 
-<div class="row embedded-section-heading" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
+<div class="row embedded-section-heading master-calendar-toolbar" style="justify-content:space-between; align-items:center; margin-bottom:18px;">
 <div>
 <div class="eyebrow">MASTER CALENDAR</div>
 <h2 style="margin:4px 0 0;">Property calendar</h2>
@@ -1678,6 +1733,11 @@ View calendar
 <button id="calendarPrev" type="button">← Previous</button>
 <button id="calendarToday" type="button">Today</button>
 <button id="calendarNext" type="button">Next →</button>
+<label class="calendar-jump-label">
+<span>Jump to</span>
+<input id="calendarJump" type="month" aria-label="Jump to month and year">
+</label>
+<button id="calendarYearView" type="button">View full year</button>
 </div>
 </div>
 
