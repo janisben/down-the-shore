@@ -43,12 +43,33 @@ ownerPortalFixStyle.textContent = `
 
   .payment-history-row {
     display:grid !important;
-    grid-template-columns:
-      max-content
-      minmax(70px,1fr)
-      minmax(120px,auto) !important;
-    align-items:center !important;
-    gap:12px !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    align-items:end !important;
+    gap:8px !important;
+  }
+
+  .payment-history-row label {
+    display:grid !important;
+    gap:4px !important;
+    font-size:12px !important;
+    font-weight:700 !important;
+    color:var(--muted) !important;
+  }
+
+  .payment-history-row input,
+  .payment-history-row select {
+    width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+    padding:8px !important;
+    border:1px solid #cfd5dd !important;
+    border-radius:7px !important;
+    background:#fff !important;
+  }
+
+  .payment-history-row .payment-history-date,
+  .payment-history-row .payment-history-save {
+    grid-column:1 / -1 !important;
   }
 
   .payment-schedule-summary {
@@ -61,10 +82,11 @@ ownerPortalFixStyle.textContent = `
   }
 
   .payment-log-row {
-    grid-template-columns:
-      minmax(0,1fr)
-      minmax(0,1fr)
-      auto !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+
+  .payment-log-row button {
+    grid-column:1 / -1 !important;
   }
 
   .payment-log-row input,
@@ -1723,10 +1745,15 @@ async function sendCleaningAssignmentEmailForReservation(
 async function addPayment(
   id,
   amount,
-  method
+  method,
+  receivedDate
 ) {
-  const now =
-    new Date().toISOString();
+  const receivedAt =
+    receivedDate
+      ? new Date(
+          `${receivedDate}T12:00:00`
+        ).toISOString()
+      : new Date().toISOString();
 
 
   const reservation =
@@ -1807,7 +1834,7 @@ async function addPayment(
             payment_method:
               method,
             received_at:
-              now
+              receivedAt
           })
       }
     );
@@ -1845,7 +1872,7 @@ async function addPayment(
       amount_received:
         paidAfter,
       payment_received_at:
-        now,
+        receivedAt,
       hold_expires_at:
         paidAfter > 0
           ? null
@@ -1909,6 +1936,100 @@ async function addPayment(
   }
 }
 
+
+
+
+async function updateManualPayment(
+  paymentId,
+  reservationId,
+  amount,
+  method,
+  receivedDate
+) {
+  const reservation = currentReservations.find(
+    item => item.id === reservationId
+  );
+  const payment = currentPayments.find(
+    item => String(item.id) === String(paymentId)
+  );
+
+  if (!reservation || !payment) {
+    throw new Error("Payment could not be found.");
+  }
+
+  const numericAmount = Number(amount);
+
+  if (!numericAmount || numericAmount <= 0) {
+    throw new Error("Enter a valid payment amount.");
+  }
+
+  if (!receivedDate) {
+    throw new Error("Choose the date the payment was received.");
+  }
+
+  const otherPaymentsTotal = paymentsForReservation(reservationId)
+    .filter(item => String(item.id) !== String(paymentId))
+    .reduce(
+      (total, item) => total + Number(item.amount || 0),
+      0
+    );
+  const totalDue = Number(reservation.amount_due || 0);
+
+  if (
+    totalDue > 0 &&
+    otherPaymentsTotal + numericAmount > totalDue + 0.001
+  ) {
+    throw new Error(
+      `That change would exceed the reservation total of ${formatMoney(totalDue)}.`
+    );
+  }
+
+  const receivedAt =
+    new Date(`${receivedDate}T12:00:00`).toISOString();
+  const response = await fetch(
+    `${cfg.url}/rest/v1/payments?id=eq.${encodeURIComponent(paymentId)}`,
+    {
+      method: "PATCH",
+      headers: headers({ Prefer: "return=minimal" }),
+      body: JSON.stringify({
+        amount: numericAmount,
+        payment_method: method,
+        received_at: receivedAt
+      })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  await loadPayments();
+
+  const reservationPayments = paymentsForReservation(reservationId);
+  const paidAfter = reservationPayments.reduce(
+    (total, item) => total + Number(item.amount || 0),
+    0
+  );
+  const latestPayment = reservationPayments
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.received_at) - new Date(a.received_at)
+    )[0];
+
+  await updateReservation(
+    reservationId,
+    {
+      amount_received: paidAfter,
+      payment_status:
+        paidAfter >= totalDue && totalDue > 0
+          ? "paid"
+          : "partial",
+      payment_method: latestPayment?.payment_method || method,
+      payment_received_at: latestPayment?.received_at || receivedAt
+    }
+  );
+}
 
 
 
@@ -3532,6 +3653,64 @@ function refreshScheduleArithmetic(
 
 
 
+function paymentHistoryRowMarkup(
+  payment,
+  reservation
+) {
+  const method = payment.payment_method || "zelle";
+  const receivedDate = payment.received_at
+    ? isoDate(new Date(payment.received_at))
+    : isoDate(new Date());
+
+  return `
+    <div
+      class="payment-history-row"
+      data-payment-id="${payment.id}"
+      data-payment-reservation-id="${reservation.id}"
+    >
+      <label>
+        Amount
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          value="${Number(payment.amount || 0).toFixed(2)}"
+          data-payment-history-amount
+        >
+      </label>
+
+      <label>
+        Method
+        <select data-payment-history-method>
+          <option value="zelle" ${method === "zelle" ? "selected" : ""}>Zelle</option>
+          <option value="venmo" ${method === "venmo" ? "selected" : ""}>Venmo</option>
+          <option value="credit_card" ${method === "credit_card" ? "selected" : ""}>Credit card</option>
+          <option value="check" ${method === "check" ? "selected" : ""}>Check</option>
+        </select>
+      </label>
+
+      <label class="payment-history-date">
+        Payment received date
+        <input
+          type="date"
+          value="${receivedDate}"
+          data-payment-history-date
+        >
+      </label>
+
+      <button
+        type="button"
+        class="payment-history-save"
+        data-payment-history-action="save"
+      >
+        Save changes
+      </button>
+    </div>
+  `;
+}
+
+
+
 function paymentScheduleMarkup(
   reservation
 ) {
@@ -3596,27 +3775,8 @@ function paymentScheduleMarkup(
             history.length
               ? history
                   .map(
-                    payment => `
-                      <div class="payment-history-row">
-                        <strong>
-                          ${formatMoney(payment.amount)}
-                        </strong>
-
-                        <span>
-                          ${(payment.payment_method || "").replaceAll("_", " ")}
-                        </span>
-
-                        <span class="meta">
-                          ${
-                            payment.received_at
-                              ? new Date(
-                                  payment.received_at
-                                ).toLocaleString()
-                              : ""
-                          }
-                        </span>
-                      </div>
-                    `
+                    payment =>
+                      paymentHistoryRowMarkup(payment, reservation)
                   )
                   .join("")
               : `
@@ -3829,29 +3989,8 @@ function paymentScheduleMarkup(
           history.length
             ? history
                 .map(
-                  payment => `
-                    <div class="payment-history-row">
-                      <strong>
-                        ${formatMoney(payment.amount)}
-                      </strong>
-
-
-                      <span>
-                        ${(payment.payment_method || "").replaceAll("_", " ")}
-                      </span>
-
-
-                      <span class="meta">
-                        ${
-                          payment.received_at
-                            ? new Date(
-                                payment.received_at
-                              ).toLocaleString()
-                            : ""
-                        }
-                      </span>
-                    </div>
-                  `
+                  payment =>
+                    paymentHistoryRowMarkup(payment, reservation)
                 )
                 .join("")
             : `
@@ -4310,6 +4449,16 @@ function reservationCard(r) {
                       <option value="credit_card">Credit card</option>
                       <option value="check">Check</option>
                     </select>
+                  </label>
+
+
+                  <label>
+                    Payment received date
+                    <input
+                      type="date"
+                      value="${isoDate(new Date())}"
+                      data-received-date
+                    >
                   </label>
 
 
@@ -6216,7 +6365,10 @@ reservationList.addEventListener(
     await addPayment(
   id,
   amount,
-  method
+  method,
+  card.querySelector(
+    "[data-received-date]"
+  )?.value
 );
 
 const reservation =
@@ -6669,7 +6821,10 @@ try {
     await addPayment(
       id,
       amount,
-      method
+      method,
+      card.querySelector(
+        "[data-received-date]"
+      )?.value
     );
 
     const reservation =
@@ -7496,6 +7651,53 @@ document.addEventListener(
   }
 );
 
+
+
+
+document.addEventListener(
+  "click",
+  async event => {
+    const button = event.target.closest(
+      "button[data-payment-history-action='save']"
+    );
+
+    if (!button) {
+      return;
+    }
+
+    const row = button.closest("[data-payment-id]");
+
+    if (!row) {
+      return;
+    }
+
+    button.disabled = true;
+
+    try {
+      await updateManualPayment(
+        row.dataset.paymentId,
+        row.dataset.paymentReservationId,
+        row.querySelector("[data-payment-history-amount]").value,
+        row.querySelector("[data-payment-history-method]").value,
+        row.querySelector("[data-payment-history-date]").value
+      );
+
+      message(
+        portalMessage,
+        "Payment changes saved."
+      );
+
+      await refresh();
+    } catch (error) {
+      message(
+        portalMessage,
+        error.message,
+        true
+      );
+      button.disabled = false;
+    }
+  }
+);
 
 
 
