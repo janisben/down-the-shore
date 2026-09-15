@@ -81,6 +81,38 @@ ownerPortalFixStyle.textContent = `
     box-sizing:border-box !important;
   }
 
+  .payment-schedule-row {
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    align-items:end !important;
+    gap:10px !important;
+  }
+
+  .payment-schedule-row label {
+    display:grid !important;
+    gap:4px !important;
+    min-width:0 !important;
+    font-size:12px !important;
+    font-weight:700 !important;
+    color:var(--muted) !important;
+  }
+
+  .payment-schedule-row label:first-child,
+  .payment-schedule-actions {
+    grid-column:1 / -1 !important;
+  }
+
+  .payment-schedule-actions {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:10px !important;
+    flex-wrap:wrap !important;
+  }
+
+  .payment-schedule-actions .row {
+    margin-top:0 !important;
+  }
+
   .payment-log-row {
     grid-template-columns:repeat(2,minmax(0,1fr)) !important;
   }
@@ -3848,30 +3880,39 @@ function paymentScheduleMarkup(
                       class="payment-schedule-row"
                       data-payment-schedule-id="${item.id}"
                     >
-                      <input
-                        type="text"
-                        value="${item.label || "Payment"}"
-                        data-payment-label
-                      >
+                      <label>
+                        Payment label
+                        <input
+                          type="text"
+                          value="${item.label || "Payment"}"
+                          data-payment-label
+                        >
+                      </label>
 
 
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value="${Number(item.amount_due || 0)}"
-                        data-payment-due-amount
-                      >
+                      <label>
+                        Amount due
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value="${Number(item.amount_due || 0)}"
+                          data-payment-due-amount
+                        >
+                      </label>
 
 
-                      <input
-                        type="date"
-                        value="${item.due_date}"
-                        data-payment-due-date
-                      >
+                      <label>
+                        Due date
+                        <input
+                          type="date"
+                          value="${item.due_date}"
+                          data-payment-due-date
+                        >
+                      </label>
 
 
-                      <div>
+                      <div class="payment-schedule-actions">
                         <span
                           class="payment-installment-status ${item.status}"
                         >
@@ -3889,7 +3930,6 @@ function paymentScheduleMarkup(
 
                         <div
                           class="row"
-                          style="margin-top:6px;"
                         >
                           <button
                             type="button"
