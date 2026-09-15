@@ -578,6 +578,25 @@
   }
 
 
+  function dtsDateTime(value) {
+    if (!value) {
+      return "";
+    }
+
+    return new Date(value)
+      .toLocaleString(
+        "en-US",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit"
+        }
+      );
+  }
+
+
   function dtsMoney(value) {
     return Number(
       value || 0
@@ -596,7 +615,8 @@
   ) {
     return ![
       "cancelled",
-      "declined"
+      "declined",
+      "expired"
     ].includes(
       reservation.status
     );
@@ -916,7 +936,8 @@
           reservation =>
             [
               "cancelled",
-              "declined"
+              "declined",
+              "expired"
             ].includes(
               reservation.status
             )
@@ -1044,7 +1065,8 @@
         reservation =>
           [
             "cancelled",
-            "declined"
+            "declined",
+            "expired"
           ].includes(
             reservation.status
           )
@@ -1805,6 +1827,44 @@
                 ${
                   dtsEsc(
                     reservation.guest_phone
+                  )
+                }
+              `
+              : ""
+          }
+
+          ${
+            reservation.created_at
+              ? `
+                <br><br>
+                <strong>Request received:</strong>
+                ${
+                  dtsEsc(
+                    dtsDateTime(
+                      reservation.created_at
+                    )
+                  )
+                }
+              `
+              : ""
+          }
+
+          ${
+            reservation.hold_expires_at
+              ? `
+                <br>
+                <strong>
+                  ${
+                    reservation.status === "expired"
+                      ? "Hold expired and dates released:"
+                      : "Hold expires:"
+                  }
+                </strong>
+                ${
+                  dtsEsc(
+                    dtsDateTime(
+                      reservation.hold_expires_at
+                    )
                   )
                 }
               `
