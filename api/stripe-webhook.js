@@ -472,6 +472,50 @@ async function handleCompletedSession(
     );
   }
 
+  /*
+    Notify the cleaner after the first confirmed payment. A failure here is
+    logged but must never cause Stripe to retry an otherwise valid payment.
+  */
+  if (
+    totalPaid > 0 &&
+    Number(
+      reservation.amount_received ||
+      0
+    ) <= 0
+  ) {
+    try {
+      const cleanerResponse =
+        await fetch(
+          `${siteOrigin(req)}/api/cleaning-assigned`,
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify({
+                reservationId
+              })
+          }
+        );
+
+      if (!cleanerResponse.ok) {
+        throw new Error(
+          await cleanerResponse.text()
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Cleaner notification after Stripe payment failed:",
+        error
+      );
+    }
+  }
+
   
 
   /*

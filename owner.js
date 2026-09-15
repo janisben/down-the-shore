@@ -1616,28 +1616,7 @@ async function sendCleaningAssignmentEmailForReservation(
 
         body:
           JSON.stringify({
-            to:
-              cleaning.cleaner_email,
-
-            cleanerName:
-              cleaning.cleaner_name ||
-              "Melissa",
-
-            propertyName:
-              property?.name ||
-              reservation.property_name ||
-              "Down the Shore rental",
-
-            guestName:
-              reservation.guest_name ||
-              "Guest",
-
-            checkoutDate:
-              cleaning.checkout_date ||
-              reservation.departure_date,
-
-            confirmationToken:
-              cleaning.confirmation_token
+            reservationId
           })
       }
     );
@@ -1796,6 +1775,31 @@ async function addPayment(
           : reservation.status
     }
   );
+
+
+  /*
+    The cleaner is contacted only after the first payment is confirmed.
+    The API prevents a second email if later installments are recorded.
+  */
+  if (
+    alreadyPaid <= 0 &&
+    paidAfter > 0
+  ) {
+    try {
+      await sendCleaningAssignmentEmailForReservation(
+        id
+      );
+    } catch (error) {
+      console.error(
+        "Cleaner assignment email error:",
+        error
+      );
+
+      window.alert(
+        `Payment was recorded, but the cleaner email could not be sent: ${error.message}`
+      );
+    }
+  }
 
   const lease =
     leaseForReservation(id);
@@ -5727,27 +5731,10 @@ reservationList.addEventListener(
         );
 
 
-        try {
-          await sendCleaningAssignmentEmailForReservation(
-            id
-          );
-
-          message(
-            portalMessage,
-            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
-          );
-        } catch (cleaningError) {
-          console.error(
-            "Cleaner assignment email error:",
-            cleaningError
-          );
-
-          message(
-            portalMessage,
-            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
-            true
-          );
-        }
+        message(
+          portalMessage,
+          "Accepted. The 24-hour payment hold has started."
+        );
 
 
       }
@@ -6241,27 +6228,10 @@ pendingReservationList.addEventListener(
         );
 
 
-        try {
-          await sendCleaningAssignmentEmailForReservation(
-            id
-          );
-
-          message(
-            portalMessage,
-            "Accepted. The 24-hour payment hold has started and Melissa's cleaning confirmation email was sent."
-          );
-        } catch (cleaningError) {
-          console.error(
-            "Cleaner assignment email error:",
-            cleaningError
-          );
-
-          message(
-            portalMessage,
-            `Accepted. The 24-hour payment hold has started, but the cleaner email could not be sent: ${cleaningError.message}`,
-            true
-          );
-        }
+        message(
+          portalMessage,
+          "Accepted. The 24-hour payment hold has started."
+        );
 try {
   const reservation =
     currentReservations.find(

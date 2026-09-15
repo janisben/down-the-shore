@@ -87,6 +87,9 @@ export default async function handler(
       suppliedConfirmationToken ||
       null;
 
+    let notificationContext =
+      null;
+
 
     /*
       If reservationId was supplied,
@@ -290,6 +293,50 @@ export default async function handler(
       confirmationToken =
         cleaning.confirmation_token ||
         suppliedConfirmationToken;
+
+
+      const notificationResponse =
+        await fetch(
+          `${supabaseUrl}/rest/v1/reservation_notifications?reservation_id=eq.${encodeURIComponent(
+            reservationId
+          )}&notification_type=eq.cleaner_assignment&recipient_email=eq.${encodeURIComponent(
+            cleanerEmail
+          )}&select=id&limit=1`,
+          {
+            headers:
+              authHeaders
+          }
+        );
+
+
+      if (!notificationResponse.ok) {
+        throw new Error(
+          `Could not check cleaner notification history: ${await notificationResponse.text()}`
+        );
+      }
+
+
+      const priorNotifications =
+        await notificationResponse.json();
+
+
+      if (priorNotifications.length) {
+        return res.status(200).json({
+          success: true,
+          skipped: true,
+          reason:
+            "Cleaner email already sent"
+        });
+      }
+
+
+      notificationContext = {
+        supabaseUrl,
+        authHeaders,
+        cleaningId:
+          cleaning.id,
+        reservationId
+      };
     }
 
 
@@ -455,6 +502,11 @@ export default async function handler(
                 cleanerEmail
               ],
 
+              bcc: [
+                process.env.OWNER_EMAIL ||
+                "janisbenstock@gmail.com"
+              ],
+
               subject,
 
               html
@@ -490,6 +542,52 @@ export default async function handler(
           details:
             emailData
         });
+    }
+
+
+    if (notificationContext) {
+      const recordResponse =
+        await fetch(
+          `${notificationContext.supabaseUrl}/rest/v1/reservation_notifications`,
+          {
+            method:
+              "POST",
+
+            headers: {
+              ...notificationContext.authHeaders,
+              "Content-Type":
+                "application/json",
+              Prefer:
+                "return=minimal"
+            },
+
+            body:
+              JSON.stringify({
+                reservation_id:
+                  notificationContext.reservationId,
+                notification_type:
+                  "cleaner_assignment",
+                recipient_email:
+                  cleanerEmail,
+                sent_at:
+                  new Date().toISOString(),
+                details: {
+                  cleaning_assignment_id:
+                    notificationContext.cleaningId,
+                  checkout_date:
+                    checkoutDate
+                }
+              })
+          }
+        );
+
+
+      if (!recordResponse.ok) {
+        console.error(
+          "Cleaner notification history could not be recorded:",
+          await recordResponse.text()
+        );
+      }
     }
 
 
