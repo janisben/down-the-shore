@@ -1125,12 +1125,21 @@ button.danger {
 
 
 .master-calendar-toolbar {
-  position:sticky;
-  top:0;
-  z-index:5;
-  padding:12px 0;
+  position:fixed;
+  top:12px;
+  left:326px;
+  right:34px;
+  z-index:50;
+  padding:12px 14px;
   background:#fff;
-  border-bottom:1px solid var(--line);
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:0 8px 24px rgba(22, 38, 57, .12);
+}
+
+
+.owner-panel[data-owner-panel="calendar"].active #ownerCalendarSection {
+  padding-top:116px;
 }
 
 
@@ -1329,6 +1338,11 @@ button.danger {
   }
 
 
+  .master-calendar-toolbar {
+    left:264px;
+  }
+
+
   .dashboard-stats {
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
@@ -1372,6 +1386,19 @@ button.danger {
 
   .owner-main {
     padding:20px 14px 36px;
+  }
+
+
+  .master-calendar-toolbar {
+    position:sticky;
+    top:0;
+    left:auto;
+    right:auto;
+  }
+
+
+  .owner-panel[data-owner-panel="calendar"].active #ownerCalendarSection {
+    padding-top:22px;
   }
 
 
