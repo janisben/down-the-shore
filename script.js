@@ -233,7 +233,14 @@ async function getPropertyPhotos(propertyId) {
     return [];
   }
 
-  return response.json();
+  const photos = await response.json();
+
+  return photos.map(photo => ({
+    ...photo,
+    public_url:
+      window.PROPERTY_PHOTO_ASSETS?.[photo.id] ||
+      photo.public_url
+  }));
 }
 
 function choosePrimaryPhoto(
