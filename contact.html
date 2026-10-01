@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Message Janis | Down the Shore</title>
+  <meta name="description" content="Send a private message to Janis about a Down the Shore rental.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="index.html">Down the Shore</a>
+    <nav class="nav">
+      <a href="index.html#homes">Homes</a>
+      <a class="nav-cta" href="index.html#homes">Check availability</a>
+    </nav>
+  </header>
+
+  <main class="contact-page">
+    <section class="contact-card">
+      <div class="eyebrow">Private inquiry</div>
+      <h1>Message Janis</h1>
+      <p class="contact-intro">
+        Send your question here. Your message will go directly to Janis,
+        and your email address will only be used to reply to you.
+      </p>
+
+      <div class="contact-context" data-contact-context hidden></div>
+
+      <form class="form-grid" data-contact-form>
+        <input type="hidden" name="property" value="">
+
+        <label>
+          Your name
+          <input type="text" name="name" autocomplete="name" maxlength="120" required>
+        </label>
+
+        <label>
+          Your email
+          <input type="email" name="email" autocomplete="email" maxlength="254" required>
+        </label>
+
+        <label>
+          Phone number <span class="form-note">(optional)</span>
+          <input type="tel" name="phone" autocomplete="tel" maxlength="40">
+        </label>
+
+        <label>
+          Your message
+          <textarea name="message" maxlength="4000" required></textarea>
+        </label>
+
+        <label class="contact-honeypot" aria-hidden="true">
+          Website
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </label>
+
+        <div class="contact-actions">
+          <button class="button" type="submit" data-contact-submit>
+            Send message
+          </button>
+          <div class="contact-result" data-contact-result role="status" aria-live="polite"></div>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>© <span id="footerYear"></span> Down the Shore</div>
+    <div><a href="index.html#homes">View the homes</a></div>
+  </footer>
+
+  <script src="site-data.js"></script>
+  <script src="contact.js"></script>
+</body>
+</html>

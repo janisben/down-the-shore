@@ -1999,6 +1999,16 @@ async function renderProperty() {
   const owner =
     data.owners[property.owner];
 
+  const messageLink =
+    document.querySelector(
+      "[data-message-link]"
+    );
+
+  if (messageLink) {
+    messageLink.href =
+      `contact.html?property=${encodeURIComponent(property.id)}`;
+  }
+
   document.title =
     `${property.name} | ${data.brand.name}`;
 
