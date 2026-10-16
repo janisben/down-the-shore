@@ -35,7 +35,9 @@ export default async function handler(req, res) {
         status: "expired"
       })
       .eq("status", "pending_payment")
-      .not("hold_expires_at", "is", null)
+      // Paid reservations must never expire, even with a balance due.
+       .or("amount_received.is.null,amount_received.eq.0")
+       .not("hold_expires_at", "is", null)
       .lte("hold_expires_at", new Date().toISOString())
       .select("id");
 
