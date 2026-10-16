@@ -434,10 +434,8 @@ async function handleCompletedSession(
 
         body:
           JSON.stringify({
-            status:
-              paidInFull
-                ? "booked"
-                : "pending_payment",
+            // Any successful payment confirms the reservation.
+            status: "booked",
 
             payment_status:
               paidInFull
@@ -453,10 +451,7 @@ async function handleCompletedSession(
             payment_received_at:
               paymentTime,
 
-            hold_expires_at:
-              paidInFull
-                ? null
-                : reservation.hold_expires_at,
+            hold_expires_at: null,
 
             owner_notes:
               updatedOwnerNotes
