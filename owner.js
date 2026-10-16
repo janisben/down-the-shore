@@ -3953,10 +3953,24 @@ function paymentTotals(
 function scheduleAllocations(
   reservation
 ) {
-  let remainingPaid =
+  const totals =
     paymentTotals(
       reservation
-    ).paid;
+    );
+
+  // When the schedule exactly covers the outstanding balance, its
+  // installments are unpaid future obligations. Earlier payments
+  // (for example, a deposit logged before scheduling the final
+  // balance) must not be applied to them a second time.
+  const scheduled =
+    Math.round(
+      scheduledTotal(reservation.id) * 100
+    ) / 100;
+
+  let remainingPaid =
+    Math.abs(scheduled - totals.balance) < 0.01
+      ? 0
+      : totals.paid;
 
 
   const today =
