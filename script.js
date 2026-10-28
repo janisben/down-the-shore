@@ -122,7 +122,7 @@ function supabaseHeaders(prefer = "") {
 async function getPropertyRecord(databaseName) {
   const url =
     `${data.supabase.url}/rest/v1/properties` +
-    `?select=id,name,cleaning_fee,pet_fee,max_dogs` +
+    `?select=id,name,cleaning_fee,pet_fee,max_dogs,lease_defaults` +
     `&name=eq.${encodeURIComponent(databaseName)}` +
     `&limit=1`;
 
@@ -2148,6 +2148,47 @@ async function renderProperty() {
 
   const propertyId =
     propertyRecord.id;
+
+  const publicSettings =
+    propertyRecord.lease_defaults &&
+    typeof propertyRecord.lease_defaults === "object" &&
+    !Array.isArray(propertyRecord.lease_defaults)
+      ? propertyRecord.lease_defaults
+      : {};
+
+  const publicAddress =
+    String(
+      publicSettings.public_address || ""
+    ).trim();
+
+  const publicDescription =
+    String(
+      publicSettings.public_description ||
+      property.description ||
+      ""
+    ).trim();
+
+  const addressElement =
+    document.querySelector(
+      "[data-property-address]"
+    );
+
+  if (addressElement) {
+    addressElement.textContent =
+      publicAddress;
+    addressElement.hidden =
+      !publicAddress;
+  }
+
+  const publicDescriptionElement =
+    document.querySelector(
+      "[data-property-description]"
+    );
+
+  if (publicDescriptionElement) {
+    publicDescriptionElement.textContent =
+      publicDescription;
+  }
 
   const managedPhotos =
     await getPropertyPhotos(

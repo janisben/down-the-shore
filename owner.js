@@ -3482,6 +3482,25 @@ function propertySettingsCard(
           <strong>${property.name}</strong>
         </div>
 
+        <label class="full">
+          Property address
+          <input
+            type="text"
+            value="${escapeDocumentText(leaseDefaults.public_address ?? "")}"
+            placeholder="Enter the full address guests should see"
+            data-property-public-address
+          >
+        </label>
+
+        <label class="full">
+          Customer-facing description
+          <textarea
+            rows="5"
+            placeholder="Describe this property for prospective guests"
+            data-property-public-description
+          >${escapeDocumentText(leaseDefaults.public_description ?? "")}</textarea>
+        </label>
+
         <label>
           Cleaning fee
           <input
@@ -7924,6 +7943,16 @@ propertySettingsList.addEventListener(
       }
 
       const leaseDefaults = {
+        public_address:
+          card.querySelector(
+            "[data-property-public-address]"
+          ).value.trim(),
+
+        public_description:
+          card.querySelector(
+            "[data-property-public-description]"
+          ).value.trim(),
+
         check_in_time:
           card.querySelector(
             "[data-property-check-in]"
