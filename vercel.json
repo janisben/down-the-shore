@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/update-property-settings",
+      "destination": "/api/send-email"
+    }
+  ]
+}
