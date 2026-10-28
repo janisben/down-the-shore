@@ -676,25 +676,33 @@ async function updateProperty(
 ) {
   const res =
     await fetch(
-      `${cfg.url}/rest/v1/properties?id=eq.${id}`,
+      "/api/update-property-settings",
       {
-        method: "PATCH",
-        headers:
-          headers({
-            Prefer:
-              "return=minimal"
-          }),
+        method: "POST",
+        headers: headers(),
         body:
-          JSON.stringify(changes)
+          JSON.stringify({
+            id,
+            changes
+          })
       }
     );
 
 
   if (!res.ok) {
+    const errorBody =
+      await res.json().catch(
+        () => ({})
+      );
+
     throw new Error(
-      await res.text()
+      errorBody.error ||
+      "Could not save property settings."
     );
   }
+
+
+  return res.json();
 }
 
 
